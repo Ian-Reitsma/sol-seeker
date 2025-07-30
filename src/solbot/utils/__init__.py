@@ -1,7 +1,15 @@
 """Generic utility functions."""
 
 from .config import BotConfig, parse_args
-from .license import LicenseManager, LICENSE_MINT, LICENSE_AUTHORITY
+from .license import (
+    LicenseManager,
+    LICENSE_MINT,
+    DEMO_MINT,
+    LICENSE_AUTHORITY,
+    LICENSE_KEYPAIR_PATH,
+    LICENSE_KEYPAIR_KEY,
+    load_authority_keypair,
+)
 
 __all__ = [
     "BotConfig",
@@ -9,5 +17,9 @@ __all__ = [
     "LicenseManager",
     "LICENSE_MINT",
     "LICENSE_AUTHORITY",
+    "DEMO_MINT",
+    "LICENSE_KEYPAIR_PATH",
+    "LICENSE_KEYPAIR_KEY",
+    "load_authority_keypair",
 ]
 

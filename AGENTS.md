@@ -92,3 +92,63 @@
 - Replace placeholder mint and authority addresses with real ones and secure key
   management for the distributor.
 - Extend unit tests to mock RPC responses and cover the license check logic.
+
+## Codex Agent - Advanced License Management
+
+**Date:** 2025-07-29
+
+### Summary
+- Introduced demo licensing via a second SPL mint (`DEMO_MINT`).
+- `LicenseManager` now detects full/demo licenses, creates token accounts on
+  distribution, and exports `verify_or_exit` for enforcement.
+- Environment variables allow runtime configuration of `LICENSE_MINT`,
+  `DEMO_MINT`, and `LICENSE_AUTHORITY`.
+- `main.py` calls `verify_or_exit` and warns when running in demo mode.
+- Updated README with detailed setup instructions and environment variable usage.
+- Extended utils exports to include `DEMO_MINT`.
+
+### Design Decisions
+- Demo mode lets users observe output without trading, lowering the barrier to
+  trial while keeping full functionality gated by an on-chain token.
+- License distribution creates associated token accounts when necessary to avoid
+  manual setup for new users.
+
+### Next Steps
+- Implement secure storage for the authority keypair when distributing licenses.
+- Add tests covering the new demo checks and `verify_or_exit` logic.
+
+## Codex Agent - Secure Keypair Storage
+
+**Date:** 2025-07-30
+
+### Summary
+- Added encrypted keypair loading via `LICENSE_KEYPAIR_PATH` and
+  `LICENSE_KEYPAIR_KEY` environment variables.
+- `load_authority_keypair` decrypts the keypair with Fernet.
+- `LicenseManager.distribute_license` now loads the keypair automatically when
+  none is provided.
+- Updated utils exports and README with instructions on secure keypair storage.
+- Added a unit test for keypair loading.
+
+### Design Decisions
+- `cryptography` dependency introduced for symmetric encryption. The encrypted
+  keypair prevents accidental leakage of the authority secret key.
+
+### Next Steps
+- Extend CLI tooling for automated license distribution.
+
+## Codex Agent - License CLI Expansion
+
+**Date:** 2025-07-30
+
+### Summary
+- Added `solbot.tools.distribute_license` module providing a command line utility to send license tokens
+- Extended `LicenseManager` with helpers `token_accounts`, `token_balance`, `license_balance` and `fetch_license_account`
+- Updated README with instructions for the new distributor and environment variable usage
+
+### Design Decisions
+- CLI arguments mirror environment variables so the authority wallet path and decryption key can be provided at runtime
+- Balance queries aggregate across all token accounts to support multiple wallets holding licenses
+
+### Next Steps
+- Implement caching of RPC responses to reduce network load during frequent checks
