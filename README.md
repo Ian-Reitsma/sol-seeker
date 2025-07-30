@@ -74,17 +74,37 @@ Environment variables with the same name override defaults. See `--help` for all
 
 Before full functionality is enabled the bot verifies that your wallet holds a
 valid license token on Solana. Provide your wallet public key with `--wallet`
-or the `WALLET_ADDR` environment variable. The default mint and authority
-addresses are placeholders in `solbot.utils.license` and must be updated by the
-project owner.
+or the `WALLET_ADDR` environment variable. The mint and authority addresses are
+configured via environment variables:
+
+```bash
+export LICENSE_MINT=<FULL_LICENSE_MINT>
+export DEMO_MINT=<DEMO_LICENSE_MINT>
+export LICENSE_AUTHORITY=<ISSUER_PUBLIC_KEY>
+export LICENSE_KEYPAIR_PATH=/secure/location/authority.json.enc
+export LICENSE_KEYPAIR_KEY=<BASE64_FERNET_KEY>
+```
+
+If the wallet contains `LICENSE_MINT` the bot runs in full mode. Holding only
+`DEMO_MINT` enables read-only demo mode.
 
 ```bash
 python -m src.main --wallet YOUR_WALLET --rpc-ws wss://api.mainnet-beta.solana.com/
 ```
 
 If no license token is detected the program exits with a message. A minimal
-license distributor is included to send license tokens from the authority
-wallet.
+license distributor is provided to send license tokens from the authority
+wallet. Run it as a module and pass the recipient wallet address:
+
+```bash
+python -m solbot.tools.distribute_license RECIPIENT_WALLET \
+    --rpc-http https://api.mainnet-beta.solana.com \
+    --keypair /secure/location/authority.json.enc \
+    --key $LICENSE_KEYPAIR_KEY
+```
+
+The distributor loads and decrypts the authority keypair from `--keypair` using
+the provided `--key` or the `LICENSE_KEYPAIR_KEY` environment variable.
 
 ## Agent Workflow
 
