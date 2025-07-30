@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import argparse
 import os
+from typing import Optional, List
 from solbot.utils.license import LicenseManager, load_authority_keypair
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line options."""
     parser = argparse.ArgumentParser(description="Send a license token")
     parser.add_argument("recipient", help="Wallet address receiving the license")
@@ -38,7 +39,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: Optional[List[str]] = None) -> None:
     """Run the distributor."""
     args = parse_args(argv)
     lm = LicenseManager(rpc_http=args.rpc_http)
