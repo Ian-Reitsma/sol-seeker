@@ -8,7 +8,6 @@ from solbot.utils import (
     parse_args,
     BotConfig,
     LicenseManager,
-    LICENSE_MINT,
 )
 
 
@@ -19,11 +18,12 @@ def main() -> None:
     logging.basicConfig(level=getattr(logging, cfg.log_level.upper(), logging.INFO))
 
     lm = LicenseManager(rpc_http=cfg.rpc_ws.replace("wss://", "https://"))
-    if not cfg.wallet or not lm.has_license(cfg.wallet):
-        print(
-            "License check failed. Provide a valid wallet with a license token."
-        )
+    if not cfg.wallet:
+        print("--wallet is required")
         return
+    mode = lm.verify_or_exit(cfg.wallet)
+    if mode == "demo":
+        logging.warning("Demo mode active: trading disabled")
 
     streamer = data.SlotStreamer(cfg.rpc_ws)
     posterior = PosteriorEngine()
