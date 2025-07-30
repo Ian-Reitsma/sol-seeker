@@ -152,3 +152,19 @@
 
 ### Next Steps
 - Implement caching of RPC responses to reduce network load during frequent checks
+
+## Codex Agent - Python Compatibility
+
+**Date:** 2025-07-31
+
+### Summary
+- Updated configuration and license modules to avoid the Python 3.10 ``|`` union
+  syntax so the project can run on Python 3.9.
+- Adjusted the license distribution CLI accordingly.
+
+### Design Decisions
+- Introduced ``typing.Optional`` imports and replaced union type hints with
+  ``Optional`` generics where applicable.
+
+### Next Steps
+- Clarify the minimum supported Python version in the documentation.

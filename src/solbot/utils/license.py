@@ -12,6 +12,7 @@ environment variables at runtime.
 from dataclasses import dataclass
 import os
 import json
+from typing import Optional
 from cryptography.fernet import Fernet
 from solana.rpc.api import Client
 from solders.transaction import Transaction
@@ -36,7 +37,7 @@ LICENSE_KEYPAIR_PATH = os.getenv("LICENSE_KEYPAIR_PATH", "")
 LICENSE_KEYPAIR_KEY = os.getenv("LICENSE_KEYPAIR_KEY", "")
 
 
-def load_authority_keypair(path: str | None = None, key: str | None = None) -> Keypair:
+def load_authority_keypair(path: Optional[str] = None, key: Optional[str] = None) -> Keypair:
     """Load and decrypt the authority keypair.
 
     Parameters
@@ -102,7 +103,7 @@ class LicenseManager:
             balance += amount
         return balance
 
-    def fetch_license_account(self, wallet: str) -> str | None:
+    def fetch_license_account(self, wallet: str) -> Optional[str]:
         """Return the first token account address holding a license, if any."""
         accounts = self.token_accounts(wallet, LICENSE_MINT)
         return accounts[0]["pubkey"] if accounts else None
@@ -128,7 +129,7 @@ class LicenseManager:
         return "none"
 
     def distribute_license(
-        self, recipient: str, keypair: Keypair | None = None, demo: bool = False
+        self, recipient: str, keypair: Optional[Keypair] = None, demo: bool = False
     ) -> str:
         """Send a license token to ``recipient``.
 

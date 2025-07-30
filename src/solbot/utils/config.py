@@ -3,9 +3,10 @@
 from dataclasses import dataclass
 import argparse
 import os
+from typing import Optional, List
 
 
-def parse_args(args: list[str] | None = None) -> argparse.Namespace:
+def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command line arguments or provided list."""
     parser = argparse.ArgumentParser(description="sol-bot configuration")
     parser.add_argument(
