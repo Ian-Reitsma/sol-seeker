@@ -35,7 +35,11 @@ class SlotStreamer:
 
     def stream_slots(self):
         """Synchronous generator yielding slots."""
-        loop = asyncio.get_event_loop()
+        # ``asyncio.get_event_loop`` is deprecated when no loop is running.
+        # Create a dedicated loop for streaming slots to avoid warnings and
+        # ensure compatibility with Python 3.12+.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         queue: asyncio.Queue[int] = asyncio.Queue()
 
         async def run():
@@ -51,4 +55,5 @@ class SlotStreamer:
             task.cancel()
             with contextlib.suppress(Exception):
                 loop.run_until_complete(task)
+            loop.close()
 
