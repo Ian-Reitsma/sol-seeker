@@ -25,12 +25,19 @@ from spl.token.instructions import (
 )
 from spl.token.constants import TOKEN_PROGRAM_ID
 
-# Address of the SPL token mint representing a valid license.
-LICENSE_MINT = os.getenv("LICENSE_MINT", "REPLACE_WITH_LICENSE_MINT")
+# Address of the SPL token mint representing a valid license. These values are
+# baked into the container image and must not be overridden at runtime.
+LICENSE_MINT = "REPLACE_WITH_LICENSE_MINT"
 # Address of the SPL token mint granting demo (read-only) access.
 DEMO_MINT = os.getenv("DEMO_MINT", "REPLACE_WITH_DEMO_MINT")
 # Address of the wallet that issues licenses.
-LICENSE_AUTHORITY = os.getenv("LICENSE_AUTHORITY", "REPLACE_WITH_AUTHORITY_WALLET")
+LICENSE_AUTHORITY = "REPLACE_WITH_AUTHORITY_WALLET"
+
+# fail fast if runtime attempts to override immutable config
+if os.getenv("LICENSE_MINT") and os.getenv("LICENSE_MINT") != LICENSE_MINT:
+    raise RuntimeError("LICENSE_MINT override not allowed")
+if os.getenv("LICENSE_AUTHORITY") and os.getenv("LICENSE_AUTHORITY") != LICENSE_AUTHORITY:
+    raise RuntimeError("LICENSE_AUTHORITY override not allowed")
 # Path to the encrypted authority keypair used for distribution.
 LICENSE_KEYPAIR_PATH = os.getenv("LICENSE_KEYPAIR_PATH", "")
 # Base64 encoded Fernet key to decrypt the authority keypair file.
@@ -54,11 +61,19 @@ def load_authority_keypair(path: Optional[str] = None, key: Optional[str] = None
     if not path:
         raise ValueError("no keypair path specified")
     with open(path, "rb") as fh:
-        data = fh.read()
+        enc = bytearray(fh.read())
+    data = enc
     if key:
-        data = Fernet(key).decrypt(data)
-    secret = json.loads(data)
-    return Keypair.from_bytes(bytes(secret))
+        data = bytearray(Fernet(key).decrypt(bytes(enc)))
+        for i in range(len(enc)):
+            enc[i] = 0
+    secret = bytearray(json.loads(bytes(data)))
+    kp = Keypair.from_bytes(secret)
+    for i in range(len(data)):
+        data[i] = 0
+    for i in range(len(secret)):
+        secret[i] = 0
+    return kp
 
 
 @dataclass

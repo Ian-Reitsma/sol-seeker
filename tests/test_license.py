@@ -68,6 +68,31 @@ def test_load_authority_keypair(tmp_path, monkeypatch):
     loaded = load_authority_keypair()
     assert loaded.pubkey() == keypair.pubkey()
 
+
+def test_load_authority_keypair_scrub(monkeypatch):
+    import json
+    arr = bytearray(json.dumps(list(range(64))).encode())
+
+    def fake_open(path, mode):
+        class FH:
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc, tb):
+                pass
+            def read(self):
+                return bytes(arr)
+        return FH()
+
+    captured = {}
+    def fake_from_bytes(data):
+        captured['buf'] = data
+        return Keypair()
+
+    monkeypatch.setattr("builtins.open", fake_open)
+    monkeypatch.setattr(Keypair, 'from_bytes', fake_from_bytes)
+    load_authority_keypair(path="dummy", key="")
+    assert all(b == 0 for b in captured['buf'])
+
 class BalanceClient:
     def __init__(self, amount):
         self.amount = amount

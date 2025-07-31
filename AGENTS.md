@@ -168,3 +168,40 @@
 
 ### Next Steps
 - Clarify the minimum supported Python version in the documentation.
+
+## Codex Agent - License Issuer Service
+
+**Date:** 2025-07-31
+
+### Summary
+- Added `license_issuer` FastAPI service with an authenticated `/issue` endpoint.
+- Service uses `LicenseManager.distribute_license` and loads the encrypted keypair
+  for each request to avoid persistent secrets.
+- Exported the service app via `solbot.utils` and updated README with usage
+  instructions.
+- Implemented in-memory zeroisation when loading the authority keypair.
+- Added tests for the new service and updated dependencies to include FastAPI
+  and Uvicorn.
+
+### Design Decisions
+- Authentication is via a bearer token specified in the `LICENSE_API_TOKEN`
+  environment variable. Empty token disables auth for local testing.
+- Keypair decryption uses byte arrays so decrypted bytes can be wiped from
+  memory immediately after use.
+
+### Next Steps
+- Integrate the service into CI and containerize it for deployment.
+
+## Codex Agent - License Service Documentation
+
+**Date:** 2025-07-31
+
+### Summary
+- Added design document `docs/license_issuer_design.md` outlining token rotation, observability, resilience, and multisig plans.
+- Created ADR `docs/adr_health_queue.md` describing health probes, worker queue integration, and dependency pinning.
+- Drafted `OPERATIONS.md` with build, deployment, and health check instructions for SREs.
+
+### Next Steps
+- Implement the documented health endpoints and metrics.
+- Containerize the service and wire up Prometheus scraping.
+

@@ -10,6 +10,7 @@ from .license import (
     LICENSE_KEYPAIR_KEY,
     load_authority_keypair,
 )
+from ..service.license_issuer import app as license_issuer_app
 
 __all__ = [
     "BotConfig",
@@ -21,5 +22,6 @@ __all__ = [
     "LICENSE_KEYPAIR_PATH",
     "LICENSE_KEYPAIR_KEY",
     "load_authority_keypair",
+    "license_issuer_app",
 ]
 
