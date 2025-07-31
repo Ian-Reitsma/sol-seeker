@@ -205,3 +205,35 @@
 - Implement the documented health endpoints and metrics.
 - Containerize the service and wire up Prometheus scraping.
 
+## Codex Agent - Trading API Backend
+
+**Date:** 2025-07-31
+
+### Summary
+- Implemented a `TradeEngine` with in-memory order tracking and position updates.
+- Added FastAPI app under `solbot.server` exposing `/assets`, `/orders`, `/positions`, and `/chart` endpoints.
+- Created `src/server.py` entrypoint launching the API after license verification.
+- Updated `README` with instructions for running the server and added unit tests.
+
+### Design Decisions
+- License check occurs on startup to gate all endpoints.
+- Orders immediately update the `RiskManager` positions for paper trading only.
+
+### Next Steps
+- Persist order history to disk and integrate with real exchange connectors.
+
+
+## Codex Agent - State Vector and Bootstrap Enhancements
+
+**Date:** 2025-07-31
+
+### Summary
+- Introduced protobuf schema under `solbot.schema` with `PositionState` and `PnLState` plus `SCHEMA_HASH` enforcement.
+- Reworked `RiskManager`, `TradeEngine`, and `DAL` to persist serialized positions and verify schema hash on startup.
+- Added `BootstrapCoordinator` gating API readiness and `/status` endpoint.
+- Implemented price cache TTL, asset registry checksum, and hashed API key auth.
+- Created `Dockerfile` with deterministic base image and `/version` endpoint.
+- Documented infra answers in `docs/operational_gaps.md` and added NTP/disk checks.
+
+### Next Steps
+- Expand concurrency tests and integrate real exchange connectors.

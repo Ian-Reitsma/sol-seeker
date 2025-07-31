@@ -11,6 +11,7 @@ from .license import (
     load_authority_keypair,
 )
 from ..service.license_issuer import app as license_issuer_app
+from ..server import create_app as create_trading_app
 
 __all__ = [
     "BotConfig",
@@ -23,5 +24,6 @@ __all__ = [
     "LICENSE_KEYPAIR_KEY",
     "load_authority_keypair",
     "license_issuer_app",
+    "create_trading_app",
 ]
 
