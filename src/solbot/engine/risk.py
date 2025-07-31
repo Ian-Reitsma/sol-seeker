@@ -1,20 +1,15 @@
-"""Risk management primitives."""
+"""Risk management primitives using protobuf PositionState."""
 
-from dataclasses import dataclass
+from typing import Dict
 
-
-@dataclass
-class Position:
-    token: str
-    quantity: float
-    cost_basis: float
+from solbot.schema import PositionState
 
 
 class RiskManager:
     """Tracks simple positions and computes drawdown."""
 
     def __init__(self) -> None:
-        self.positions: dict[str, Position] = {}
+        self.positions: Dict[str, PositionState] = {}
         self.peak_equity: float = 0.0
         self.equity: float = 0.0
 
@@ -30,13 +25,27 @@ class RiskManager:
         return (self.peak_equity - self.equity) / self.peak_equity
 
     def add_position(self, token: str, qty: float, price: float) -> None:
-        self.positions[token] = Position(token, qty, price)
+        pos = self.positions.get(token)
+        if pos:
+            new_qty = pos.qty + qty
+            avg_cost = (pos.qty * pos.cost + qty * price) / new_qty
+            pos.qty = new_qty
+            pos.cost = avg_cost
+        else:
+            pos = PositionState(token=token, qty=qty, cost=price, unrealized=0.0)
+        self.positions[token] = pos
         self.update_equity(self.equity + qty * price)
 
-    def remove_position(self, token: str, price: float) -> None:
-        pos = self.positions.pop(token, None)
-        if pos:
-            self.update_equity(self.equity - pos.quantity * price)
+    def remove_position(self, token: str, qty: float, price: float) -> None:
+        pos = self.positions.get(token)
+        if not pos or pos.qty < qty:
+            raise ValueError("position too small")
+        pos.qty -= qty
+        if pos.qty == 0:
+            del self.positions[token]
+        else:
+            self.positions[token] = pos
+        self.update_equity(self.equity - qty * price)
 
     def portfolio_value(self) -> float:
         return self.equity

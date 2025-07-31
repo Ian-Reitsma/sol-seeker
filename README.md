@@ -59,6 +59,18 @@ export PYTHONPATH=$(pwd)/src
 pytest -q
 ```
 
+5. Start the local trading API server:
+
+```bash
+python -m src.server --wallet YOUR_WALLET --db-path ~/.solbot/state.db
+```
+
+This launches a FastAPI app on `http://127.0.0.1:8000` exposing endpoints for
+paper trading and viewing positions. Orders and positions are persisted to the
+SQLite database specified by `--db-path` so the UI remains available offline.
+The `/status` endpoint reports bootstrap progress and `/version` returns the
+running git commit and schema hash.
+
 ## Configuration
 
 Command line options control connection URLs and logging levels. Example:
@@ -133,3 +145,4 @@ All contributors (human or AI) must document their actions in `AGENTS.md`. Each 
 
 This project is proprietary software. All rights reserved. Usage of the source code is governed by the terms in the `LICENSE` file. Contact the authors for commercial licensing options.
 
+\nBuild a deterministic image with:\n```bash\ndocker build --build-arg COMMIT_SHA=$(git rev-parse HEAD) --build-arg SCHEMA_HASH=$(python -m solbot.schema) -t solbot:latest .\n```

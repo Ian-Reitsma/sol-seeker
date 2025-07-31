@@ -1,11 +1,15 @@
 """Trading and inference engine modules."""
 
 from .posterior import PosteriorEngine, PosteriorOutput
-from .risk import RiskManager, Position
+from .risk import RiskManager
+from .trade import TradeEngine, Order
+from ..types import Side
 
 __all__ = [
     "PosteriorEngine",
     "PosteriorOutput",
     "RiskManager",
-    "Position",
+    "TradeEngine",
+    "Order",
+    "Side",
 ]

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message PositionState {
+  string token = 1;
+  double qty = 2;
+  double cost = 3;
+  double unrealized = 4;
+}
+
+message PnLState {
+  double realized = 1;
+  double unrealized = 2;
+}
