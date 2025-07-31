@@ -92,20 +92,32 @@ If the wallet contains `LICENSE_MINT` the bot runs in full mode. Holding only
 python -m src.main --wallet YOUR_WALLET --rpc-ws wss://api.mainnet-beta.solana.com/
 ```
 
-If no license token is detected the program exits with a message. A minimal
-license distributor is provided to send license tokens from the authority
-wallet. Run it as a module and pass the recipient wallet address:
+If no license token is detected the program exits with a message. A legacy
+command line distributor exists for internal automation but is **deprecated**
+and not documented publicly.
 
-```bash
-python -m solbot.tools.distribute_license RECIPIENT_WALLET \
-    --rpc-http https://api.mainnet-beta.solana.com \
-    --keypair /secure/location/authority.json.enc \
-    --key $LICENSE_KEYPAIR_KEY
+### License Issuer Service
+
+For production deployments a dedicated **License Issuer** service handles token
+distribution so that private keys never reside on developer machines. The
+service exposes a single authenticated endpoint:
+
+```http
+POST /issue
+Authorization: Bearer <JWT>
+{
+  "wallet": "DEST_WALLET",
+  "demo": false
+}
 ```
 
-The distributor loads and decrypts the authority keypair from `--keypair` using
-the provided `--key` or the `LICENSE_KEYPAIR_KEY` environment variable.
+Requests must supply a short-lived JWT issued by the corporate identity
+provider. The encrypted authority keypair is loaded on demand and wiped from
+memory after signing.
 
+## Operations
+
+Deployment and operational procedures are documented internally. Contact the Security/DevOps team for access.
 ## Agent Workflow
 
 All contributors (human or AI) must document their actions in `AGENTS.md`. Each commit should reference the section describing the work performed. Continuous integration runs lint and tests on push.
