@@ -5,9 +5,10 @@ import json
 import logging
 import contextlib
 import websockets
-from typing import AsyncIterator, Optional, Sequence
+from typing import AsyncIterator, Optional, Sequence, TYPE_CHECKING
 
-from solbot.schema import Event, EventKind
+if TYPE_CHECKING:  # pragma: no cover - only for type hints
+    from solbot.schema import Event, EventKind
 
 
 class SlotStreamer:
@@ -62,17 +63,29 @@ class SlotStreamer:
 
 
 class EventStream:
-    """Simple wrapper yielding Event objects. Currently uses SlotStreamer."""
+    """Simple wrapper yielding ``Event`` objects.
 
-    def __init__(self, rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/", events: Optional[Sequence[Event]] = None) -> None:
+    Importing :mod:`solbot.schema` at module load time previously invoked
+    ``protoc`` which isn't available in the execution environment.  To keep the
+    streamer usable without the compiler we lazily import the schema only when
+    events are actually produced.
+    """
+
+    def __init__(
+        self,
+        rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/",
+        events: Optional[Sequence["Event"]] = None,
+    ) -> None:
         self.rpc_ws_url = rpc_ws_url
         self._events = events
 
-    async def __aiter__(self) -> AsyncIterator[Event]:
+    async def __aiter__(self) -> AsyncIterator["Event"]:
         if self._events is not None:
             for ev in self._events:
                 yield ev
             return
+
+        from solbot.schema import Event, EventKind  # local import to avoid side effects
 
         streamer = SlotStreamer(self.rpc_ws_url)
         async for _ in streamer._subscribe():
@@ -80,6 +93,8 @@ class EventStream:
 
     def stream_events(self):
         """Synchronous wrapper yielding events."""
+        from solbot.schema import Event  # local import to avoid side effects
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         queue: asyncio.Queue[Event] = asyncio.Queue()

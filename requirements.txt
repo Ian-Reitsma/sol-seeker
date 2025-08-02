@@ -12,3 +12,4 @@ sqlmodel==0.0.8
 ntplib==0.4.0
 protobuf>=4.24
 pyyaml>=6.0
+numpy>=1.21
