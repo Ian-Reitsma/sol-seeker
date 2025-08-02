@@ -1,7 +1,7 @@
 """Simplistic in-memory trade engine for paper trading."""
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 import asyncio
 
 from google.protobuf.json_format import MessageToDict
@@ -38,7 +38,9 @@ class TradeEngine:
         for token, pos in self.dal.load_positions().items():
             self.risk.positions[token] = pos
 
-    async def place_order(self, token: str, qty: float, side: Side, limit: float | None = None) -> Order:
+    async def place_order(
+        self, token: str, qty: float, side: Side, limit: Optional[float] = None
+    ) -> Order:
         async with self.lock:
             price = await self.connector.place_order(token, qty, side, limit)
             order = Order(token=token, quantity=qty, price=price, side=side, id=self.next_id)
