@@ -2,7 +2,7 @@
 
 import os
 import httpx
-from typing import List, Dict
+from typing import List, Dict, Optional
 import hashlib
 
 from .dal import DAL
@@ -11,7 +11,7 @@ from .dal import DAL
 class AssetService:
     """Fetch and store asset metadata."""
 
-    def __init__(self, dal: DAL, url: str | None = None) -> None:
+    def __init__(self, dal: DAL, url: Optional[str] = None) -> None:
         self.dal = dal
         self.url = url or os.getenv(
             "ASSET_LIST_URL",

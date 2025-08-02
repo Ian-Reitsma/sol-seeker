@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+from typing import Optional
 
 from ..types import Side
 from ..persistence import DAL
@@ -17,14 +18,18 @@ class AbstractConnector(abc.ABC):
         self.oracle = oracle
 
     @abc.abstractmethod
-    async def place_order(self, token: str, qty: float, side: Side, limit: float | None = None) -> float:
+    async def place_order(
+        self, token: str, qty: float, side: Side, limit: Optional[float] = None
+    ) -> float:
         """Execute order and return executed price."""
 
 
 class PaperConnector(AbstractConnector):
     """Paper trading connector using the price oracle."""
 
-    async def place_order(self, token: str, qty: float, side: Side, limit: float | None = None) -> float:
+    async def place_order(
+        self, token: str, qty: float, side: Side, limit: Optional[float] = None
+    ) -> float:
         price = await self.oracle.price(token)
         if limit and ((side is Side.BUY and price > limit) or (side is Side.SELL and price < limit)):
             raise ValueError("limit not reached")
@@ -32,10 +37,14 @@ class PaperConnector(AbstractConnector):
 
 
 class SolanaConnector(AbstractConnector):
-    async def place_order(self, token: str, qty: float, side: Side, limit: float | None = None) -> float:
+    async def place_order(
+        self, token: str, qty: float, side: Side, limit: Optional[float] = None
+    ) -> float:
         raise NotImplementedError
 
 
 class BinanceConnector(AbstractConnector):
-    async def place_order(self, token: str, qty: float, side: Side, limit: float | None = None) -> float:
+    async def place_order(
+        self, token: str, qty: float, side: Side, limit: Optional[float] = None
+    ) -> float:
         raise NotImplementedError

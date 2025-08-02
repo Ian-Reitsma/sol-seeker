@@ -3,7 +3,7 @@ from __future__ import annotations
 """Data access layer using SQLModel for persistence."""
 
 from datetime import datetime, timedelta
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 import os
@@ -11,8 +11,9 @@ from hashlib import sha256
 
 from solbot.schema import PositionState, SCHEMA_HASH
 
+
 class DBOrder(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     token: str
     quantity: float
     side: str
@@ -27,9 +28,9 @@ class DBPosition(SQLModel, table=True):
 
 class DBAsset(SQLModel, table=True):
     symbol: str = Field(primary_key=True)
-    mint: str | None = None
-    decimals: int | None = None
-    chain_id: int | None = None
+    mint: Optional[str] = None
+    decimals: Optional[int] = None
+    chain_id: Optional[int] = None
 
 
 class DBPrice(SQLModel, table=True):
@@ -61,7 +62,7 @@ class DAL:
                 session.add(DBMeta(key="schema_hash", value=SCHEMA_HASH))
             session.commit()
 
-    def get_meta(self, key: str) -> str | None:
+    def get_meta(self, key: str) -> Optional[str]:
         with Session(self.engine) as session:
             row = session.get(DBMeta, key)
             return row.value if row else None
@@ -82,7 +83,7 @@ class DAL:
         with Session(self.engine) as session:
             return session.exec(select(DBOrder).order_by(DBOrder.id)).all()
 
-    def upsert_position(self, pos: PositionState | None) -> None:
+    def upsert_position(self, pos: Optional[PositionState]) -> None:
         if not pos:
             return
         with Session(self.engine) as session:
@@ -134,7 +135,7 @@ class DAL:
             )
             session.commit()
 
-    def last_price(self, token: str) -> float | None:
+    def last_price(self, token: str) -> Optional[float]:
         with Session(self.engine) as session:
             p = session.get(DBPrice, token)
             if not p:

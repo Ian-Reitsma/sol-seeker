@@ -10,6 +10,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
+from typing import Optional
 
 from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine
@@ -23,7 +24,7 @@ class OrderRequest(BaseModel):
     token: str
     qty: float
     side: Side
-    limit: float | None = None
+    limit: Optional[float] = None
 
 
 class OrderResponse(BaseModel):
@@ -54,7 +55,7 @@ def create_app(
     connections: list[WebSocket] = []
     conn_lock = asyncio.Lock()
 
-    def check_key(key: str | None = Depends(api_key_header)) -> None:
+    def check_key(key: Optional[str] = Depends(api_key_header)) -> None:
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
             import hashlib, hmac

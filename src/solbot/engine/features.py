@@ -19,7 +19,7 @@ import os
 import time
 from collections import deque
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 from prometheus_client import Gauge, Summary
@@ -83,8 +83,8 @@ class PyFeatureEngine(FeatureEngine):
         self.out = np.zeros(TOTAL_DIM, dtype=np.float32)
         self.last_touched = np.zeros(self.dim, dtype=np.int64)
         self._decay_slot = -1
-        self._slot: int | None = None
-        self._last_ts: int | None = None
+        self._slot: Optional[int] = None
+        self._last_ts: Optional[int] = None
         self._cum_liq = 0.0
 
     # ------------------------------------------------------------------
