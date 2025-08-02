@@ -1,10 +1,14 @@
 websockets>=10
 pytest>=7
+pytest-benchmark>=3.4
 solana>=0.30
 cryptography==45.0.5
 fastapi==0.105.0
 uvicorn==0.23.0
 prometheus-fastapi-instrumentator==6.1.0
+prometheus-client>=0.16
 httpx==0.24.1
 sqlmodel==0.0.8
 ntplib==0.4.0
+protobuf>=4.24
+pyyaml>=6.0

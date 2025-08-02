@@ -1,3 +1,4 @@
+version: 0x01
 features:
   - name: total_volume
     category: liquidity

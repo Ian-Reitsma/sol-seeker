@@ -3,7 +3,8 @@
 from .posterior import PosteriorEngine, PosteriorOutput
 from .risk import RiskManager
 from .trade import TradeEngine, Order
-from .features import FeatureVector
+from .features import PyFeatureEngine
+from ._types import FeatureVector, FeatureEngine
 from ..schema import Event, EventKind
 from ..types import Side
 
@@ -13,7 +14,9 @@ __all__ = [
     "RiskManager",
     "TradeEngine",
     "Order",
+    "PyFeatureEngine",
     "FeatureVector",
+    "FeatureEngine",
     "Event",
     "EventKind",
     "Side",
