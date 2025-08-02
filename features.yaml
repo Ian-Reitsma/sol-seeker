@@ -1,0 +1,21 @@
+features:
+  - name: total_volume
+    category: liquidity
+    event_kinds: [SWAP]
+    unit: token
+  - name: last_swap_size
+    category: orderflow
+    event_kinds: [SWAP]
+    unit: token
+  - name: liquidity_add
+    category: liquidity
+    event_kinds: [ADD_LIQUIDITY]
+    unit: token
+  - name: liquidity_remove
+    category: liquidity
+    event_kinds: [REMOVE_LIQUIDITY]
+    unit: token
+  - name: minted_amount
+    category: ownership
+    event_kinds: [MINT]
+    unit: token

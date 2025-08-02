@@ -5,6 +5,9 @@ import json
 import logging
 import contextlib
 import websockets
+from typing import AsyncIterator, Optional, Sequence
+
+from solbot.schema import Event, EventKind
 
 
 class SlotStreamer:
@@ -51,6 +54,45 @@ class SlotStreamer:
             while True:
                 slot = loop.run_until_complete(queue.get())
                 yield slot
+        finally:
+            task.cancel()
+            with contextlib.suppress(Exception):
+                loop.run_until_complete(task)
+            loop.close()
+
+
+class EventStream:
+    """Simple wrapper yielding Event objects. Currently uses SlotStreamer."""
+
+    def __init__(self, rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/", events: Optional[Sequence[Event]] = None) -> None:
+        self.rpc_ws_url = rpc_ws_url
+        self._events = events
+
+    async def __aiter__(self) -> AsyncIterator[Event]:
+        if self._events is not None:
+            for ev in self._events:
+                yield ev
+            return
+
+        streamer = SlotStreamer(self.rpc_ws_url)
+        async for _ in streamer._subscribe():
+            yield Event(ts=0, kind=EventKind.NONE)
+
+    def stream_events(self):
+        """Synchronous wrapper yielding events."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        queue: asyncio.Queue[Event] = asyncio.Queue()
+
+        async def run():
+            async for ev in self:
+                await queue.put(ev)
+
+        task = loop.create_task(run())
+        try:
+            while True:
+                ev = loop.run_until_complete(queue.get())
+                yield ev
         finally:
             task.cancel()
             with contextlib.suppress(Exception):

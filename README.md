@@ -20,7 +20,7 @@ sol-bot/
 
 ### Components
 * **Engine** – orchestrates trading logic, risk management, and posterior inference. Includes a `PosteriorEngine` stub and a `RiskManager` that tracks drawdown.
-* **Solana** – manages RPC and WebSocket connections. The `SlotStreamer` demonstrates live event ingestion with automatic reconnect.
+* **Solana** – manages RPC and WebSocket connections. `EventStream` builds on the previous `SlotStreamer` and yields parsed events.
 * **Rustcore** – placeholder for performance-critical parsing routines compiled from Rust.
 
 ## Quickstart
@@ -39,13 +39,14 @@ pip install -r requirements.txt
 npm install
 ```
 
-3. Run the basic slot streamer:
+3. Run the event stream demo:
 
 ```bash
 python -m src.main
 ```
 
-This will connect to the public Solana websocket and print slot numbers as they arrive.
+This connects to the public Solana websocket and prints parsed `Event` objects. The default demo emits a placeholder event when run without a real RPC endpoint.
+WARNING: No real events yet, use only for CLI smoke.
 
 Ensure `src` is on your `PYTHONPATH` when running examples:
 

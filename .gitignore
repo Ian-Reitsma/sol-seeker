@@ -17,3 +17,4 @@ node_modules/
 
 # System
 .DS_Store
+src/solbot/schema/event_pb2.py
