@@ -1,0 +1,19 @@
+syntax = "proto3";
+package solbot;
+
+enum EventKind {
+  NONE = 0;
+  SWAP = 1;
+  ADD_LIQUIDITY = 2;
+  REMOVE_LIQUIDITY = 3;
+  MINT = 4;
+}
+
+message Event {
+  uint64 ts = 1;
+  EventKind kind = 2;
+  double amount_in = 3;
+  double amount_out = 4;
+  double reserve_a = 5;
+  double reserve_b = 6;
+}

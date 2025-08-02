@@ -8,6 +8,7 @@ from solbot.bootstrap import BootstrapCoordinator
 import hashlib, os
 from solbot.persistence import DAL
 from solbot.persistence.assets import AssetService
+import tempfile
 from solbot.exchange import PaperConnector
 from solbot.oracle import CoingeckoOracle
 
@@ -22,7 +23,8 @@ class DummyLM:
 
 
 def test_api_order_flow():
-    cfg = BotConfig(rpc_ws="wss://api.mainnet-beta.solana.com/", log_level="INFO", wallet="111", db_path="/tmp/test.db", bootstrap=False)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(rpc_ws="wss://api.mainnet-beta.solana.com/", log_level="INFO", wallet="111", db_path=tmp.name, bootstrap=False)
     lm = DummyLM()
     dal = DAL(cfg.db_path)
     class DummyOracle(CoingeckoOracle):

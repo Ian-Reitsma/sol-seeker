@@ -3,7 +3,12 @@
 import logging
 
 from solbot.solana import data
-from solbot.engine import PosteriorEngine, RiskManager
+from solbot.engine import (
+    PosteriorEngine,
+    RiskManager,
+    FeatureVector,
+)
+from solbot.schema import Event, EventKind
 from solbot.utils import (
     parse_args,
     BotConfig,
@@ -25,14 +30,17 @@ def main() -> None:
     if mode == "demo":
         logging.warning("Demo mode active: trading disabled")
 
-    streamer = data.SlotStreamer(cfg.rpc_ws)
+    streamer = data.EventStream(cfg.rpc_ws, events=[Event(ts=0, kind=EventKind.NONE)])
     posterior = PosteriorEngine()
     risk = RiskManager()
+    fv = FeatureVector()
 
-    for slot in streamer.stream_slots():
-        features = [1.0] * posterior.n_features
+    for event in streamer.stream_events():
+        fv.update(event)
+        fv.decay()
+        features = fv.normalized()[: posterior.n_features]
         post = posterior.predict(features)
-        print(f"slot {slot}: trend={post.trend:.2f}")
+        print(f"event {event.kind.name}: trend={post.trend:.2f}")
         risk.update_equity(risk.equity + 0.0)  # placeholder for real P&L tracking
 
 
