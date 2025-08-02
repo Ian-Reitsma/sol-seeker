@@ -6,7 +6,7 @@ from solbot.solana import data
 from solbot.engine import (
     PosteriorEngine,
     RiskManager,
-    FeatureVector,
+    PyFeatureEngine,
 )
 from solbot.schema import Event, EventKind
 from solbot.utils import (
@@ -33,12 +33,11 @@ def main() -> None:
     streamer = data.EventStream(cfg.rpc_ws, events=[Event(ts=0, kind=EventKind.NONE)])
     posterior = PosteriorEngine()
     risk = RiskManager()
-    fv = FeatureVector()
+    fe = PyFeatureEngine()
 
     for event in streamer.stream_events():
-        fv.update(event)
-        fv.decay()
-        features = fv.normalized()[: posterior.n_features]
+        vec = fe.update(event, slot=int(event.ts))
+        features = vec[: posterior.n_features]
         post = posterior.predict(features)
         print(f"event {event.kind.name}: trend={post.trend:.2f}")
         risk.update_equity(risk.equity + 0.0)  # placeholder for real P&L tracking
