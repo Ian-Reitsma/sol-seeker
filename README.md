@@ -147,3 +147,25 @@ All contributors (human or AI) must document their actions in `AGENTS.md`. Each 
 This project is proprietary software. All rights reserved. Usage of the source code is governed by the terms in the `LICENSE` file. Contact the authors for commercial licensing options.
 
 \nBuild a deterministic image with:\n```bash\ndocker build --build-arg COMMIT_SHA=$(git rev-parse HEAD) --build-arg SCHEMA_HASH=$(python -m solbot.schema) -t solbot:latest .\n```
+
+## Feature Engine
+
+The `sol_seeker.features.FeatureEngine` module provides a deterministic,
+lag-stacked 256‑dimensional state vector used by the posterior model. Events
+are pushed one-by-one via ``push_event`` and at each slot boundary
+``on_slot_end`` returns a ``memoryview`` of 768 ``float32`` values
+corresponding to the current slot and two lags. The Rust core maintains running
+means and variances using an exponential-weighted moving average (EWMA)
+Welford update with population semantics (λ=0.995) for normalized features.
+
+To build the extension and run tests:
+
+```bash
+pip install maturin
+cd rustcore && maturin develop --release
+cd .. && pytest -q
+```
+
+The initial spec implements nine high-impact features; remaining slots are
+tombstoned to preserve index stability. Additional features can be added by
+extending ``spec.py`` and registering the corresponding Rust functor.
