@@ -1,0 +1,25 @@
+[package]
+name = "rustcore"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rustcore"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+numpy = "0.20"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[build-dependencies]
+regex = "1"
+
+[[bench]]
+name = "feature_perf"
+harness = false
+
+[package.metadata.maturin]
+name = "sol_seeker.rustcore"
