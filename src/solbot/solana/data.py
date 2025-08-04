@@ -1,105 +1,223 @@
-"""Solana WebSocket event streaming utilities."""
+"""Solana WebSocket log streaming and event parsing utilities."""
+
+from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
-import contextlib
+import random
+from typing import AsyncIterator, Optional, Sequence
+
 import websockets
-from typing import AsyncIterator, Optional, Sequence, TYPE_CHECKING
+from prometheus_client import Counter, Gauge
 
-if TYPE_CHECKING:  # pragma: no cover - only for type hints
-    from solbot.schema import Event, EventKind
-
-
-class SlotStreamer:
-    """Minimal streamer that yields new slot numbers via WebSocket."""
-
-    def __init__(self, rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/"):
-        self.rpc_ws_url = rpc_ws_url
-
-    async def _subscribe_once(self):
-        async with websockets.connect(self.rpc_ws_url) as ws:
-            await ws.send(
-                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "slotSubscribe"})
-            )
-            async for msg in ws:
-                data = json.loads(msg)
-                if "params" in data and "result" in data["params"]:
-                    yield data["params"]["result"]["slot"]
-
-    async def _subscribe(self):
-        """Yield slots indefinitely, reconnecting on error."""
-        while True:
-            try:
-                async for slot in self._subscribe_once():
-                    yield slot
-            except Exception as exc:  # broad catch for connection errors
-                logging.warning("slot stream error: %s; reconnecting", exc)
-                await asyncio.sleep(1)
-
-    def stream_slots(self):
-        """Synchronous generator yielding slots."""
-        # ``asyncio.get_event_loop`` is deprecated when no loop is running.
-        # Create a dedicated loop for streaming slots to avoid warnings and
-        # ensure compatibility with Python 3.12+.
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        queue: asyncio.Queue[int] = asyncio.Queue()
-
-        async def run():
-            async for slot in self._subscribe():
-                await queue.put(slot)
-
-        task = loop.create_task(run())
-        try:
-            while True:
-                slot = loop.run_until_complete(queue.get())
-                yield slot
-        finally:
-            task.cancel()
-            with contextlib.suppress(Exception):
-                loop.run_until_complete(task)
-            loop.close()
+from rustcore import ParsedEvent, parse_log
 
 
-class EventStream:
-    """Simple wrapper yielding ``Event`` objects.
+QUEUE_DEPTH = Gauge(
+    "log_queue_depth", "Log queue depth ratio", ["feed", "program_id"]
+)
+DROPPED_LOGS = Counter(
+    "dropped_logs", "Dropped logs due to full queue", ["feed", "program_id"]
+)
 
-    Importing :mod:`solbot.schema` at module load time previously invoked
-    ``protoc`` which isn't available in the execution environment.  To keep the
-    streamer usable without the compiler we lazily import the schema only when
-    events are actually produced.
+
+def reset_metrics(feed: str = "main", program_id: str = "none") -> None:
+    """Reset Prometheus metrics for tests."""
+
+    QUEUE_DEPTH.labels(feed, program_id).set(0)
+    # Counter has no public setter; use internal value for test isolation
+    DROPPED_LOGS.labels(feed, program_id)._value.set(0)
+
+
+class LogStreamer:
+    """Stream Solana program logs with automatic reconnect and backoff.
+
+    Parameters
+    ----------
+    rpc_ws_url:
+        WebSocket RPC endpoint.
+    program_ids:
+        Sequence of program ids whose logs should be subscribed to.
+    queue_size:
+        Maximum number of logs to buffer locally when the consumer is slower
+        than the producer.  A large buffer prevents transient backpressure from
+        dropping messages during bursts.
     """
 
     def __init__(
         self,
         rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/",
-        events: Optional[Sequence["Event"]] = None,
+        program_ids: Optional[Sequence[str]] = None,
+        queue_size: int = 10000,
     ) -> None:
         self.rpc_ws_url = rpc_ws_url
-        self._events = events
+        self.program_ids = list(program_ids or [])
+        self._queue_size = queue_size
+
+    async def _connect(self) -> AsyncIterator[str]:
+        async with websockets.connect(self.rpc_ws_url) as ws:
+            for i, pid in enumerate(self.program_ids, start=1):
+                msg = {
+                    "jsonrpc": "2.0",
+                    "id": i,
+                    "method": "logsSubscribe",
+                    "params": [{"mentions": [pid]}, {"commitment": "confirmed"}],
+                }
+                await ws.send(json.dumps(msg))
+            async for raw in ws:
+                data = json.loads(raw)
+                if "params" not in data or "result" not in data["params"]:
+                    continue
+                value = data["params"]["result"].get("value", {})
+                for log in value.get("logs", []):
+                    yield log
+
+    async def subscribe(self) -> AsyncIterator[str]:
+        """Yield log strings with backpressure metrics and jittered reconnect."""
+
+        queue: asyncio.Queue[str] = asyncio.Queue(self._queue_size)
+        program_label = self.program_ids[0] if self.program_ids else "none"
+        depth_metric = QUEUE_DEPTH.labels("main", program_label)
+        drop_metric = DROPPED_LOGS.labels("main", program_label)
+
+        stop_event = asyncio.Event()
+
+        async def producer() -> None:
+            backoff = 1.0
+            above_since: Optional[float] = None
+            loop = asyncio.get_running_loop()
+            while not stop_event.is_set():
+                try:
+                    stable_start = loop.time()
+                    async for log in self._connect():
+                        try:
+                            queue.put_nowait(log)
+                        except asyncio.QueueFull:
+                            drop_metric.inc()
+                            logging.warning("log queue full; dropping log")
+                            continue
+                        depth = queue.qsize() / self._queue_size
+                        depth_metric.set(depth)
+                        if depth > 0.75:
+                            if above_since is None:
+                                above_since = loop.time()
+                            elif loop.time() - above_since > 1.0:
+                                logging.error("log queue depth >75%%; stopping stream")
+                                stop_event.set()
+                                return
+                        else:
+                            above_since = None
+                        if loop.time() - stable_start > 10.0:
+                            backoff = 1.0
+                    backoff = 1.0
+                except Exception as exc:  # pragma: no cover - network dependent
+                    logging.warning(
+                        "log stream error: %s; reconnecting in %.1fs", exc, backoff
+                    )
+                    await asyncio.sleep(random.uniform(0, backoff))
+                    backoff = min(backoff * 2.0, 32.0)
+
+        task = asyncio.create_task(producer())
+        try:
+            while not stop_event.is_set():
+                yield await queue.get()
+            raise RuntimeError("log stream halted due to backpressure")
+        finally:
+            stop_event.set()
+            task.cancel()
+            with contextlib.suppress(Exception):
+                await task
+            # Drain any remaining logs to avoid stale metrics on restart
+            while not queue.empty():
+                queue.get_nowait()
+
+
+def _parsed_to_event(pe: ParsedEvent):
+    from solbot.schema import Event, EventKind
+
+    kind = pe.kind.lower()
+    if kind == "swap":
+        return Event(
+            ts=pe.ts,
+            kind=EventKind.SWAP,
+            amount_in=pe.amount_in,
+            amount_out=pe.amount_out,
+        )
+    if kind == "add_liquidity":
+        return Event(
+            ts=pe.ts,
+            kind=EventKind.ADD_LIQUIDITY,
+            reserve_a=pe.reserve_a,
+            reserve_b=pe.reserve_b,
+        )
+    if kind == "remove_liquidity":
+        return Event(
+            ts=pe.ts,
+            kind=EventKind.REMOVE_LIQUIDITY,
+            reserve_a=pe.reserve_a,
+            reserve_b=pe.reserve_b,
+        )
+    if kind == "mint":
+        return Event(ts=pe.ts, kind=EventKind.MINT, amount_out=pe.amount_out)
+    return Event(ts=pe.ts, kind=EventKind.NONE)
+
+
+class EventStream:
+    """Wrapper yielding parsed :class:`solbot.schema.Event` objects."""
+
+    def __init__(
+        self,
+        rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/",
+        program_ids: Optional[Sequence[str]] = None,
+        logs: Optional[Sequence[str]] = None,
+    ) -> None:
+        self.rpc_ws_url = rpc_ws_url
+        self._program_ids = program_ids or []
+        self._logs = logs
+        self._streamer: Optional[LogStreamer] = None
 
     async def __aiter__(self) -> AsyncIterator["Event"]:
-        if self._events is not None:
-            for ev in self._events:
-                yield ev
+        if self._logs is not None:
+            for log in self._logs:
+                parsed = parse_log(log)
+                if parsed is not None:
+                    logging.debug("raw_log=%s", log)
+                    ev = _parsed_to_event(parsed)
+                    logging.debug("parsed_event=%s", ev)
+                    yield ev
             return
 
-        from solbot.schema import Event, EventKind  # local import to avoid side effects
+        if self._streamer is None:
+            self._streamer = LogStreamer(self.rpc_ws_url, self._program_ids)
 
-        streamer = SlotStreamer(self.rpc_ws_url)
-        async for _ in streamer._subscribe():
-            yield Event(ts=0, kind=EventKind.NONE)
+        queue: asyncio.Queue[str] = asyncio.Queue(10000)
+
+        async def producer() -> None:
+            assert self._streamer is not None
+            async for log in self._streamer.subscribe():
+                await queue.put(log)
+
+        asyncio.create_task(producer())
+        loop = asyncio.get_running_loop()
+        while True:
+            log = await queue.get()
+            parsed = await loop.run_in_executor(None, parse_log, log)
+            if parsed is not None:
+                logging.debug("raw_log=%s", log)
+                ev = _parsed_to_event(parsed)
+                logging.debug("parsed_event=%s", ev)
+                yield ev
 
     def stream_events(self):
         """Synchronous wrapper yielding events."""
-        from solbot.schema import Event  # local import to avoid side effects
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        queue: asyncio.Queue[Event] = asyncio.Queue()
+        queue: asyncio.Queue["Event"] = asyncio.Queue()
 
-        async def run():
+        async def run() -> None:
             async for ev in self:
                 await queue.put(ev)
 

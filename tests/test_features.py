@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from solbot.engine import PyFeatureEngine
+from solbot.engine.features import PyFeatureEngine
 from solbot.schema import Event, EventKind
 
 
@@ -99,3 +99,13 @@ def test_norm_decay_on_inactive_indices():
     delta = final_slot - 1
     expected_final = -(mu1 / np.sqrt(var1)) * np.sqrt(0.995 ** delta)
     assert np.isclose(fe.norm[0], expected_final, atol=1e-6)
+
+
+def test_history_ring_buffer():
+    fe = PyFeatureEngine()
+    ev = _mk_event(EventKind.SWAP, amount_in=1.0)
+    for _ in range(3):
+        fe.update(ev, slot=1)
+    hist = fe.history()
+    assert len(hist) == 3
+    assert hist[-1][0].kind == EventKind.SWAP

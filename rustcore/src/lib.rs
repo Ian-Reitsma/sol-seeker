@@ -1,6 +1,8 @@
 use numpy::PyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+use serde::Deserialize;
 
 mod features;
 mod welford;
@@ -42,6 +44,49 @@ impl PyEvent {
             amount,
             timestamp_ms,
         }
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub struct ParsedEvent {
+    #[pyo3(get)]
+    pub ts: i64,
+    #[pyo3(get)]
+    pub kind: String,
+    #[pyo3(get)]
+    pub amount_in: f64,
+    #[pyo3(get)]
+    pub amount_out: f64,
+    #[pyo3(get)]
+    pub reserve_a: f64,
+    #[pyo3(get)]
+    pub reserve_b: f64,
+}
+
+#[derive(Deserialize)]
+struct RawLog {
+    #[serde(rename = "type")]
+    kind: String,
+    ts: Option<i64>,
+    amount_in: Option<f64>,
+    amount_out: Option<f64>,
+    reserve_a: Option<f64>,
+    reserve_b: Option<f64>,
+}
+
+#[pyfunction]
+pub fn parse_log(log: &str) -> PyResult<Option<ParsedEvent>> {
+    match serde_json::from_str::<RawLog>(log) {
+        Ok(raw) => Ok(Some(ParsedEvent {
+            ts: raw.ts.unwrap_or(0),
+            kind: raw.kind,
+            amount_in: raw.amount_in.unwrap_or(0.0),
+            amount_out: raw.amount_out.unwrap_or(0.0),
+            reserve_a: raw.reserve_a.unwrap_or(0.0),
+            reserve_b: raw.reserve_b.unwrap_or(0.0),
+        })),
+        Err(_) => Ok(None),
     }
 }
 
@@ -151,5 +196,7 @@ impl FeatureEngine {
 fn rustcore(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyEvent>()?;
     m.add_class::<FeatureEngine>()?;
+    m.add_class::<ParsedEvent>()?;
+    m.add_function(wrap_pyfunction!(parse_log, m)?)?;
     Ok(())
 }
