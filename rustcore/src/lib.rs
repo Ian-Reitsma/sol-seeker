@@ -15,6 +15,38 @@ const IDX_OF_TRADE_COUNT: usize = 65;
 const IDX_OF_IA_TIME_MS: usize = 66;
 
 #[pyclass]
+
+#[derive(Clone)]
+pub struct PyEvent {
+    pub tag: String,
+    pub delta: Option<f64>,
+    pub prev: Option<f64>,
+    pub amount: Option<f64>,
+    pub timestamp_ms: Option<i64>,
+}
+
+#[pymethods]
+impl PyEvent {
+    #[new]
+    pub fn new(
+        tag: String,
+        delta: Option<f64>,
+        prev: Option<f64>,
+        amount: Option<f64>,
+        timestamp_ms: Option<i64>,
+    ) -> Self {
+        Self {
+            tag,
+            delta,
+            prev,
+            amount,
+            timestamp_ms,
+        }
+    }
+}
+
+#[pyclass]
+
 pub struct FeatureEngine {
     fv: FeatureVec,
     lag1: [f32; 256],
@@ -39,17 +71,16 @@ impl FeatureEngine {
         })
     }
 
-    pub fn push_event(&mut self, evt: &PyAny) -> PyResult<()> {
-        let tag: String = evt.get_item("tag")?.extract()?;
-        match tag.as_str() {
+    pub fn push_event(&mut self, evt: PyEvent) -> PyResult<()> {
+        match evt.tag.as_str() {
             "Liquidity" => {
-                let delta: f64 = evt.get_item("delta")?.extract()?;
-                let prev: f64 = evt.get_item("prev")?.extract()?;
+                let delta = evt.delta.ok_or_else(|| PyValueError::new_err("missing delta"))?;
+                let prev = evt.prev.ok_or_else(|| PyValueError::new_err("missing prev"))?;
                 self.apply_liquidity(delta, prev);
             }
             "Swap" => {
-                let amt: f64 = evt.get_item("amount")?.extract()?;
-                let ts: i64 = evt.get_item("timestamp_ms")?.extract()?;
+                let amt = evt.amount.ok_or_else(|| PyValueError::new_err("missing amount"))?;
+                let ts = evt.timestamp_ms.ok_or_else(|| PyValueError::new_err("missing timestamp"))?;
                 self.apply_swap(amt, ts);
             }
             _ => return Err(PyValueError::new_err("unknown event tag")),
@@ -118,6 +149,7 @@ impl FeatureEngine {
 
 #[pymodule]
 fn rustcore(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<PyEvent>()?;
     m.add_class::<FeatureEngine>()?;
     Ok(())
 }

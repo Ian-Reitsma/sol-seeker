@@ -1,5 +1,6 @@
 import numpy as np
-from sol_seeker.features import FeatureEngine, FEATURES
+from sol_seeker.features.engine import FeatureEngine
+from sol_seeker.features.spec import FEATURES
 
 
 def welford_py(values, lam):

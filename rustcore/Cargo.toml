@@ -16,6 +16,9 @@ once_cell = "1.19"
 [dev-dependencies]
 criterion = "0.5"
 
+[build-dependencies]
+regex = "1"
+
 [[bench]]
 name = "feature_perf"
 harness = false

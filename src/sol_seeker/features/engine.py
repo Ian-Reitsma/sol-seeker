@@ -1,9 +1,8 @@
 """Python shim around the Rust feature engine."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from typing import Dict, Any, Tuple
 
+from typing import Any, Dict, Tuple
 from .spec import idx
 
 try:  # Attempt to import the compiled rustcore extension.
@@ -13,20 +12,6 @@ except Exception as exc:  # pragma: no cover - import error surface early
         "rustcore extension module not built. Run `maturin build` and `pip install` the wheel first."
     ) from exc
 
-
-@dataclass
-class PyEvent:
-    """Typed event passed to :class:`FeatureEngine`.
-
-    This reduces runtime key lookups compared to raw ``dict`` usage.
-    ``None`` fields are ignored by the Rust layer.
-    """
-
-    tag: str
-    delta: float | None = None
-    prev: float | None = None
-    amount: float | None = None
-    timestamp_ms: int | None = None
 
 
 class FeatureEngine:
@@ -40,17 +25,13 @@ class FeatureEngine:
     def __init__(self) -> None:
         self._core = rustcore.FeatureEngine()
 
-    def push_event(self, evt: PyEvent | Dict[str, Any]) -> None:
-        """Push a parsed event into the engine.
+    def push_event(self, evt: rustcore.PyEvent | Dict[str, Any]) -> None:
+        """Push a parsed event into the engine."""
 
-        ``evt`` may be a ``PyEvent`` or raw ``dict``; in both cases a mapping
-        with the expected keys is forwarded to the Rust core.
-        """
-
-        if isinstance(evt, PyEvent):
-            self._core.push_event(asdict(evt))
-        else:
+        if isinstance(evt, rustcore.PyEvent):
             self._core.push_event(evt)
+        else:
+            self._core.push_event(rustcore.PyEvent(**evt))
 
     def on_slot_end(self, slot: int) -> memoryview:
         """Rotate lag buffers and return a view of the feature stack.
