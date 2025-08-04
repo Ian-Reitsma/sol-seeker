@@ -237,3 +237,24 @@
 
 ### Next Steps
 - Expand concurrency tests and integrate real exchange connectors.
+
+## OpenAI Assistant - Repository Audit
+
+**Date:** 2025-08-04
+
+### Summary
+- Added `AGENTS-AUDIT.md` detailing prioritized development directives for data ingestion, feature pipeline, inference integration, and safety.
+
+### Next Steps
+- Implement core data ingestion and feature pipeline as outlined in `AGENTS-AUDIT.md`.
+
+
+## OpenAI Assistant - Audit Expansion
+
+**Date:** 2025-08-04
+
+### Summary
+- Extended `AGENTS-AUDIT.md` with directives for Bayesian inference, multi-market support, enhanced risk controls, performance optimisation, comprehensive testing, and long-term evolution.
+
+### Next Steps
+- Execute the expanded audit starting with Bayesian posterior implementation and multi-market feature ingestion.
