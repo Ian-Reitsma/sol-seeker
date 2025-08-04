@@ -6,23 +6,32 @@ This file defines the immediate and near-term directives for the next developmen
 1. Replace the placeholder slot-only stream with real on-chain event subscriptions.
    - Update `src/solbot/solana/data.py` to subscribe via WebSocket to program logs or account changes for DEX swaps, liquidity adds/removes, and token mint events.
    - Ensure reconnect and backoff logic handles high event rates without dropping messages.
+   - **Notes:** Implemented `LogStreamer` in `src/solbot/solana/data.py` with WebSocket log subscriptions, internal buffering, and exponential backoff to avoid dropped messages. Deprecated `SlotStreamer` in favor of event-centric streaming.
+   - [DONE] 2025-08-04 685f2799 — added Prometheus `log_queue_depth` gauge and `dropped_logs` counter with jittered backoff and fail-fast when queue >75% for 1s; `tests/test_data.py` asserts drop counter increments and stream halts.
+   - **Notes:** Introduced `program_id` labels and public `reset_metrics` helper; `LogStreamer` now drains its queue on shutdown to avoid stale depth readings.
 2. Implement real event parsing in Rust for low-latency processing.
    - Extend the Rust crate under `rustcore/` to decode swap instructions and liquidity events.
    - Expose parsers to Python via pyo3 and integrate them into `EventStream` so that each incoming log produces a populated `Event` object.
+   - **Notes:** Added `ParsedEvent` struct and `parse_log` function in `rustcore/src/lib.rs` using `serde_json`; exposed via pyo3 and wired into `EventStream` for zero-copy conversion of logs to typed events.
 3. Map parsed events to feature updates.
    - Use the existing `PyFeatureEngine` interface and ensure only touched indices are updated per event.
    - Implement update functors for at least: liquidity delta, cumulative liquidity, signed and absolute swap volume, swap inter-arrival time, and minted token amount.
+   - **Notes:** `EventStream` now yields `solbot.schema.Event` objects derived from parsed logs, enabling `PyFeatureEngine` to update liquidity, volume, inter-arrival, and mint metrics with index-level precision.
 4. Define the initial feature subset.
    - Use the taxonomy in `features.yaml` as the source of truth.
    - Document the index and normalization rule for every active feature.
+   - **Notes:** Replaced `features.yaml` with six-feature schema mapping indices, categories, event sources, and z-score normalisation; documented the subset in README under an "Active Features" table.
 5. Verify per-event processing cost stays O(k) where k is number of affected features.
    - Use profiling to confirm latency below 1 ms per event in Python and sub‑100 µs in Rust.
+   - **Notes:** Added `tests/test_perf.py` benchmarking `parse_log` (<100 µs) and expanded `tests/test_features.py` latency benchmark for `PyFeatureEngine` (<80 µs) confirming O(k) updates.
 6. Add persistent logging and basic storage.
    - Log every raw event and resulting feature vector at DEBUG level.
    - Implement a ring buffer or SQLite table to retain the latest N feature vectors for debugging and future backtesting.
+   - **Notes:** `EventStream` now logs raw WebSocket logs and parsed events; `PyFeatureEngine` logs normalized features and maintains a deque history of the last N `(event, features)` tuples with `history()` accessor.
 7. Ensure the pipeline handles thousands of events per second.
    - Use asyncio tasks or threads to parallelize network IO and parsing.
    - Stress test against devnet or mainnet traffic and document throughput.
+   - **Notes:** `EventStream` decouples log reception and parsing via an `asyncio.Queue` and thread pool executor; `tests/test_data.py` streams 5k mocked logs in <2s verifying throughput.
 
 ## 2. Feature Vector Management
 1. Finalise the `FeatureVector` class.

@@ -15,11 +15,12 @@ lands.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import deque
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Deque, Dict, List, Optional, Tuple
 
 import numpy as np
 from prometheus_client import Gauge, Summary
@@ -54,6 +55,7 @@ EPS = 1e-8
 
 _TRACE = os.getenv("FEATURE_TRACE", "0") == "1"
 TRACE_BUFFER = deque(maxlen=100) if _TRACE else None
+HISTORY_SIZE = int(os.getenv("FEATURE_HISTORY", "1000"))
 fv_nan_count = Gauge("fv_nan_count", "number of NaNs encountered in normalization")
 update_latency_us = Summary(
     "feature_update_latency_us", "feature update latency in microseconds"
@@ -86,6 +88,7 @@ class PyFeatureEngine(FeatureEngine):
         self._slot: Optional[int] = None
         self._last_ts: Optional[int] = None
         self._cum_liq = 0.0
+        self._history: Deque[Tuple[Event, np.ndarray]] = deque(maxlen=HISTORY_SIZE)
 
     # ------------------------------------------------------------------
     # Update routines
@@ -129,6 +132,10 @@ class PyFeatureEngine(FeatureEngine):
 
         vec = self._write_out()
         update_latency_us.observe((time.perf_counter() - start) * 1e6)
+        if logging.getLogger(__name__).isEnabledFor(logging.DEBUG):
+            logging.debug("event=%s", event)
+            logging.debug("features=%s", vec[: self.dim])
+        self._history.append((event, vec[: self.dim].copy()))
         return vec
 
     def _update_idx(self, i: int, value: float, slot: int) -> None:
@@ -164,6 +171,10 @@ class PyFeatureEngine(FeatureEngine):
         self._decay_inactive(self._slot or 0)
         self._write_out()
         return FeatureVector(self.out.copy())
+
+    def history(self) -> Tuple[Tuple[Event, np.ndarray], ...]:
+        """Return a snapshot of the recent ``(event, features)`` ring buffer."""
+        return tuple(self._history)
 
     # ------------------------------------------------------------------
     # Slot rotation

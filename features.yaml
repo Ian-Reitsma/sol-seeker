@@ -1,22 +1,38 @@
 version: 0x01
 features:
-  - name: total_volume
+  - index: 0
+    name: liquidity_delta
     category: liquidity
-    event_kinds: [SWAP]
+    event_kinds: [ADD_LIQUIDITY, REMOVE_LIQUIDITY]
     unit: token
-  - name: last_swap_size
+    normalization: zscore
+  - index: 1
+    name: log_cum_liquidity
+    category: liquidity
+    event_kinds: [ADD_LIQUIDITY, REMOVE_LIQUIDITY]
+    unit: log_token
+    normalization: zscore
+  - index: 2
+    name: signed_volume
     category: orderflow
     event_kinds: [SWAP]
     unit: token
-  - name: liquidity_add
-    category: liquidity
-    event_kinds: [ADD_LIQUIDITY]
+    normalization: zscore
+  - index: 3
+    name: abs_volume
+    category: orderflow
+    event_kinds: [SWAP]
     unit: token
-  - name: liquidity_remove
-    category: liquidity
-    event_kinds: [REMOVE_LIQUIDITY]
-    unit: token
-  - name: minted_amount
+    normalization: zscore
+  - index: 4
+    name: swap_frequency
+    category: orderflow
+    event_kinds: [SWAP]
+    unit: per_ms
+    normalization: zscore
+  - index: 5
+    name: minted_amount
     category: ownership
     event_kinds: [MINT]
     unit: token
+    normalization: zscore

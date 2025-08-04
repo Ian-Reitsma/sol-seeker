@@ -20,7 +20,7 @@ sol-bot/
 
 ### Components
 * **Engine** – orchestrates trading logic, risk management, and posterior inference. Includes a `PosteriorEngine` stub and a `RiskManager` that tracks drawdown.
-* **Solana** – manages RPC and WebSocket connections. `EventStream` builds on the previous `SlotStreamer` and yields parsed events.
+* **Solana** – manages RPC and WebSocket connections. `EventStream` subscribes to program logs and yields parsed events.
 * **Rustcore** – placeholder for performance-critical parsing routines compiled from Rust.
 
 ## Quickstart
@@ -45,8 +45,9 @@ npm install
 python -m src.main
 ```
 
-This connects to the public Solana websocket and prints parsed `Event` objects. The default demo emits a placeholder event when run without a real RPC endpoint.
-WARNING: No real events yet, use only for CLI smoke.
+This connects to the public Solana websocket and prints parsed `Event` objects. By
+default it listens for generic swap and liquidity logs; provide specific program
+IDs via command line for targeted streams.
 
 Ensure `src` is on your `PYTHONPATH` when running examples:
 
@@ -169,3 +170,20 @@ cd .. && pytest -q
 The initial spec implements nine high-impact features; remaining slots are
 tombstoned to preserve index stability. Additional features can be added by
 extending ``spec.py`` and registering the corresponding Rust functor.
+
+### Active Features
+
+The project begins with a small subset of six normalized features derived from
+DEX events. Each feature occupies a fixed index in the 256‑dimensional vector
+and is z-score normalised via the exponentially decaying Welford update.
+
+| Index | Name               | Event Kinds                         | Units     |
+|------:|-------------------|-------------------------------------|-----------|
+| 0     | `liquidity_delta`  | `ADD_LIQUIDITY`, `REMOVE_LIQUIDITY` | token     |
+| 1     | `log_cum_liquidity`| `ADD_LIQUIDITY`, `REMOVE_LIQUIDITY` | log_token |
+| 2     | `signed_volume`    | `SWAP`                              | token     |
+| 3     | `abs_volume`       | `SWAP`                              | token     |
+| 4     | `swap_frequency`   | `SWAP`                              | per_ms    |
+| 5     | `minted_amount`    | `MINT`                              | token     |
+
+Normalization: all features use z-score normalization with λ=0.995 and ε=1e‑8.
