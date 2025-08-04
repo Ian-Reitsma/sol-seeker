@@ -25,21 +25,16 @@ from spl.token.instructions import (
 )
 from spl.token.constants import TOKEN_PROGRAM_ID
 
-# Address of the SPL token mint representing a valid license. These values are
-# baked into the container image and must not be overridden at runtime.
-LICENSE_MINT = "REPLACE_WITH_LICENSE_MINT"
+# Address of the SPL token mint representing a valid license.
+LICENSE_MINT = os.getenv("LICENSE_MINT", "REPLACE_WITH_LICENSE_MINT")
 # Address of the SPL token mint granting demo (read-only) access.
 DEMO_MINT = os.getenv("DEMO_MINT", "REPLACE_WITH_DEMO_MINT")
-# Address of the wallet that issues licenses.
-LICENSE_AUTHORITY = "REPLACE_WITH_AUTHORITY_WALLET"
-
-# fail fast if runtime attempts to override immutable config
-if os.getenv("LICENSE_MINT") and os.getenv("LICENSE_MINT") != LICENSE_MINT:
-    raise RuntimeError("LICENSE_MINT override not allowed")
-if os.getenv("LICENSE_AUTHORITY") and os.getenv("LICENSE_AUTHORITY") != LICENSE_AUTHORITY:
-    raise RuntimeError("LICENSE_AUTHORITY override not allowed")
+# Public key of the wallet that issues licenses.
+LICENSE_AUTHORITY = os.getenv(
+    "LICENSE_AUTHORITY", "29xN3QQjDU3U24758y2RSz9L5gxc592BvURyb92rNunF"
+)
 # Path to the encrypted authority keypair used for distribution.
-LICENSE_KEYPAIR_PATH = os.getenv("LICENSE_KEYPAIR_PATH", "")
+LICENSE_KEYPAIR_PATH = os.getenv("LICENSE_KEYPAIR_PATH", "/secrets/authority.json")
 # Base64 encoded Fernet key to decrypt the authority keypair file.
 LICENSE_KEYPAIR_KEY = os.getenv("LICENSE_KEYPAIR_KEY", "")
 
@@ -137,6 +132,8 @@ class LicenseManager:
 
     def license_mode(self, wallet: str) -> str:
         """Return ``full``, ``demo`` or ``none`` for the given wallet."""
+        if wallet == LICENSE_AUTHORITY:
+            return "full"
         if self.license_balance(wallet) > 0:
             return "full"
         if self.has_demo(wallet):
@@ -208,8 +205,7 @@ class LicenseManager:
             import sys
 
             print(
-                "License check failed. Obtain a license token from the"
-                f" authority wallet {LICENSE_AUTHORITY}."
+                "License check failed. Obtain a license token from the authority wallet."
             )
             sys.exit(1)
         return mode

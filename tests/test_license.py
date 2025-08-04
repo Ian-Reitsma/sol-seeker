@@ -46,6 +46,15 @@ def test_license_mode_demo(monkeypatch):
     assert lm.license_mode("11111111111111111111111111111111") == "demo"
 
 
+def test_license_mode_authority(monkeypatch):
+    lm = LicenseManager(rpc_http="https://example")
+    admin = "11111111111111111111111111111111"
+    monkeypatch.setattr("solbot.utils.license.LICENSE_AUTHORITY", admin)
+    monkeypatch.setattr(lm, "license_balance", lambda wallet: 0)
+    monkeypatch.setattr(lm, "has_demo", lambda wallet: False)
+    assert lm.license_mode(admin) == "full"
+
+
 def test_verify_or_exit(monkeypatch):
     lm = LicenseManager(rpc_http="https://example")
 

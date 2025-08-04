@@ -10,7 +10,10 @@ from .license import (
     LICENSE_KEYPAIR_KEY,
     load_authority_keypair,
 )
-from ..service.license_issuer import app as license_issuer_app
+try:
+    from ..service.license_issuer import app as license_issuer_app
+except Exception:  # pragma: no cover
+    license_issuer_app = None
 from ..server import create_app as create_trading_app
 
 __all__ = [

@@ -26,9 +26,6 @@ This document records answers to the infrastructure questions raised during the 
 ## Regulatory / Audit
 - Order and balance logs retained 7 years. No PII stored.
 
-## Key Rotation Cadence
-- License authority rotated quarterly via ops script.
-
 ## Incident Process
 - PagerDuty alert on order latency or failed bootstrap. On-call engineer responds within 15m.
 
@@ -52,9 +49,6 @@ This document records answers to the infrastructure questions raised during the 
 
 ## Observability Endpoint Auth
 - `/metrics` available only on localhost; mTLS optional for remote deployments.
-
-## License Token Economics
-- License supply monitored; additional mints created if >80% distributed.
 
 ## Hotfix Path
 - Uvicorn reloads on SIGHUP allowing hot patches without downtime.

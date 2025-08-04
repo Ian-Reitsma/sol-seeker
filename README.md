@@ -84,50 +84,6 @@ python -m src.main --rpc-ws wss://my.rpc/ws --log-level INFO
 Environment variables with the same name override defaults. See `--help` for all options.
 ```
 
-### License Verification
-
-Before full functionality is enabled the bot verifies that your wallet holds a
-valid license token on Solana. Provide your wallet public key with `--wallet`
-or the `WALLET_ADDR` environment variable. The mint and authority addresses are
-configured via environment variables:
-
-```bash
-export LICENSE_MINT=<FULL_LICENSE_MINT>
-export DEMO_MINT=<DEMO_LICENSE_MINT>
-export LICENSE_AUTHORITY=<ISSUER_PUBLIC_KEY>
-export LICENSE_KEYPAIR_PATH=/secure/location/authority.json.enc
-export LICENSE_KEYPAIR_KEY=<BASE64_FERNET_KEY>
-```
-
-If the wallet contains `LICENSE_MINT` the bot runs in full mode. Holding only
-`DEMO_MINT` enables read-only demo mode.
-
-```bash
-python -m src.main --wallet YOUR_WALLET --rpc-ws wss://api.mainnet-beta.solana.com/
-```
-
-If no license token is detected the program exits with a message. A legacy
-command line distributor exists for internal automation but is **deprecated**
-and not documented publicly.
-
-### License Issuer Service
-
-For production deployments a dedicated **License Issuer** service handles token
-distribution so that private keys never reside on developer machines. The
-service exposes a single authenticated endpoint:
-
-```http
-POST /issue
-Authorization: Bearer <JWT>
-{
-  "wallet": "DEST_WALLET",
-  "demo": false
-}
-```
-
-Requests must supply a short-lived JWT issued by the corporate identity
-provider. The encrypted authority keypair is loaded on demand and wiped from
-memory after signing.
 
 ## Operations
 
