@@ -258,3 +258,37 @@
 
 ### Next Steps
 - Execute the expanded audit starting with Bayesian posterior implementation and multi-market feature ingestion.
+
+## OpenAI Assistant - Admin Wallet Configuration
+
+**Date:** 2025-08-05
+
+### Summary
+- Enabled runtime configuration of `LICENSE_MINT` and `LICENSE_AUTHORITY` via environment variables.
+- Removed license distribution details from public documentation.
+- Hid authority wallet address from license failure message.
+
+### Next Steps
+- Populate the environment variables with real wallet and mint values when deploying.
+
+## OpenAI Assistant - Authority Wallet Bypass
+
+**Date:** 2025-08-05
+
+### Summary
+- Authority wallet automatically passes license checks, removing the need to issue a token to yourself.
+- Added tests covering the bypass logic.
+
+### Next Steps
+- Configure `LICENSE_AUTHORITY` to your personal wallet when running locally.
+
+## OpenAI Assistant - License Authority Lockdown
+
+**Date:** 2025-08-05
+
+### Summary
+- Hard-coded the default license authority to wallet `29xN3QQjDU3U24758y2RSz9L5gxc592BvURyb92rNunF`.
+- Set default keypair path to `/secrets/authority.json`.
+
+### Next Steps
+- Replace `LICENSE_MINT` and `DEMO_MINT` placeholders with real mint addresses once created.
