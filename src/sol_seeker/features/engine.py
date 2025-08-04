@@ -1,8 +1,8 @@
 """Python shim around the Rust feature engine."""
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
 
+from typing import Any, Dict, Tuple
 from .spec import idx
 
 try:  # Attempt to import the compiled rustcore extension.
@@ -11,6 +11,7 @@ except Exception as exc:  # pragma: no cover - import error surface early
     raise ImportError(
         "rustcore extension module not built. Run `maturin build` and `pip install` the wheel first."
     ) from exc
+
 
 
 class FeatureEngine:

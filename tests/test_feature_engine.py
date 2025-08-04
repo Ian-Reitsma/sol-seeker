@@ -2,6 +2,7 @@ import numpy as np
 from sol_seeker.features.engine import FeatureEngine
 from sol_seeker.features.spec import FEATURES
 
+
 def welford_py(values, lam):
     mean = 0.0
     var = 0.0

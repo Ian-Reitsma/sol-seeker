@@ -1,5 +1,6 @@
 use std::{env, path::Path, process::Command};
 
+
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let spec_path = Path::new(&manifest_dir).join("../src/sol_seeker/features/spec.py");

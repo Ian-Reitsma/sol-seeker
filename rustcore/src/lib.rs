@@ -15,6 +15,7 @@ const IDX_OF_TRADE_COUNT: usize = 65;
 const IDX_OF_IA_TIME_MS: usize = 66;
 
 #[pyclass]
+
 #[derive(Clone)]
 pub struct PyEvent {
     pub tag: String,
@@ -45,6 +46,7 @@ impl PyEvent {
 }
 
 #[pyclass]
+
 pub struct FeatureEngine {
     fv: FeatureVec,
     lag1: [f32; 256],
