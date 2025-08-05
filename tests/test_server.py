@@ -17,9 +17,9 @@ class DummyLM:
     def __init__(self) -> None:
         self.called = False
 
-    def has_license(self, wallet: str) -> bool:
+    def license_mode(self, wallet: str) -> str:
         self.called = True
-        return True
+        return "full"
 
 
 def test_api_order_flow():

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import asyncio
 import time
+import logging
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -66,8 +67,11 @@ def create_app(
 
     @app.on_event("startup")
     async def check_license() -> None:
-        if not cfg.wallet or not lm.has_license(cfg.wallet):
+        mode = lm.license_mode(cfg.wallet) if cfg.wallet else "none"
+        if mode == "none":
             raise RuntimeError("wallet lacks license token")
+        if mode == "demo":
+            logging.warning("Demo mode active: trading disabled")
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
 
