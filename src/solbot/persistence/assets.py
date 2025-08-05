@@ -24,13 +24,15 @@ class AssetService:
             tokens = resp.json().get("tokens", [])
         except Exception:
             return self.dal.list_assets()
+        # Deduplicate by symbol to avoid DB constraint violations
+        uniq = list({t.get("symbol"): t for t in tokens}.values())
         checksum = hashlib.sha256(resp.content).hexdigest()
         stored = self.dal.get_meta("asset_checksum")
         if stored == checksum:
             return self.dal.list_assets()
-        self.dal.save_assets(tokens)
+        self.dal.save_assets(uniq)
         self.dal.set_meta("asset_checksum", checksum)
-        return tokens
+        return uniq
 
     def list_assets(self) -> List[Dict]:
         assets = self.dal.list_assets()

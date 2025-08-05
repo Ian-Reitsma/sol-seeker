@@ -292,3 +292,14 @@
 
 ### Next Steps
 - Replace `LICENSE_MINT` and `DEMO_MINT` placeholders with real mint addresses once created.
+
+## OpenAI Assistant - Server Startup Robustness
+
+**Date:** 2025-08-05
+
+### Summary
+- Deduplicated asset tokens to avoid database constraint errors on first run.
+- Guarded bootstrap pricing calls to skip unknown assets.
+
+### Next Steps
+- Improve bootstrap process with configurable token filters.

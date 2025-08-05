@@ -49,12 +49,6 @@ This connects to the public Solana websocket and prints parsed `Event` objects. 
 default it listens for generic swap and liquidity logs; provide specific program
 IDs via command line for targeted streams.
 
-Ensure `src` is on your `PYTHONPATH` when running examples:
-
-```bash
-export PYTHONPATH=$(pwd)/src
-```
-
 4. Run the unit tests:
 
 ```bash
@@ -67,11 +61,15 @@ pytest -q
 python -m src.server --wallet YOUR_WALLET --db-path ~/.solbot/state.db
 ```
 
-This launches a FastAPI app on `http://127.0.0.1:8000` exposing endpoints for
-paper trading and viewing positions. Orders and positions are persisted to the
-SQLite database specified by `--db-path` so the UI remains available offline.
-The `/status` endpoint reports bootstrap progress and `/version` returns the
-running git commit and schema hash.
+The entrypoint automatically adds ``src`` to ``PYTHONPATH`` so no extra setup is
+required. The server launches a FastAPI app on `http://127.0.0.1:8000` exposing
+endpoints for paper trading and viewing positions. Orders and positions are
+persisted to the SQLite database specified by `--db-path` so the UI remains
+available offline. If ``YOUR_WALLET`` matches the ``LICENSE_AUTHORITY``
+environment variable, the server starts without requiring a license token. Demo
+wallets still start but emit a warning that trading is disabled. The `/status`
+endpoint reports bootstrap progress and `/version` returns the running git
+commit and schema hash.
 
 ## Configuration
 

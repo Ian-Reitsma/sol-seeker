@@ -1,5 +1,10 @@
 """Run the sol-bot trading API server."""
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent))
+
 import uvicorn
 
 from solbot.utils import parse_args, BotConfig, LicenseManager
