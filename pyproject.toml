@@ -16,7 +16,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator==6.1.0",
     "prometheus-client>=0.16",
     "sqlmodel==0.0.8",
-    "httpx==0.24.1",
+    "httpx>=0.28",
     "ntplib==0.4.0",
     "pytest-benchmark>=3.4",
     "protobuf>=4.24",

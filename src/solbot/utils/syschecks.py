@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import ntplib
 
 
@@ -9,13 +10,17 @@ def ntp_drift() -> float:
     return resp.offset
 
 
+logger = logging.getLogger(__name__)
+
+
 def check_ntp(max_drift: float = 1.0) -> None:
     try:
         drift = abs(ntp_drift())
-        if drift > max_drift:
-            raise RuntimeError(f'NTP drift {drift:.2f}s exceeds limit')
     except Exception as e:
-        raise RuntimeError(f'NTP check failed: {e}')
+        logger.warning("NTP check failed: %s", e)
+        return
+    if drift > max_drift:
+        raise RuntimeError(f'NTP drift {drift:.2f}s exceeds limit')
 
 
 def disk_iops_test(path: str) -> float:

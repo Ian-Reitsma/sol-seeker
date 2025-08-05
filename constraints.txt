@@ -2,4 +2,4 @@ fastapi==0.105.0
 uvicorn==0.23.0
 cryptography==45.0.5
 prometheus-fastapi-instrumentator==6.1.0
-httpx==0.24.1
+httpx>=0.28
