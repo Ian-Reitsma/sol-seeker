@@ -15,9 +15,11 @@ lands.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import time
+import queue
 from collections import deque
 from pathlib import Path
 from typing import Deque, Dict, List, Optional, Tuple
@@ -89,6 +91,7 @@ class PyFeatureEngine(FeatureEngine):
         self._last_ts: Optional[int] = None
         self._cum_liq = 0.0
         self._history: Deque[Tuple[Event, np.ndarray]] = deque(maxlen=HISTORY_SIZE)
+        self._subs: List[queue.Queue[np.ndarray]] = []
 
     # ------------------------------------------------------------------
     # Update routines
@@ -136,6 +139,13 @@ class PyFeatureEngine(FeatureEngine):
             logging.debug("event=%s", event)
             logging.debug("features=%s", vec[: self.dim])
         self._history.append((event, vec[: self.dim].copy()))
+        for q in list(self._subs):
+            try:
+                q.put_nowait(vec.copy())
+            except queue.Full:
+                with contextlib.suppress(Exception):
+                    q.get_nowait()
+                    q.put_nowait(vec.copy())
         return vec
 
     def _update_idx(self, i: int, value: float, slot: int) -> None:
@@ -175,6 +185,26 @@ class PyFeatureEngine(FeatureEngine):
     def history(self) -> Tuple[Tuple[Event, np.ndarray], ...]:
         """Return a snapshot of the recent ``(event, features)`` ring buffer."""
         return tuple(self._history)
+
+    # ------------------------------------------------------------------
+    # Publish / subscribe
+    # ------------------------------------------------------------------
+    def subscribe(self, maxsize: int = 1) -> "queue.Queue[np.ndarray]":
+        """Return a queue receiving feature snapshots on every update.
+
+        The queue is bounded and ``put_nowait`` is used to avoid blocking the
+        ingestion loop.  If full, the oldest item is dropped before enqueueing
+        the latest feature vector.
+        """
+
+        q: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=maxsize)
+        self._subs.append(q)
+        return q
+
+    def unsubscribe(self, q: "queue.Queue[np.ndarray]") -> None:
+        """Remove a previously subscribed queue if present."""
+        with contextlib.suppress(ValueError):
+            self._subs.remove(q)
 
     # ------------------------------------------------------------------
     # Slot rotation
