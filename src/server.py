@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent))
 import uvicorn
 
 from solbot.utils import parse_args, BotConfig, LicenseManager
-from solbot.engine import RiskManager, TradeEngine
+from solbot.engine import RiskManager, TradeEngine, PyFeatureEngine, PosteriorEngine
 from solbot.server import create_app
 from solbot.persistence import DAL
 from solbot.persistence.assets import AssetService
@@ -29,10 +29,12 @@ def main() -> None:
     connector = PaperConnector(dal, oracle)
     risk = RiskManager()
     trade = TradeEngine(risk, connector, dal)
+    features = PyFeatureEngine()
+    posterior = PosteriorEngine(n_features=features.dim)
     assets = AssetService(dal)
     bootstrap = BootstrapCoordinator()
 
-    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, features, posterior)
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
 

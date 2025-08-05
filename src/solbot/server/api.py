@@ -23,6 +23,7 @@ import asyncio
 import time
 import logging
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
+from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -30,7 +31,7 @@ from prometheus_client import Histogram
 from typing import Optional
 
 from ..utils import BotConfig, LicenseManager
-from ..engine import RiskManager, TradeEngine
+from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
 from ..types import Side
 from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
@@ -62,6 +63,8 @@ def create_app(
     trade: TradeEngine,
     assets: AssetService,
     bootstrap: BootstrapCoordinator,
+    features: FeatureEngine | None = None,
+    posterior: PosteriorEngine | None = None,
 ) -> FastAPI:
     app = FastAPI(title="sol-bot API")
     Instrumentator().instrument(app).expose(app)
@@ -91,6 +94,23 @@ def create_app(
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
 
+    @app.get("/", response_class=HTMLResponse)
+    async def root() -> str:
+        """Simple dashboard landing page with TradingView embed."""
+        sym = assets.list_assets()[0]["symbol"] if assets.list_assets() else "SOL"
+        return (
+            "<html><head><title>sol-bot dashboard</title></head>"
+            "<body>"
+            "<h1>sol-bot dashboard</h1>"
+            f"<iframe src='https://www.tradingview.com/widgetembed/?symbol={sym}USDT'"
+            " width='600' height='400' frameborder='0'></iframe>"
+            "<ul>"
+            "<li><a href='/features'>Features</a></li>"
+            "<li><a href='/posterior'>Posterior</a></li>"
+            "</ul>"
+            "</body></html>"
+        )
+
     @app.get("/health")
     async def health() -> dict:
         return {"status": "ok"}
@@ -102,6 +122,20 @@ def create_app(
     @app.get("/assets")
     async def assets_endpoint() -> list[dict]:
         return assets.list_assets()
+
+    @app.get("/features")
+    async def features_endpoint() -> list[float]:
+        if features is None:
+            raise HTTPException(status_code=503, detail="features unavailable")
+        return features.snapshot().tolist()
+
+    @app.get("/posterior")
+    async def posterior_endpoint() -> dict:
+        if features is None or posterior is None:
+            raise HTTPException(status_code=503, detail="posterior unavailable")
+        vec = features.snapshot()
+        out = posterior.predict(vec)
+        return {"rug": out.rug, "trend": out.trend, "revert": out.revert, "chop": out.chop}
 
     @app.get("/positions")
     async def positions(key: None = Depends(check_key)) -> dict:
@@ -143,6 +177,22 @@ def create_app(
             async with conn_lock:
                 if ws in connections:
                     connections.remove(ws)
+
+    @app.websocket("/features/ws")
+    async def features_ws(ws: WebSocket):
+        if features is None:
+            await ws.close()
+            return
+        await ws.accept()
+        q = features.subscribe()
+        loop = asyncio.get_event_loop()
+        try:
+            while True:
+                vec = await loop.run_in_executor(None, q.get)
+                await ws.send_json(vec.tolist())
+        except WebSocketDisconnect:
+            features.unsubscribe(q)
+
 
     @app.get("/chart/{symbol}")
     async def chart(symbol: str) -> dict:

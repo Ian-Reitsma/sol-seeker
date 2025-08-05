@@ -109,3 +109,23 @@ def test_history_ring_buffer():
     hist = fe.history()
     assert len(hist) == 3
     assert hist[-1][0].kind == EventKind.SWAP
+
+
+def test_pubsub_queue_nonblocking():
+    fe = PyFeatureEngine()
+    q = fe.subscribe(maxsize=1)
+    fe.update(_mk_event(EventKind.SWAP, amount_in=1.0), slot=1)
+    assert not q.empty()
+    first = q.get()
+    fe.update(_mk_event(EventKind.SWAP, amount_in=2.0), slot=1)
+    assert q.qsize() == 1
+    latest = q.get()
+    assert latest[2] != first[2]
+
+
+def test_unsubscribe_removes_queue():
+    fe = PyFeatureEngine()
+    q = fe.subscribe()
+    assert q in fe._subs
+    fe.unsubscribe(q)
+    assert q not in fe._subs
