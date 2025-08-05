@@ -19,6 +19,16 @@ def check_ntp(max_drift: float = 1.0) -> None:
 
 
 def disk_iops_test(path: str) -> float:
+    """Measure disk write IOPS by repeatedly writing a file.
+
+    The parent directory is created if it does not already exist so that callers
+    may freely supply paths under non-existent directories.
+    """
+
+    dir_path = os.path.dirname(path)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
+
     start = time.perf_counter()
     for _ in range(100):
         with open(path, 'wb') as fh:
