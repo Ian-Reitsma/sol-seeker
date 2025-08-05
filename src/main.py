@@ -8,7 +8,6 @@ from solbot.engine import (
     RiskManager,
     PyFeatureEngine,
 )
-from solbot.schema import Event, EventKind
 from solbot.utils import (
     parse_args,
     BotConfig,
@@ -30,7 +29,7 @@ def main() -> None:
     if mode == "demo":
         logging.warning("Demo mode active: trading disabled")
 
-    streamer = data.EventStream(cfg.rpc_ws, events=[Event(ts=0, kind=EventKind.NONE)])
+    streamer = data.EventStream(cfg.rpc_ws)
     posterior = PosteriorEngine()
     risk = RiskManager()
     fe = PyFeatureEngine()
