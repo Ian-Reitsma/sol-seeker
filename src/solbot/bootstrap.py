@@ -12,7 +12,10 @@ class BootstrapCoordinator:
         symbols = assets.refresh()
         step = 100 // max(len(symbols), 1)
         for sym in symbols[:5]:
-            await oracle.price(sym.get("symbol"))
+            try:
+                await oracle.price(sym.get("symbol"))
+            except Exception:
+                pass
             self.progress += step
         self.progress = 100
         self.ready.set()

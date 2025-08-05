@@ -1,4 +1,20 @@
-"""FastAPI application exposing trading endpoints."""
+"""FastAPI application exposing trading endpoints.
+
+Startup verifies that the configured wallet holds a valid license token.
+The authority wallet (`LICENSE_AUTHORITY`) bypasses this check, and demo
+wallets log a warning and disable trading.
+
+Endpoints:
+* ``GET /health`` – service liveness
+* ``GET /status`` – bootstrap progress
+* ``GET /assets`` – list available symbols
+* ``GET /positions`` – open positions (API key required)
+* ``GET /orders`` – order history (API key required)
+* ``POST /orders`` – place an order (API key required)
+* ``GET /chart/{symbol}`` – convenience redirect to TradingView
+* ``GET /version`` – running commit and schema hash
+* ``/ws`` – websocket stream of new orders
+"""
 
 from __future__ import annotations
 
