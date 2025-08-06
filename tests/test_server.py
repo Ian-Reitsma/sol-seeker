@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import asyncio
 
 from solbot.utils import BotConfig
 from solbot.engine import (
@@ -65,11 +66,16 @@ def test_api_order_flow():
             root_data["tradingview"]
             == "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT"
         )
-        assert root_data["endpoints"]["features"] == "/features"
-        assert root_data["endpoints"]["features_schema"] == "/features/schema"
-        assert root_data["endpoints"]["posterior"] == "/posterior"
-        assert root_data["endpoints"]["dashboard"] == "/dashboard"
-        assert root_data["endpoints"]["manifest"] == "/manifest"
+        assert root_data["endpoints"]["features"] == app.url_path_for("features_endpoint")
+        assert (
+            root_data["endpoints"]["features_schema"]
+            == app.url_path_for("features_schema_endpoint")
+        )
+        assert root_data["endpoints"]["posterior"] == app.url_path_for("posterior_endpoint")
+        assert root_data["endpoints"]["positions"] == app.url_path_for("positions")
+        assert root_data["endpoints"]["orders"] == app.url_path_for("orders")
+        assert root_data["endpoints"]["dashboard"] == app.url_path_for("dashboard")
+        assert root_data["endpoints"]["manifest"] == app.url_path_for("manifest")
         assert "timestamp" in root_data
         assert root_data["schema"] == SCHEMA_HASH
 
@@ -99,7 +105,10 @@ def test_api_order_flow():
 
         resp = client.get("/features/schema")
         assert resp.status_code == 200
-        schema = resp.json()["features"]
+        schema_resp = resp.json()
+        assert "timestamp" in schema_resp
+        assert schema_resp["schema"] == root_data["schema"]
+        schema = schema_resp["features"]
         first = next((f for f in schema if f["index"] == 0), None)
         assert first and first["name"] == "liquidity_delta"
 
@@ -109,15 +118,30 @@ def test_api_order_flow():
             assert set(data) == {"event", "features"}
             assert data["event"]["kind"] == 1
             assert len(data["features"]) == 256
-        # push another update to trigger server cleanup after websocket closes
-        fe.update(Event(kind=EventKind.SWAP, amount_in=3.0), slot=1)
+        client.portal.call(asyncio.sleep, 0)
+        tasks = client.portal.call(
+            lambda: [
+                t
+                for t in asyncio.all_tasks()
+                if getattr(t.get_coro(), "__name__", "") == "to_thread"
+            ]
+        )
+        assert not tasks
 
         with client.websocket_connect("/posterior/ws") as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=4.0), slot=1)
             data = ws.receive_json()
             assert set(data) == {"event", "posterior"}
             assert set(data["posterior"]) == {"rug", "trend", "revert", "chop"}
-        fe.update(Event(kind=EventKind.SWAP, amount_in=5.0), slot=1)
+        client.portal.call(asyncio.sleep, 0)
+        tasks = client.portal.call(
+            lambda: [
+                t
+                for t in asyncio.all_tasks()
+                if getattr(t.get_coro(), "__name__", "") == "to_thread"
+            ]
+        )
+        assert not tasks
 
         resp = client.get("/dashboard")
         assert resp.status_code == 200

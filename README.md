@@ -76,11 +76,32 @@ commit and schema hash.
 Front-end clients interact with the server via JSON resources and WebSocket feeds:
 
 * `GET /` – resource index with a map of endpoints, TradingView template URL, timestamp, and schema hash
-* `GET /features/schema` – mapping of feature indices to names
+* `GET /features` – latest normalized feature vector
+* `GET /posterior` – most recent posterior probabilities over market regimes
+* `GET /positions` – open positions *(requires `X-API-Key` header)*
+* `POST /orders` – place paper trade order *(requires `X-API-Key` header)*
+* `GET /features/schema` – mapping of feature indices to names with schema hash and timestamp metadata
 * `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, and open positions
 * `GET /manifest` – machine-readable listing of REST and WebSocket routes
 * `WS /features/ws` – streams objects with `event` metadata and associated `features` array
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
+
+Example usage:
+
+```bash
+# fetch latest feature vector
+curl http://127.0.0.1:8000/features
+
+# fetch posterior probabilities
+curl http://127.0.0.1:8000/posterior
+
+# list open positions (API key required)
+curl -H "X-API-Key: $API_KEY" http://127.0.0.1:8000/positions
+
+# place paper trade order (API key required)
+curl -X POST -H "Content-Type: application/json" -H "X-API-Key: $API_KEY" \
+  -d '{"token":"SOL","qty":1,"side":"buy"}' http://127.0.0.1:8000/orders
+```
 
 ## Configuration
 
