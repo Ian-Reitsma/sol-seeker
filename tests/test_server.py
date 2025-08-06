@@ -86,11 +86,31 @@ def test_api_order_flow():
         assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
         assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
+        assert root_data["endpoints"]["positions_ws"] == app.url_path_for("positions_ws")
+        assert root_data["endpoints"]["dashboard_ws"] == app.url_path_for("dashboard_ws")
         assert root_data["endpoints"]["dashboard"] == app.url_path_for("dashboard")
         assert root_data["endpoints"]["manifest"] == app.url_path_for("manifest")
         assert root_data["endpoints"]["tv"] == app.url_path_for("tradingview_page")
+        assert root_data["endpoints"]["license"] == app.url_path_for("license_info")
+        assert root_data["endpoints"]["state"] == app.url_path_for("state")
+        assert root_data["license"]["mode"] == "full"
+        assert root_data["license"]["wallet"] == cfg.wallet
         assert "timestamp" in root_data
         assert root_data["schema"] == SCHEMA_HASH
+
+        resp = client.get("/license")
+        assert resp.status_code == 200
+        lic = resp.json()
+        assert lic["mode"] == "full"
+        assert lic["wallet"] == cfg.wallet
+
+        resp = client.get("/state")
+        assert resp.status_code == 200
+        st = resp.json()
+        assert st["license"]["mode"] == "full"
+        assert st["license"]["wallet"] == cfg.wallet
+        assert "status" in st
+        assert "timestamp" in st
 
         resp = client.get("/tv")
         assert resp.status_code == 200
@@ -113,18 +133,21 @@ def test_api_order_flow():
 
         resp = client.get("/features")
         assert resp.status_code == 200
-        assert len(resp.json()) == 256
+        feats = resp.json()
+        assert len(feats["features"]) == 256
+        assert "timestamp" in feats
 
         resp = client.get("/posterior")
         assert resp.status_code == 200
         probs = resp.json()
-        assert set(probs) == {"rug", "trend", "revert", "chop"}
+        assert set(probs) == {"rug", "trend", "revert", "chop", "timestamp"}
 
         resp = client.get("/features/schema")
         assert resp.status_code == 200
         schema_resp = resp.json()
         assert "timestamp" in schema_resp
         assert schema_resp["schema"] == root_data["schema"]
+        assert schema_resp["version"] == 1
         schema = schema_resp["features"]
         first = next((f for f in schema if f["index"] == 0), None)
         assert first and first["name"] == "liquidity_delta"
@@ -145,11 +168,45 @@ def test_api_order_flow():
         )
         assert not tasks
 
+        with client.websocket_connect("/positions/ws") as ws:
+            client.post(
+                "/orders",
+                json={"token": "SOL", "qty": 1, "side": "buy"},
+                headers={"X-API-Key": "test"},
+            )
+            data = ws.receive_json()
+            assert "SOL" in data
+
         with client.websocket_connect("/posterior/ws") as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=4.0), slot=1)
             data = ws.receive_json()
             assert set(data) == {"event", "posterior"}
             assert set(data["posterior"]) == {"rug", "trend", "revert", "chop"}
+        client.portal.call(asyncio.sleep, 0)
+        tasks = client.portal.call(
+            lambda: [
+                t
+                for t in asyncio.all_tasks()
+                if getattr(t.get_coro(), "__name__", "") == "to_thread"
+            ]
+        )
+        assert not tasks
+
+        with client.websocket_connect("/dashboard/ws") as ws:
+            fe.update(Event(kind=EventKind.SWAP, amount_in=6.0), slot=1)
+            data = ws.receive_json()
+            assert set(data) == {
+                "event",
+                "features",
+                "posterior",
+                "positions",
+                "orders",
+                "risk",
+                "timestamp",
+            }
+            assert len(data["features"]) == 256
+            assert len(data["orders"]) >= 1
+            assert set(data["risk"]) == {"equity", "unrealized", "drawdown"}
         client.portal.call(asyncio.sleep, 0)
         tasks = client.portal.call(
             lambda: [
@@ -166,13 +223,23 @@ def test_api_order_flow():
         assert len(dash["features"]) == 256
         assert set(dash["posterior"]) == {"rug", "trend", "revert", "chop"}
         assert "SOL" in dash["positions"]
+        assert len(dash["orders"]) == 1
+        assert dash["orders"][0]["token"] == "SOL"
+        assert dash["risk"]["equity"] == risk.equity
+        assert dash["risk"]["unrealized"] == 0.0
+        assert dash["risk"]["drawdown"] == risk.drawdown
 
         resp = client.get("/manifest")
         assert resp.status_code == 200
         manifest = resp.json()
+        assert manifest["version"] == 1
+        assert "timestamp" in manifest
         ws_paths = manifest["websocket"]
         assert "/ws" in ws_paths
         assert "/features/ws" in ws_paths and "/posterior/ws" in ws_paths
+        assert "/positions/ws" in ws_paths
+        assert "/dashboard/ws" in ws_paths
         rest_paths = [r["path"] for r in manifest["rest"]]
         assert "/dashboard" in rest_paths
         assert "/tv" in rest_paths
+        assert "/state" in rest_paths
