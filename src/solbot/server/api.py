@@ -5,6 +5,7 @@ The authority wallet (`LICENSE_AUTHORITY`) bypasses this check, and demo
 wallets log a warning and disable trading.
 
 Endpoints:
+* ``GET /`` – resource index
 * ``GET /health`` – service liveness
 * ``GET /status`` – bootstrap progress
 * ``GET /assets`` – list available symbols
@@ -23,7 +24,7 @@ import asyncio
 import time
 import logging
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -32,6 +33,7 @@ from typing import Optional
 
 from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
+from ..engine.features import FEATURES as FEATURE_SCHEMA
 from ..types import Side
 from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
@@ -94,22 +96,25 @@ def create_app(
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
 
-    @app.get("/", response_class=HTMLResponse)
-    async def root() -> str:
-        """Simple dashboard landing page with TradingView embed."""
-        sym = assets.list_assets()[0]["symbol"] if assets.list_assets() else "SOL"
-        return (
-            "<html><head><title>sol-bot dashboard</title></head>"
-            "<body>"
-            "<h1>sol-bot dashboard</h1>"
-            f"<iframe src='https://www.tradingview.com/widgetembed/?symbol={sym}USDT'"
-            " width='600' height='400' frameborder='0'></iframe>"
-            "<ul>"
-            "<li><a href='/features'>Features</a></li>"
-            "<li><a href='/posterior'>Posterior</a></li>"
-            "</ul>"
-            "</body></html>"
-        )
+    @app.get("/")
+    async def root() -> dict:
+        """Return resource index and embed template for TradingView."""
+        return {
+            "tradingview": "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
+            "endpoints": {
+                "features": "/features",
+                "features_schema": "/features/schema",
+                "posterior": "/posterior",
+                "positions": "/positions",
+                "orders": "/orders",
+                "features_ws": "/features/ws",
+                "posterior_ws": "/posterior/ws",
+                "dashboard": "/dashboard",
+                "manifest": "/manifest",
+            },
+            "timestamp": int(time.time()),
+            "schema": SCHEMA_HASH,
+        }
 
     @app.get("/health")
     async def health() -> dict:
@@ -129,6 +134,11 @@ def create_app(
             raise HTTPException(status_code=503, detail="features unavailable")
         return features.snapshot().tolist()
 
+    @app.get("/features/schema")
+    async def features_schema_endpoint() -> dict:
+        """Return metadata mapping feature indices to names."""
+        return {"features": FEATURE_SCHEMA}
+
     @app.get("/posterior")
     async def posterior_endpoint() -> dict:
         if features is None or posterior is None:
@@ -136,6 +146,19 @@ def create_app(
         vec = features.snapshot()
         out = posterior.predict(vec)
         return {"rug": out.rug, "trend": out.trend, "revert": out.revert, "chop": out.chop}
+
+    @app.get("/dashboard")
+    async def dashboard() -> dict:
+        vec = features.snapshot() if features else None
+        posterior_out = (
+            posterior.predict(vec).__dict__ if (features and posterior) else None
+        )
+        return {
+            "features": vec.tolist() if vec is not None else None,
+            "posterior": posterior_out,
+            "positions": trade.list_positions() if bootstrap.is_ready() else {},
+            "timestamp": int(time.time()),
+        }
 
     @app.get("/positions")
     async def positions(key: None = Depends(check_key)) -> dict:
@@ -185,12 +208,62 @@ def create_app(
             return
         await ws.accept()
         q = features.subscribe()
-        loop = asyncio.get_event_loop()
         try:
             while True:
-                vec = await loop.run_in_executor(None, q.get)
-                await ws.send_json(vec.tolist())
+                vec_task = asyncio.create_task(asyncio.to_thread(q.get))
+                recv_task = asyncio.create_task(ws.receive_text())
+                done, pending = await asyncio.wait(
+                    {vec_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                if recv_task in done:
+                    vec_task.cancel()
+                    break
+                event, vec = vec_task.result()
+                recv_task.cancel()
+                event_data = event.__dict__.copy()
+                event_data["kind"] = int(event.kind)
+                await ws.send_json({"event": event_data, "features": vec.tolist()})
         except WebSocketDisconnect:
+            pass
+        finally:
+            features.unsubscribe(q)
+
+    @app.websocket("/posterior/ws")
+    async def posterior_ws(ws: WebSocket):
+        if features is None or posterior is None:
+            await ws.close()
+            return
+        await ws.accept()
+        q = features.subscribe()
+        try:
+            while True:
+                vec_task = asyncio.create_task(asyncio.to_thread(q.get))
+                recv_task = asyncio.create_task(ws.receive_text())
+                done, pending = await asyncio.wait(
+                    {vec_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                if recv_task in done:
+                    vec_task.cancel()
+                    break
+                event, vec = vec_task.result()
+                recv_task.cancel()
+                event_data = event.__dict__.copy()
+                event_data["kind"] = int(event.kind)
+                out = posterior.predict(vec)
+                await ws.send_json(
+                    {
+                        "event": event_data,
+                        "posterior": {
+                            "rug": out.rug,
+                            "trend": out.trend,
+                            "revert": out.revert,
+                            "chop": out.chop,
+                        },
+                    }
+                )
+        except WebSocketDisconnect:
+            pass
+        finally:
             features.unsubscribe(q)
 
 
@@ -203,6 +276,16 @@ def create_app(
     @app.get("/version")
     async def version() -> dict:
         return {"git": os.getenv("COMMIT_SHA", "dev"), "schema": SCHEMA_HASH}
+
+    @app.get("/manifest")
+    async def manifest() -> dict:
+        rest, websockets = [], []
+        for route in app.router.routes:
+            if isinstance(route, APIRoute):
+                rest.append({"path": route.path, "methods": sorted(route.methods)})
+            elif isinstance(route, APIWebSocketRoute):
+                websockets.append(route.path)
+        return {"rest": rest, "websocket": websockets}
 
 
     return app

@@ -18,6 +18,7 @@ from solbot.persistence.assets import AssetService
 import tempfile
 from solbot.exchange import PaperConnector
 from solbot.oracle import CoingeckoOracle
+from solbot.schema import SCHEMA_HASH
 
 
 class DummyLM:
@@ -59,9 +60,18 @@ def test_api_order_flow():
 
         resp = client.get("/")
         assert resp.status_code == 200
-        assert "sol-bot dashboard" in resp.text
-        assert "/features" in resp.text
-        assert "/posterior" in resp.text
+        root_data = resp.json()
+        assert (
+            root_data["tradingview"]
+            == "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT"
+        )
+        assert root_data["endpoints"]["features"] == "/features"
+        assert root_data["endpoints"]["features_schema"] == "/features/schema"
+        assert root_data["endpoints"]["posterior"] == "/posterior"
+        assert root_data["endpoints"]["dashboard"] == "/dashboard"
+        assert root_data["endpoints"]["manifest"] == "/manifest"
+        assert "timestamp" in root_data
+        assert root_data["schema"] == SCHEMA_HASH
 
         resp = client.post(
             "/orders",
@@ -87,7 +97,39 @@ def test_api_order_flow():
         probs = resp.json()
         assert set(probs) == {"rug", "trend", "revert", "chop"}
 
+        resp = client.get("/features/schema")
+        assert resp.status_code == 200
+        schema = resp.json()["features"]
+        first = next((f for f in schema if f["index"] == 0), None)
+        assert first and first["name"] == "liquidity_delta"
+
         with client.websocket_connect("/features/ws") as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=2.0), slot=1)
             data = ws.receive_json()
-            assert len(data) == 256
+            assert set(data) == {"event", "features"}
+            assert data["event"]["kind"] == 1
+            assert len(data["features"]) == 256
+        # push another update to trigger server cleanup after websocket closes
+        fe.update(Event(kind=EventKind.SWAP, amount_in=3.0), slot=1)
+
+        with client.websocket_connect("/posterior/ws") as ws:
+            fe.update(Event(kind=EventKind.SWAP, amount_in=4.0), slot=1)
+            data = ws.receive_json()
+            assert set(data) == {"event", "posterior"}
+            assert set(data["posterior"]) == {"rug", "trend", "revert", "chop"}
+        fe.update(Event(kind=EventKind.SWAP, amount_in=5.0), slot=1)
+
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        dash = resp.json()
+        assert len(dash["features"]) == 256
+        assert set(dash["posterior"]) == {"rug", "trend", "revert", "chop"}
+        assert "SOL" in dash["positions"]
+
+        resp = client.get("/manifest")
+        assert resp.status_code == 200
+        manifest = resp.json()
+        ws_paths = manifest["websocket"]
+        assert "/features/ws" in ws_paths and "/posterior/ws" in ws_paths
+        rest_paths = [r["path"] for r in manifest["rest"]]
+        assert "/dashboard" in rest_paths

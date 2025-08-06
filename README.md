@@ -63,13 +63,24 @@ python -m src.server --wallet YOUR_WALLET --db-path ~/.solbot/state.db
 
 The entrypoint automatically adds ``src`` to ``PYTHONPATH`` so no extra setup is
 required. The server launches a FastAPI app on `http://127.0.0.1:8000` exposing
-endpoints for paper trading and viewing positions. Orders and positions are
+JSON endpoints for dashboards and paper trading. Orders and positions are
 persisted to the SQLite database specified by `--db-path` so the UI remains
 available offline. If ``YOUR_WALLET`` matches the ``LICENSE_AUTHORITY``
 environment variable, the server starts without requiring a license token. Demo
 wallets still start but emit a warning that trading is disabled. The `/status`
 endpoint reports bootstrap progress and `/version` returns the running git
 commit and schema hash.
+
+### Dashboard API
+
+Front-end clients interact with the server via JSON resources and WebSocket feeds:
+
+* `GET /` – resource index with a map of endpoints, TradingView template URL, timestamp, and schema hash
+* `GET /features/schema` – mapping of feature indices to names
+* `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, and open positions
+* `GET /manifest` – machine-readable listing of REST and WebSocket routes
+* `WS /features/ws` – streams objects with `event` metadata and associated `features` array
+* `WS /posterior/ws` – streams posterior probability updates alongside event metadata
 
 ## Configuration
 
