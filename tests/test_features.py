@@ -116,11 +116,11 @@ def test_pubsub_queue_nonblocking():
     q = fe.subscribe(maxsize=1)
     fe.update(_mk_event(EventKind.SWAP, amount_in=1.0), slot=1)
     assert not q.empty()
-    first = q.get()
+    first_event, first_vec = q.get()
     fe.update(_mk_event(EventKind.SWAP, amount_in=2.0), slot=1)
     assert q.qsize() == 1
-    latest = q.get()
-    assert latest[2] != first[2]
+    latest_event, latest_vec = q.get()
+    assert latest_vec[2] != first_vec[2]
 
 
 def test_unsubscribe_removes_queue():

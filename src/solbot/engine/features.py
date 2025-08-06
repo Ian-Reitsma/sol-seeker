@@ -91,7 +91,7 @@ class PyFeatureEngine(FeatureEngine):
         self._last_ts: Optional[int] = None
         self._cum_liq = 0.0
         self._history: Deque[Tuple[Event, np.ndarray]] = deque(maxlen=HISTORY_SIZE)
-        self._subs: List[queue.Queue[np.ndarray]] = []
+        self._subs: List["queue.Queue[Tuple[Event, np.ndarray]]"] = []
 
     # ------------------------------------------------------------------
     # Update routines
@@ -141,11 +141,11 @@ class PyFeatureEngine(FeatureEngine):
         self._history.append((event, vec[: self.dim].copy()))
         for q in list(self._subs):
             try:
-                q.put_nowait(vec.copy())
+                q.put_nowait((event, vec.copy()))
             except queue.Full:
                 with contextlib.suppress(Exception):
                     q.get_nowait()
-                    q.put_nowait(vec.copy())
+                    q.put_nowait((event, vec.copy()))
         return vec
 
     def _update_idx(self, i: int, value: float, slot: int) -> None:
@@ -189,19 +189,19 @@ class PyFeatureEngine(FeatureEngine):
     # ------------------------------------------------------------------
     # Publish / subscribe
     # ------------------------------------------------------------------
-    def subscribe(self, maxsize: int = 1) -> "queue.Queue[np.ndarray]":
-        """Return a queue receiving feature snapshots on every update.
+    def subscribe(self, maxsize: int = 1) -> "queue.Queue[Tuple[Event, np.ndarray]]":
+        """Return a queue receiving ``(event, features)`` tuples on every update.
 
         The queue is bounded and ``put_nowait`` is used to avoid blocking the
         ingestion loop.  If full, the oldest item is dropped before enqueueing
-        the latest feature vector.
+        the latest item.
         """
 
-        q: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=maxsize)
+        q: "queue.Queue[Tuple[Event, np.ndarray]]" = queue.Queue(maxsize=maxsize)
         self._subs.append(q)
         return q
 
-    def unsubscribe(self, q: "queue.Queue[np.ndarray]") -> None:
+    def unsubscribe(self, q: "queue.Queue[Tuple[Event, np.ndarray]]") -> None:
         """Remove a previously subscribed queue if present."""
         with contextlib.suppress(ValueError):
             self._subs.remove(q)
