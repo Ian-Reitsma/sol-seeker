@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 import os
+import jwt
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -18,8 +19,36 @@ instrumentator = Instrumentator().instrument(app)
 instrumentator.expose(app)
 
 def verify_jwt(token: str) -> bool:
-    """Validate bearer JWT. TODO: implement real verification by 2025-08-15."""
-    return bool(token)
+    """Validate bearer JWT.
+
+    Decodes ``token`` using a trusted secret or public key and verifies the
+    signature along with ``exp`` (expiration), ``iss`` (issuer) and ``aud``
+    (audience) claims.  Returns ``True`` only when all checks pass.
+    """
+
+    secret = os.getenv("LICENSE_JWT_SECRET")
+    public_key = os.getenv("LICENSE_JWT_PUBLIC_KEY")
+    issuer = os.getenv("LICENSE_JWT_ISSUER", "solbot-license-service")
+    audience = os.getenv("LICENSE_JWT_AUDIENCE", "solbot-clients")
+
+    key = public_key or secret
+    if not key or not token:
+        return False
+
+    algorithm = "RS256" if public_key else "HS256"
+
+    try:
+        jwt.decode(
+            token,
+            key,
+            algorithms=[algorithm],
+            audience=audience,
+            issuer=issuer,
+            options={"require": ["exp", "iss", "aud"]},
+        )
+        return True
+    except jwt.PyJWTError:
+        return False
 
 class IssueRequest(BaseModel):
     wallet: str

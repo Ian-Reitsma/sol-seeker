@@ -303,3 +303,16 @@
 
 ### Next Steps
 - Improve bootstrap process with configurable token filters.
+
+## OpenAI Assistant - API Path Sync and JWT Verification
+
+**Date:** 2025-08-06
+
+### Summary
+- Replaced hardcoded API paths with FastAPI's `url_path_for` to keep the root index synchronized with router definitions.
+- Extended `/features/schema` with schema hash and timestamp metadata and refreshed Dashboard API docs with authenticated curl examples.
+- Hardened websocket handlers to cancel background tasks cleanly on disconnect.
+- Added real JWT signature and claim verification in the license issuer and introduced the `PyJWT` dependency with supporting tests.
+
+### Next Steps
+- None.

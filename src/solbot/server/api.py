@@ -23,6 +23,7 @@ import os
 import asyncio
 import time
 import logging
+import contextlib
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
@@ -102,15 +103,15 @@ def create_app(
         return {
             "tradingview": "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
             "endpoints": {
-                "features": "/features",
-                "features_schema": "/features/schema",
-                "posterior": "/posterior",
-                "positions": "/positions",
-                "orders": "/orders",
+                "features": app.url_path_for("features_endpoint"),
+                "features_schema": app.url_path_for("features_schema_endpoint"),
+                "posterior": app.url_path_for("posterior_endpoint"),
+                "positions": app.url_path_for("positions"),
+                "orders": app.url_path_for("orders"),
                 "features_ws": "/features/ws",
                 "posterior_ws": "/posterior/ws",
-                "dashboard": "/dashboard",
-                "manifest": "/manifest",
+                "dashboard": app.url_path_for("dashboard"),
+                "manifest": app.url_path_for("manifest"),
             },
             "timestamp": int(time.time()),
             "schema": SCHEMA_HASH,
@@ -137,7 +138,11 @@ def create_app(
     @app.get("/features/schema")
     async def features_schema_endpoint() -> dict:
         """Return metadata mapping feature indices to names."""
-        return {"features": FEATURE_SCHEMA}
+        return {
+            "features": FEATURE_SCHEMA,
+            "schema": SCHEMA_HASH,
+            "timestamp": int(time.time()),
+        }
 
     @app.get("/posterior")
     async def posterior_endpoint() -> dict:
@@ -212,19 +217,29 @@ def create_app(
             while True:
                 vec_task = asyncio.create_task(asyncio.to_thread(q.get))
                 recv_task = asyncio.create_task(ws.receive_text())
-                done, pending = await asyncio.wait(
+                done, _ = await asyncio.wait(
                     {vec_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
                 )
                 if recv_task in done:
                     vec_task.cancel()
+                    q.put_nowait((None, None))
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await vec_task
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await recv_task
                     break
                 event, vec = vec_task.result()
                 recv_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                    await recv_task
+                if event is None:
+                    break
                 event_data = event.__dict__.copy()
                 event_data["kind"] = int(event.kind)
                 await ws.send_json({"event": event_data, "features": vec.tolist()})
         except WebSocketDisconnect:
-            pass
+            with contextlib.suppress(Exception):
+                q.put_nowait((None, None))
         finally:
             features.unsubscribe(q)
 
@@ -239,14 +254,23 @@ def create_app(
             while True:
                 vec_task = asyncio.create_task(asyncio.to_thread(q.get))
                 recv_task = asyncio.create_task(ws.receive_text())
-                done, pending = await asyncio.wait(
+                done, _ = await asyncio.wait(
                     {vec_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
                 )
                 if recv_task in done:
                     vec_task.cancel()
+                    q.put_nowait((None, None))
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await vec_task
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await recv_task
                     break
                 event, vec = vec_task.result()
                 recv_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                    await recv_task
+                if event is None:
+                    break
                 event_data = event.__dict__.copy()
                 event_data["kind"] = int(event.kind)
                 out = posterior.predict(vec)
@@ -262,7 +286,8 @@ def create_app(
                     }
                 )
         except WebSocketDisconnect:
-            pass
+            with contextlib.suppress(Exception):
+                q.put_nowait((None, None))
         finally:
             features.unsubscribe(q)
 
