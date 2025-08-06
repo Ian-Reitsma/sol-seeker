@@ -66,6 +66,9 @@ def test_api_order_flow():
             root_data["tradingview"]
             == "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT"
         )
+        assert root_data["endpoints"]["health"] == app.url_path_for("health")
+        assert root_data["endpoints"]["status"] == app.url_path_for("status")
+        assert root_data["endpoints"]["assets"] == app.url_path_for("assets_endpoint")
         assert root_data["endpoints"]["features"] == app.url_path_for("features_endpoint")
         assert (
             root_data["endpoints"]["features_schema"]
@@ -74,10 +77,24 @@ def test_api_order_flow():
         assert root_data["endpoints"]["posterior"] == app.url_path_for("posterior_endpoint")
         assert root_data["endpoints"]["positions"] == app.url_path_for("positions")
         assert root_data["endpoints"]["orders"] == app.url_path_for("orders")
+        assert root_data["endpoints"]["chart"] == app.url_path_for("chart", symbol="<sym>")
+        assert root_data["endpoints"]["version"] == app.url_path_for("version")
+        assert root_data["endpoints"]["docs"] == app.url_path_for("swagger_ui_html")
+        assert root_data["endpoints"]["redoc"] == app.url_path_for("redoc_html")
+        assert root_data["endpoints"]["openapi"] == app.url_path_for("openapi")
+        assert root_data["endpoints"]["metrics"] == app.url_path_for("metrics")
+        assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
+        assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
+        assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
         assert root_data["endpoints"]["dashboard"] == app.url_path_for("dashboard")
         assert root_data["endpoints"]["manifest"] == app.url_path_for("manifest")
+        assert root_data["endpoints"]["tv"] == app.url_path_for("tradingview_page")
         assert "timestamp" in root_data
         assert root_data["schema"] == SCHEMA_HASH
+
+        resp = client.get("/tv")
+        assert resp.status_code == 200
+        assert "<iframe" in resp.text
 
         resp = client.post(
             "/orders",
@@ -154,6 +171,8 @@ def test_api_order_flow():
         assert resp.status_code == 200
         manifest = resp.json()
         ws_paths = manifest["websocket"]
+        assert "/ws" in ws_paths
         assert "/features/ws" in ws_paths and "/posterior/ws" in ws_paths
         rest_paths = [r["path"] for r in manifest["rest"]]
         assert "/dashboard" in rest_paths
+        assert "/tv" in rest_paths

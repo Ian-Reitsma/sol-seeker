@@ -27,7 +27,9 @@ import contextlib
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
 from typing import Optional
@@ -56,6 +58,39 @@ class OrderResponse(BaseModel):
     price: float
 
 
+class EndpointMap(BaseModel):
+    health: str
+    status: str
+    assets: str
+    features: str
+    features_schema: str
+    posterior: str
+    positions: str
+    orders: str
+    chart: str
+    version: str
+    docs: str
+    redoc: str
+    openapi: str
+    metrics: str
+    orders_ws: str
+    features_ws: str
+    posterior_ws: str
+    dashboard: str
+    manifest: str
+    tv: str
+
+
+class ServiceMap(BaseModel):
+    tradingview: str
+    endpoints: EndpointMap
+    timestamp: int
+    schema_hash: str = Field(..., alias="schema")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
@@ -68,8 +103,15 @@ def create_app(
     bootstrap: BootstrapCoordinator,
     features: FeatureEngine | None = None,
     posterior: PosteriorEngine | None = None,
-) -> FastAPI:
+    ) -> FastAPI:
     app = FastAPI(title="sol-bot API")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     Instrumentator().instrument(app).expose(app)
     latency_hist = Histogram(
         "order_latency_ns", "Order placement latency", buckets=(1e6, 5e6, 1e7, 5e7, 1e8)
@@ -97,29 +139,53 @@ def create_app(
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
 
-    @app.get("/")
-    async def root() -> dict:
+    @app.get("/", response_model=ServiceMap)
+    async def root() -> ServiceMap:
         """Return resource index and embed template for TradingView."""
-        return {
-            "tradingview": "https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
-            "endpoints": {
-                "features": app.url_path_for("features_endpoint"),
-                "features_schema": app.url_path_for("features_schema_endpoint"),
-                "posterior": app.url_path_for("posterior_endpoint"),
-                "positions": app.url_path_for("positions"),
-                "orders": app.url_path_for("orders"),
-                "features_ws": "/features/ws",
-                "posterior_ws": "/posterior/ws",
-                "dashboard": app.url_path_for("dashboard"),
-                "manifest": app.url_path_for("manifest"),
-            },
-            "timestamp": int(time.time()),
-            "schema": SCHEMA_HASH,
-        }
+        endpoints = EndpointMap(
+            health=app.url_path_for("health"),
+            status=app.url_path_for("status"),
+            assets=app.url_path_for("assets_endpoint"),
+            features=app.url_path_for("features_endpoint"),
+            features_schema=app.url_path_for("features_schema_endpoint"),
+            posterior=app.url_path_for("posterior_endpoint"),
+            positions=app.url_path_for("positions"),
+            orders=app.url_path_for("orders"),
+            chart=app.url_path_for("chart", symbol="<sym>"),
+            version=app.url_path_for("version"),
+            docs=app.url_path_for("swagger_ui_html"),
+            redoc=app.url_path_for("redoc_html"),
+            openapi=app.url_path_for("openapi"),
+            metrics=app.url_path_for("metrics"),
+            orders_ws=app.url_path_for("ws"),
+            features_ws=app.url_path_for("features_ws"),
+            posterior_ws=app.url_path_for("posterior_ws"),
+            dashboard=app.url_path_for("dashboard"),
+            manifest=app.url_path_for("manifest"),
+            tv=app.url_path_for("tradingview_page"),
+        )
+        return ServiceMap(
+            tradingview="https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
+            endpoints=endpoints,
+            timestamp=int(time.time()),
+            schema_hash=SCHEMA_HASH,
+        )
 
     @app.get("/health")
     async def health() -> dict:
         return {"status": "ok"}
+
+    @app.get("/tv", response_class=HTMLResponse)
+    async def tradingview_page() -> str:
+        """Return simple TradingView iframe for manual inspection."""
+        return (
+            "<html><body>"
+            "<iframe src='https://www.tradingview.com/widgetembed/?symbol=SOLUSDT'"
+            " width='100%' height='600'></iframe>"
+            "<p><a href='" + app.url_path_for("features_endpoint") + "'>features</a> | "
+            "<a href='" + app.url_path_for("posterior_endpoint") + "'>posterior</a></p>"
+            "</body></html>"
+        )
 
     @app.get("/status")
     async def status() -> dict:

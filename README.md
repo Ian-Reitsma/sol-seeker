@@ -83,6 +83,7 @@ Front-end clients interact with the server via JSON resources and WebSocket feed
 * `GET /features/schema` – mapping of feature indices to names with schema hash and timestamp metadata
 * `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, and open positions
 * `GET /manifest` – machine-readable listing of REST and WebSocket routes
+* `GET /tv` – simple TradingView iframe for manual inspection
 * `WS /features/ws` – streams objects with `event` metadata and associated `features` array
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
 
