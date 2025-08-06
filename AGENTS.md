@@ -316,3 +316,27 @@
 
 ### Next Steps
 - None.
+
+## OpenAI Assistant - Dashboard and License Documentation
+
+**Date:** 2025-08-06
+
+### Summary
+- Added README examples for `GET /license`, `GET /dashboard`, and `WS /dashboard/ws`.
+- Documented payload structures and sample curl/websocket usage.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Position Stream and State Endpoint
+
+**Date:** 2025-08-06
+
+### Summary
+- Added `/positions/ws` to broadcast real-time position snapshots and exposed its path in the root index and manifest.
+- Introduced `/state` endpoint combining license mode and bootstrap status.
+- Timestamped `/features` and `/posterior` responses and versioned `/manifest` with typed models.
+- Extended `/dashboard/ws` payloads with risk metrics and timestamps.
+
+### Next Steps
+- None.

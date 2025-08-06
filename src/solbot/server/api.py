@@ -9,12 +9,15 @@ Endpoints:
 * ``GET /health`` – service liveness
 * ``GET /status`` – bootstrap progress
 * ``GET /assets`` – list available symbols
+* ``GET /license`` – license status
 * ``GET /positions`` – open positions (API key required)
 * ``GET /orders`` – order history (API key required)
 * ``POST /orders`` – place an order (API key required)
 * ``GET /chart/{symbol}`` – convenience redirect to TradingView
 * ``GET /version`` – running commit and schema hash
 * ``/ws`` – websocket stream of new orders
+* ``/positions/ws`` – websocket stream of position changes
+* ``/dashboard/ws`` – aggregated dashboard updates
 """
 
 from __future__ import annotations
@@ -33,10 +36,10 @@ from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
 from typing import Optional
+from pathlib import Path
 
 from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
-from ..engine.features import FEATURES as FEATURE_SCHEMA
 from ..types import Side
 from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
@@ -58,6 +61,50 @@ class OrderResponse(BaseModel):
     price: float
 
 
+class FeatureInfo(BaseModel):
+    index: int
+    name: str
+    category: str
+    event_kinds: list[str]
+    unit: str
+    normalization: str
+
+
+class FeatureSchema(BaseModel):
+    version: int
+    features: list[FeatureInfo]
+    timestamp: int
+    schema_hash: str = Field(..., alias="schema")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class FeatureSnapshot(BaseModel):
+    features: list[float]
+    timestamp: int
+
+
+class PosteriorSnapshot(BaseModel):
+    rug: float
+    trend: float
+    revert: float
+    chop: float
+    timestamp: int
+
+
+class RouteInfo(BaseModel):
+    path: str
+    methods: list[str]
+
+
+class Manifest(BaseModel):
+    version: int
+    rest: list[RouteInfo]
+    websocket: list[str]
+    timestamp: int
+
+
 class EndpointMap(BaseModel):
     health: str
     status: str
@@ -76,14 +123,19 @@ class EndpointMap(BaseModel):
     orders_ws: str
     features_ws: str
     posterior_ws: str
+    positions_ws: str
+    dashboard_ws: str
     dashboard: str
     manifest: str
     tv: str
+    license: str
+    state: str
 
 
 class ServiceMap(BaseModel):
     tradingview: str
     endpoints: EndpointMap
+    license: dict
     timestamp: int
     schema_hash: str = Field(..., alias="schema")
 
@@ -119,6 +171,18 @@ def create_app(
 
     connections: list[WebSocket] = []
     conn_lock = asyncio.Lock()
+    pos_connections: list[WebSocket] = []
+    pos_lock = asyncio.Lock()
+    order_subs: list[asyncio.Queue[dict]] = []
+
+    def subscribe_orders() -> asyncio.Queue[dict]:
+        q: asyncio.Queue[dict] = asyncio.Queue()
+        order_subs.append(q)
+        return q
+
+    def unsubscribe_orders(q: asyncio.Queue[dict]) -> None:
+        with contextlib.suppress(ValueError):
+            order_subs.remove(q)
 
     def check_key(key: Optional[str] = Depends(api_key_header)) -> None:
         expected_hash = os.getenv("API_KEY_HASH")
@@ -138,6 +202,22 @@ def create_app(
             logging.warning("Demo mode active: trading disabled")
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
+
+    @app.get("/license")
+    def license_info() -> dict:
+        return {
+            "wallet": cfg.wallet or "",
+            "mode": lm.license_mode(cfg.wallet) if cfg.wallet else "none",
+            "timestamp": int(time.time()),
+        }
+
+    @app.get("/state")
+    def state() -> dict:
+        return {
+            "license": license_info(),
+            "status": bootstrap.status(),
+            "timestamp": int(time.time()),
+        }
 
     @app.get("/", response_model=ServiceMap)
     async def root() -> ServiceMap:
@@ -160,13 +240,18 @@ def create_app(
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
             posterior_ws=app.url_path_for("posterior_ws"),
+            positions_ws=app.url_path_for("positions_ws"),
+            dashboard_ws=app.url_path_for("dashboard_ws"),
             dashboard=app.url_path_for("dashboard"),
             manifest=app.url_path_for("manifest"),
             tv=app.url_path_for("tradingview_page"),
+            license=app.url_path_for("license_info"),
+            state=app.url_path_for("state"),
         )
         return ServiceMap(
             tradingview="https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
             endpoints=endpoints,
+            license=license_info(),
             timestamp=int(time.time()),
             schema_hash=SCHEMA_HASH,
         )
@@ -195,28 +280,38 @@ def create_app(
     async def assets_endpoint() -> list[dict]:
         return assets.list_assets()
 
-    @app.get("/features")
-    async def features_endpoint() -> list[float]:
+    @app.get("/features", response_model=FeatureSnapshot)
+    async def features_endpoint() -> FeatureSnapshot:
         if features is None:
             raise HTTPException(status_code=503, detail="features unavailable")
-        return features.snapshot().tolist()
+        vec = features.snapshot().tolist()
+        return FeatureSnapshot(features=vec, timestamp=int(time.time()))
 
-    @app.get("/features/schema")
-    async def features_schema_endpoint() -> dict:
+    @app.get("/features/schema", response_model=FeatureSchema)
+    async def features_schema_endpoint() -> FeatureSchema:
         """Return metadata mapping feature indices to names."""
-        return {
-            "features": FEATURE_SCHEMA,
-            "schema": SCHEMA_HASH,
-            "timestamp": int(time.time()),
-        }
+        cfg_path = Path(__file__).resolve().parents[3] / "features.yaml"
+        import yaml
 
-    @app.get("/posterior")
-    async def posterior_endpoint() -> dict:
+        with open(cfg_path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+        data["schema"] = SCHEMA_HASH
+        data["timestamp"] = int(time.time())
+        return FeatureSchema(**data)
+
+    @app.get("/posterior", response_model=PosteriorSnapshot)
+    async def posterior_endpoint() -> PosteriorSnapshot:
         if features is None or posterior is None:
             raise HTTPException(status_code=503, detail="posterior unavailable")
         vec = features.snapshot()
         out = posterior.predict(vec)
-        return {"rug": out.rug, "trend": out.trend, "revert": out.revert, "chop": out.chop}
+        return PosteriorSnapshot(
+            rug=out.rug,
+            trend=out.trend,
+            revert=out.revert,
+            chop=out.chop,
+            timestamp=int(time.time()),
+        )
 
     @app.get("/dashboard")
     async def dashboard() -> dict:
@@ -224,10 +319,17 @@ def create_app(
         posterior_out = (
             posterior.predict(vec).__dict__ if (features and posterior) else None
         )
+        unrealized = sum(p.unrealized for p in risk.positions.values())
         return {
             "features": vec.tolist() if vec is not None else None,
             "posterior": posterior_out,
             "positions": trade.list_positions() if bootstrap.is_ready() else {},
+            "orders": [o.__dict__ for o in trade.list_orders()] if bootstrap.is_ready() else [],
+            "risk": {
+                "equity": risk.equity,
+                "unrealized": unrealized,
+                "drawdown": risk.drawdown,
+            },
             "timestamp": int(time.time()),
         }
 
@@ -257,6 +359,14 @@ def create_app(
                 await ws.send_json(order.__dict__)
             except WebSocketDisconnect:
                 connections.remove(ws)
+        positions = trade.list_positions()
+        for ws in list(pos_connections):
+            try:
+                await ws.send_json(positions)
+            except WebSocketDisconnect:
+                pos_connections.remove(ws)
+        for q in list(order_subs):
+            q.put_nowait(order.__dict__)
         return OrderResponse(**order.__dict__)
 
     @app.websocket("/ws")
@@ -309,6 +419,19 @@ def create_app(
         finally:
             features.unsubscribe(q)
 
+    @app.websocket("/positions/ws")
+    async def positions_ws(ws: WebSocket):
+        await ws.accept()
+        async with pos_lock:
+            pos_connections.append(ws)
+        try:
+            while True:
+                await ws.receive_text()
+        except WebSocketDisconnect:
+            async with pos_lock:
+                if ws in pos_connections:
+                    pos_connections.remove(ws)
+
     @app.websocket("/posterior/ws")
     async def posterior_ws(ws: WebSocket):
         if features is None or posterior is None:
@@ -358,6 +481,110 @@ def create_app(
             features.unsubscribe(q)
 
 
+    @app.websocket("/dashboard/ws")
+    async def dashboard_ws(ws: WebSocket):
+        if features is None or posterior is None:
+            await ws.close()
+            return
+        await ws.accept()
+        feat_q = features.subscribe()
+        order_q = subscribe_orders()
+        try:
+            while True:
+                vec_task = asyncio.create_task(asyncio.to_thread(feat_q.get))
+                order_task = asyncio.create_task(order_q.get())
+                recv_task = asyncio.create_task(ws.receive_text())
+                done, _ = await asyncio.wait(
+                    {vec_task, order_task, recv_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if recv_task in done:
+                    vec_task.cancel()
+                    order_task.cancel()
+                    feat_q.put_nowait((None, None))
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await vec_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await order_task
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await recv_task
+                    break
+                if vec_task in done:
+                    event, vec = vec_task.result()
+                    order_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await order_task
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await recv_task
+                    if event is None:
+                        break
+                    event_data = event.__dict__.copy()
+                    event_data["kind"] = int(event.kind)
+                    out = posterior.predict(vec)
+                    payload = {
+                        "event": event_data,
+                        "features": vec.tolist(),
+                        "posterior": {
+                            "rug": out.rug,
+                            "trend": out.trend,
+                            "revert": out.revert,
+                            "chop": out.chop,
+                        },
+                        "positions": trade.list_positions()
+                        if bootstrap.is_ready()
+                        else {},
+                        "orders": [o.__dict__ for o in trade.list_orders()]
+                        if bootstrap.is_ready()
+                        else [],
+                        "risk": {
+                            "equity": risk.equity,
+                            "unrealized": sum(p.unrealized for p in risk.positions.values()),
+                            "drawdown": risk.drawdown,
+                        },
+                        "timestamp": int(time.time()),
+                    }
+                    await ws.send_json(payload)
+                else:
+                    order = order_task.result()
+                    vec_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await vec_task
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await recv_task
+                    vec = features.snapshot()
+                    out = posterior.predict(vec)
+                    event_data = {"kind": "order", **order}
+                    payload = {
+                        "event": event_data,
+                        "features": vec.tolist(),
+                        "posterior": {
+                            "rug": out.rug,
+                            "trend": out.trend,
+                            "revert": out.revert,
+                            "chop": out.chop,
+                        },
+                        "positions": trade.list_positions()
+                        if bootstrap.is_ready()
+                        else {},
+                        "orders": [o.__dict__ for o in trade.list_orders()]
+                        if bootstrap.is_ready()
+                        else [],
+                        "risk": {
+                            "equity": risk.equity,
+                            "unrealized": sum(p.unrealized for p in risk.positions.values()),
+                            "drawdown": risk.drawdown,
+                        },
+                        "timestamp": int(time.time()),
+                    }
+                    await ws.send_json(payload)
+        except WebSocketDisconnect:
+            with contextlib.suppress(Exception):
+                feat_q.put_nowait((None, None))
+        finally:
+            features.unsubscribe(feat_q)
+            unsubscribe_orders(order_q)
+
+
     @app.get("/chart/{symbol}")
     async def chart(symbol: str) -> dict:
         return {
@@ -368,15 +595,15 @@ def create_app(
     async def version() -> dict:
         return {"git": os.getenv("COMMIT_SHA", "dev"), "schema": SCHEMA_HASH}
 
-    @app.get("/manifest")
-    async def manifest() -> dict:
+    @app.get("/manifest", response_model=Manifest)
+    async def manifest() -> Manifest:
         rest, websockets = [], []
         for route in app.router.routes:
             if isinstance(route, APIRoute):
-                rest.append({"path": route.path, "methods": sorted(route.methods)})
+                rest.append(RouteInfo(path=route.path, methods=sorted(route.methods)))
             elif isinstance(route, APIWebSocketRoute):
                 websockets.append(route.path)
-        return {"rest": rest, "websocket": websockets}
+        return Manifest(version=1, rest=rest, websocket=websockets, timestamp=int(time.time()))
 
 
     return app

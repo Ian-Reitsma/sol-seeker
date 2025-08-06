@@ -76,16 +76,20 @@ commit and schema hash.
 Front-end clients interact with the server via JSON resources and WebSocket feeds:
 
 * `GET /` – resource index with a map of endpoints, TradingView template URL, timestamp, and schema hash
-* `GET /features` – latest normalized feature vector
-* `GET /posterior` – most recent posterior probabilities over market regimes
+* `GET /features` – latest normalized feature vector with timestamp
+* `GET /posterior` – most recent posterior probabilities over market regimes with timestamp
+* `GET /license` – license status for the configured wallet
+* `GET /state` – combined license mode and bootstrap status
 * `GET /positions` – open positions *(requires `X-API-Key` header)*
 * `POST /orders` – place paper trade order *(requires `X-API-Key` header)*
 * `GET /features/schema` – mapping of feature indices to names with schema hash and timestamp metadata
-* `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, and open positions
-* `GET /manifest` – machine-readable listing of REST and WebSocket routes
+* `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, open positions, open orders, risk metrics, and timestamp
+* `GET /manifest` – machine-readable listing of REST and WebSocket routes with version and timestamp
 * `GET /tv` – simple TradingView iframe for manual inspection
 * `WS /features/ws` – streams objects with `event` metadata and associated `features` array
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
+* `WS /positions/ws` – streams position snapshots after each order
+* `WS /dashboard/ws` – streams combined dashboard updates with features, posterior, positions, orders, risk metrics, and timestamp whenever new events arrive
 
 Example usage:
 
@@ -102,6 +106,56 @@ curl -H "X-API-Key: $API_KEY" http://127.0.0.1:8000/positions
 # place paper trade order (API key required)
 curl -X POST -H "Content-Type: application/json" -H "X-API-Key: $API_KEY" \
   -d '{"token":"SOL","qty":1,"side":"buy"}' http://127.0.0.1:8000/orders
+
+# check license status
+curl http://127.0.0.1:8000/license
+
+# fetch combined state snapshot
+curl http://127.0.0.1:8000/state
+
+# fetch combined dashboard snapshot
+curl http://127.0.0.1:8000/dashboard
+
+# stream dashboard updates
+websocat ws://127.0.0.1:8000/dashboard/ws
+
+# stream position updates
+websocat ws://127.0.0.1:8000/positions/ws
+```
+
+Example responses:
+
+```json
+// GET /license
+{"wallet":"11111111111111111111111111111111","mode":"full","timestamp":1697040000}
+
+// GET /state
+{
+  "license": {"wallet":"11111111111111111111111111111111","mode":"full","timestamp":1697040000},
+  "status": {"state":"RUNNING"},
+  "timestamp": 1697040000
+}
+
+// GET /dashboard
+{
+  "features": [0.0, 1.2, 0.3, ...],
+  "posterior": {"rug":0.05,"trend":0.7,"revert":0.2,"chop":0.05},
+  "positions": {"SOL":{"qty":1,"px":10.0}},
+  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0}],
+  "risk": {"equity":1000.0,"unrealized":0.0,"drawdown":0.0},
+  "timestamp": 1697040000
+}
+
+// WS /dashboard/ws message
+{
+  "event": {"slot":123,"kind":1},
+  "features": [0.0, 1.2, 0.3, ...],
+  "posterior": {"rug":0.05,"trend":0.7,"revert":0.2,"chop":0.05},
+  "positions": {"SOL":{"qty":1,"px":10.0}},
+  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0}],
+  "risk": {"equity":1000.0,"unrealized":0.0,"drawdown":0.0},
+  "timestamp": 1697040000
+}
 ```
 
 ## Configuration
