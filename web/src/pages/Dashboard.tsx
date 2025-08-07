@@ -21,6 +21,8 @@ interface Risk {
   drawdown: number;
   realized: number;
   var: number;
+  es: number;
+  sharpe: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -121,6 +123,8 @@ const Dashboard: React.FC = () => {
             <li>Unrealized: {risk.unrealized}</li>
             <li>Realized: {risk.realized}</li>
             <li>VaR: {risk.var}</li>
+            <li>ES: {risk.es}</li>
+            <li>Sharpe: {risk.sharpe}</li>
             <li>Drawdown: {risk.drawdown}</li>
           </ul>
         )}

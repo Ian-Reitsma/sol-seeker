@@ -21,7 +21,7 @@ from solbot.persistence import DAL
 from solbot.persistence.assets import AssetService
 import tempfile
 from solbot.exchange import PaperConnector
-from solbot.oracle import CoingeckoOracle
+from solbot.oracle.coingecko import PriceOracle
 from solbot.schema import SCHEMA_HASH
 
 
@@ -41,11 +41,13 @@ def test_api_order_flow():
     cfg = BotConfig(rpc_ws="wss://api.mainnet-beta.solana.com/", log_level="INFO", wallet="111", db_path=tmp.name, bootstrap=False)
     lm = DummyLM()
     dal = DAL(cfg.db_path)
-    class DummyOracle(CoingeckoOracle):
-        async def price(self, token: str) -> float:
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
             return 10.0
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000_000.0
 
-    oracle = DummyOracle(dal)
+    oracle = DummyOracle()
     connector = PaperConnector(dal, oracle)
 
     async def no_fee():
@@ -229,7 +231,7 @@ def test_api_order_flow():
             }
             assert len(data["features"]) == 256
             assert len(data["orders"]) >= 1
-            assert set(data["risk"]) == {"equity", "unrealized", "drawdown", "realized", "var"}
+            assert set(data["risk"]) == {"equity", "unrealized", "drawdown", "realized", "var", "es", "sharpe"}
         client.portal.call(asyncio.sleep, 0)
         tasks = client.portal.call(
             lambda: [
@@ -253,6 +255,8 @@ def test_api_order_flow():
         assert dash["risk"]["drawdown"] == risk.drawdown
         assert dash["risk"]["realized"] == risk.total_realized()
         assert dash["risk"]["var"] == risk.var
+        assert dash["risk"]["es"] == risk.es
+        assert dash["risk"]["sharpe"] == risk.sharpe
 
         resp = client.get("/manifest")
         assert resp.status_code == 200
