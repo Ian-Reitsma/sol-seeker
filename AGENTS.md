@@ -365,14 +365,22 @@
 ### Next Steps
 - None.
 
-## OpenAI Assistant - Vite Frontend Scaffold
+## OpenAI Assistant - Dashboard Placeholder Removal
 
 **Date:** 2025-08-06
 
 ### Summary
-- Bootstrapped a dedicated Vite + React + TypeScript web client under `web/` with npm scripts for development, build, and linting.
-- Introduced environment-driven API base URL via `VITE_API_URL` and example `.env` file.
-- Documented setup in `web/README.md`.
+- Deleted `web/public/dashboard.html` placeholder file.
+- Removed placeholder reference from `web/README.md`.
+- Documented integration requirements for the upcoming full dashboard HTML.
 
 ### Next Steps
-- None.
+- User will provide the complete dashboard HTML separately.
+- Integrate that design into the `web` client, either as a static page in `public/` or converted into React components.
+- Replace the simple `fetch('/health')` snippet with a robust API bootstrap that checks `/health`, `/status`, and other core endpoints using the `VITE_API_URL` base and persisted API key.
+- Wire up all UI controls to the backend:
+  - Trading start/pause and emergency stop should POST to `/state`.
+  - Buy/sell/close actions must call `/orders` with proper payloads and reflect responses in the feed.
+  - Settings panel must read current config from `/state` and persist updates via `POST /state`.
+- Connect live metrics and the trading feed through WebSocket endpoints (`/dashboard/ws`, `/positions/ws`, `/orders/ws`).
+- Ensure tabs, modals, and other dynamic elements operate and handle errors gracefully.

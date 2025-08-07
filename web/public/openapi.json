@@ -1,0 +1,879 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "sol-bot API",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/metrics": {
+            "get": {
+                "summary": "Metrics",
+                "description": "Endpoint that serves Prometheus metrics.",
+                "operationId": "metrics_metrics_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/license": {
+            "get": {
+                "summary": "License Info",
+                "operationId": "license_info_license_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response License Info License Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/state": {
+            "get": {
+                "summary": "State",
+                "operationId": "state_state_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response State State Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Root",
+                "description": "Return resource index and embed template for TradingView.",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceMap"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Health Health Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tv": {
+            "get": {
+                "summary": "Tradingview Page",
+                "description": "Return simple TradingView iframe for manual inspection.",
+                "operationId": "tradingview_page_tv_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/status": {
+            "get": {
+                "summary": "Status",
+                "operationId": "status_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Status Status Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/assets": {
+            "get": {
+                "summary": "Assets Endpoint",
+                "operationId": "assets_endpoint_assets_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "type": "object"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Assets Endpoint Assets Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/features": {
+            "get": {
+                "summary": "Features Endpoint",
+                "operationId": "features_endpoint_features_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeatureSnapshot"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/features/schema": {
+            "get": {
+                "summary": "Features Schema Endpoint",
+                "description": "Return metadata mapping feature indices to names.",
+                "operationId": "features_schema_endpoint_features_schema_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeatureSchema"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posterior": {
+            "get": {
+                "summary": "Posterior Endpoint",
+                "operationId": "posterior_endpoint_posterior_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PosteriorSnapshot"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard": {
+            "get": {
+                "summary": "Dashboard",
+                "operationId": "dashboard_dashboard_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Dashboard Dashboard Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/positions": {
+            "get": {
+                "summary": "Positions",
+                "operationId": "positions_positions_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Positions Positions Get"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "APIKeyHeader": []
+                    }
+                ]
+            }
+        },
+        "/orders": {
+            "get": {
+                "summary": "Orders",
+                "operationId": "orders_orders_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "type": "object"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Orders Orders Get"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "APIKeyHeader": []
+                    }
+                ]
+            },
+            "post": {
+                "summary": "Place Order",
+                "operationId": "place_order_orders_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrderRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OrderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "APIKeyHeader": []
+                    }
+                ]
+            }
+        },
+        "/chart/{symbol}": {
+            "get": {
+                "summary": "Chart",
+                "operationId": "chart_chart__symbol__get",
+                "parameters": [
+                    {
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Symbol"
+                        },
+                        "name": "symbol",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Chart Chart  Symbol  Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/version": {
+            "get": {
+                "summary": "Version",
+                "operationId": "version_version_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Version Version Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/manifest": {
+            "get": {
+                "summary": "Manifest",
+                "operationId": "manifest_manifest_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "EndpointMap": {
+                "properties": {
+                    "health": {
+                        "type": "string",
+                        "title": "Health"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "assets": {
+                        "type": "string",
+                        "title": "Assets"
+                    },
+                    "features": {
+                        "type": "string",
+                        "title": "Features"
+                    },
+                    "features_schema": {
+                        "type": "string",
+                        "title": "Features Schema"
+                    },
+                    "posterior": {
+                        "type": "string",
+                        "title": "Posterior"
+                    },
+                    "positions": {
+                        "type": "string",
+                        "title": "Positions"
+                    },
+                    "orders": {
+                        "type": "string",
+                        "title": "Orders"
+                    },
+                    "chart": {
+                        "type": "string",
+                        "title": "Chart"
+                    },
+                    "version": {
+                        "type": "string",
+                        "title": "Version"
+                    },
+                    "docs": {
+                        "type": "string",
+                        "title": "Docs"
+                    },
+                    "redoc": {
+                        "type": "string",
+                        "title": "Redoc"
+                    },
+                    "openapi": {
+                        "type": "string",
+                        "title": "Openapi"
+                    },
+                    "metrics": {
+                        "type": "string",
+                        "title": "Metrics"
+                    },
+                    "orders_ws": {
+                        "type": "string",
+                        "title": "Orders Ws"
+                    },
+                    "features_ws": {
+                        "type": "string",
+                        "title": "Features Ws"
+                    },
+                    "posterior_ws": {
+                        "type": "string",
+                        "title": "Posterior Ws"
+                    },
+                    "positions_ws": {
+                        "type": "string",
+                        "title": "Positions Ws"
+                    },
+                    "dashboard_ws": {
+                        "type": "string",
+                        "title": "Dashboard Ws"
+                    },
+                    "dashboard": {
+                        "type": "string",
+                        "title": "Dashboard"
+                    },
+                    "manifest": {
+                        "type": "string",
+                        "title": "Manifest"
+                    },
+                    "tv": {
+                        "type": "string",
+                        "title": "Tv"
+                    },
+                    "license": {
+                        "type": "string",
+                        "title": "License"
+                    },
+                    "state": {
+                        "type": "string",
+                        "title": "State"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "health",
+                    "status",
+                    "assets",
+                    "features",
+                    "features_schema",
+                    "posterior",
+                    "positions",
+                    "orders",
+                    "chart",
+                    "version",
+                    "docs",
+                    "redoc",
+                    "openapi",
+                    "metrics",
+                    "orders_ws",
+                    "features_ws",
+                    "posterior_ws",
+                    "positions_ws",
+                    "dashboard_ws",
+                    "dashboard",
+                    "manifest",
+                    "tv",
+                    "license",
+                    "state"
+                ],
+                "title": "EndpointMap"
+            },
+            "FeatureInfo": {
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "title": "Index"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "category": {
+                        "type": "string",
+                        "title": "Category"
+                    },
+                    "event_kinds": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Event Kinds"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "title": "Unit"
+                    },
+                    "normalization": {
+                        "type": "string",
+                        "title": "Normalization"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "index",
+                    "name",
+                    "category",
+                    "event_kinds",
+                    "unit",
+                    "normalization"
+                ],
+                "title": "FeatureInfo"
+            },
+            "FeatureSchema": {
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "title": "Version"
+                    },
+                    "features": {
+                        "items": {
+                            "$ref": "#/components/schemas/FeatureInfo"
+                        },
+                        "type": "array",
+                        "title": "Features"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    },
+                    "schema": {
+                        "type": "string",
+                        "title": "Schema"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "features",
+                    "timestamp",
+                    "schema"
+                ],
+                "title": "FeatureSchema"
+            },
+            "FeatureSnapshot": {
+                "properties": {
+                    "features": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Features"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "features",
+                    "timestamp"
+                ],
+                "title": "FeatureSnapshot"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Manifest": {
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "title": "Version"
+                    },
+                    "rest": {
+                        "items": {
+                            "$ref": "#/components/schemas/RouteInfo"
+                        },
+                        "type": "array",
+                        "title": "Rest"
+                    },
+                    "websocket": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Websocket"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "rest",
+                    "websocket",
+                    "timestamp"
+                ],
+                "title": "Manifest"
+            },
+            "OrderRequest": {
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "title": "Token"
+                    },
+                    "qty": {
+                        "type": "number",
+                        "title": "Qty"
+                    },
+                    "side": {
+                        "$ref": "#/components/schemas/Side"
+                    },
+                    "limit": {
+                        "type": "number",
+                        "title": "Limit"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "token",
+                    "qty",
+                    "side"
+                ],
+                "title": "OrderRequest"
+            },
+            "OrderResponse": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "token": {
+                        "type": "string",
+                        "title": "Token"
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "title": "Quantity"
+                    },
+                    "side": {
+                        "$ref": "#/components/schemas/Side"
+                    },
+                    "price": {
+                        "type": "number",
+                        "title": "Price"
+                    },
+                    "slippage": {
+                        "type": "number",
+                        "title": "Slippage"
+                    },
+                    "fee": {
+                        "type": "number",
+                        "title": "Fee"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "token",
+                    "quantity",
+                    "side",
+                    "price",
+                    "slippage",
+                    "fee"
+                ],
+                "title": "OrderResponse"
+            },
+            "PosteriorSnapshot": {
+                "properties": {
+                    "rug": {
+                        "type": "number",
+                        "title": "Rug"
+                    },
+                    "trend": {
+                        "type": "number",
+                        "title": "Trend"
+                    },
+                    "revert": {
+                        "type": "number",
+                        "title": "Revert"
+                    },
+                    "chop": {
+                        "type": "number",
+                        "title": "Chop"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rug",
+                    "trend",
+                    "revert",
+                    "chop",
+                    "timestamp"
+                ],
+                "title": "PosteriorSnapshot"
+            },
+            "RouteInfo": {
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "title": "Path"
+                    },
+                    "methods": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Methods"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "path",
+                    "methods"
+                ],
+                "title": "RouteInfo"
+            },
+            "ServiceMap": {
+                "properties": {
+                    "tradingview": {
+                        "type": "string",
+                        "title": "Tradingview"
+                    },
+                    "endpoints": {
+                        "$ref": "#/components/schemas/EndpointMap"
+                    },
+                    "license": {
+                        "type": "object",
+                        "title": "License"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    },
+                    "schema": {
+                        "type": "string",
+                        "title": "Schema"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tradingview",
+                    "endpoints",
+                    "license",
+                    "timestamp",
+                    "schema"
+                ],
+                "title": "ServiceMap"
+            },
+            "Side": {
+                "enum": [
+                    "buy",
+                    "sell"
+                ],
+                "title": "Side",
+                "description": "An enumeration."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        },
+        "securitySchemes": {
+            "APIKeyHeader": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key"
+            }
+        }
+    }
+}
