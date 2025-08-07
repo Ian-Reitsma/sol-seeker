@@ -1,4 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import {
+  getOrders,
+  getPositions,
+  placeOrder,
+  dashboardWs,
+  positionsWs,
+} from '../api/client';
 
 interface Order {
   id: number;
@@ -14,11 +21,6 @@ interface Position {
   cost: number;
 }
 
-const wsBase = () => {
-  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${window.location.host}`;
-};
-
 const Trading: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('apiKey') || '');
   const [token, setToken] = useState('');
@@ -33,40 +35,41 @@ const Trading: React.FC = () => {
 
   useEffect(() => {
     if (!apiKey) return;
-    fetch('/orders', { headers: { 'X-API-Key': apiKey } })
-      .then((r) => r.json())
-      .then(setOrders)
+    getOrders(apiKey)
+      .then((o) => setOrders(o as unknown as Order[]))
       .catch(() => setOrders([]));
+    getPositions(apiKey)
+      .then(setPositions)
+      .catch(() => setPositions({}));
 
-    const posWs = new WebSocket(`${wsBase()}/positions/ws`);
+    const posWs = positionsWs(apiKey);
     posWs.onmessage = (ev) => setPositions(JSON.parse(ev.data));
 
-    const orderWs = new WebSocket(`${wsBase()}/ws`);
-    orderWs.onmessage = (ev) => {
-      const order: Order = JSON.parse(ev.data);
-      setOrders((o) => [...o, order]);
+    const dashWs = dashboardWs(apiKey);
+    dashWs.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.orders) setOrders(msg.orders);
+      } catch {
+        // ignore parse errors
+      }
     };
 
     return () => {
       posWs.close();
-      orderWs.close();
+      dashWs.close();
     };
   }, [apiKey]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!apiKey) return;
-    const resp = await fetch('/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
-      },
-      body: JSON.stringify({ token, qty, side }),
-    });
-    if (resp.ok) {
+    try {
+      await placeOrder(apiKey, { token, qty, side });
       setToken('');
       setQty(0);
+    } catch {
+      // ignore errors
     }
   };
 

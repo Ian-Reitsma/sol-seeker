@@ -135,8 +135,8 @@ def test_api_order_flow():
         assert resp.status_code == 200
         assert "<iframe" in resp.text
 
-        with client.websocket_connect("/ws", headers={"X-API-Key": "test"}) as order_ws, \
-            client.websocket_connect("/positions/ws", headers={"X-API-Key": "test"}) as pos_ws:
+        with client.websocket_connect("/ws?key=test") as order_ws, \
+            client.websocket_connect("/positions/ws?key=test") as pos_ws:
             resp = client.post(
                 "/orders",
                 json={"token": "SOL", "qty": 1, "side": "buy"},
@@ -208,7 +208,7 @@ def test_api_order_flow():
         )
         assert not tasks
 
-        with client.websocket_connect("/dashboard/ws", headers={"X-API-Key": "test"}) as ws:
+        with client.websocket_connect("/dashboard/ws?key=test") as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=6.0), slot=1)
             data = ws.receive_json()
             assert set(data) == {

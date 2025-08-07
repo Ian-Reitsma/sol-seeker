@@ -60,7 +60,7 @@ def build_client() -> TestClient:
 
 def test_order_triggers_position_update():
     with build_client() as client:
-        with client.websocket_connect("/positions/ws", headers={"X-API-Key": "test"}) as ws:
+        with client.websocket_connect("/positions/ws?key=test") as ws:
             resp = client.post(
                 "/orders",
                 json={"token": "SOL", "qty": 1, "side": "buy"},

@@ -372,7 +372,8 @@ def create_app(
     @app.websocket("/ws")
     async def ws(ws: WebSocket):
         try:
-            check_key(ws.headers.get("X-API-Key"))
+            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+            check_key(key)
         except HTTPException:
             await ws.close(code=1008)
             return
@@ -427,7 +428,8 @@ def create_app(
     @app.websocket("/positions/ws")
     async def positions_ws(ws: WebSocket):
         try:
-            check_key(ws.headers.get("X-API-Key"))
+            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+            check_key(key)
         except HTTPException:
             await ws.close(code=1008)
             return
@@ -497,7 +499,8 @@ def create_app(
             await ws.close()
             return
         try:
-            check_key(ws.headers.get("X-API-Key"))
+            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+            check_key(key)
         except HTTPException:
             await ws.close(code=1008)
             return

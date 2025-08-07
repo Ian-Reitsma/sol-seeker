@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 process.env.VITE_API_URL = 'http://api.test';
-import { getLicense, getDashboard, getPositions, dashboardWs, positionsWs } from '../src/api/client';
+import {
+  getLicense,
+  getDashboard,
+  getPositions,
+  getOrders,
+  placeOrder,
+  dashboardWs,
+  positionsWs,
+} from '../src/api/client';
 
 describe('api client', () => {
   beforeEach(() => {
@@ -27,19 +35,35 @@ describe('api client', () => {
     expect(fetch).toHaveBeenCalledWith('http://api.test/positions', { headers: { 'X-API-Key': 'secret' } });
   });
 
-  test('dashboardWs connects to websocket', () => {
+  test('getOrders includes api key', async () => {
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+    await getOrders('k');
+    expect(fetch).toHaveBeenCalledWith('http://api.test/orders', { headers: { 'X-API-Key': 'k' } });
+  });
+
+  test('placeOrder posts with api key', async () => {
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 1 }) });
+    await placeOrder('k', { token: 'SOL', qty: 1, side: 'buy' });
+    expect(fetch).toHaveBeenCalledWith('http://api.test/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': 'k' },
+      body: JSON.stringify({ token: 'SOL', qty: 1, side: 'buy' }),
+    });
+  });
+
+  test('dashboardWs connects to websocket with api key', () => {
     const mockWs = {} as any;
     (global as any).WebSocket = jest.fn().mockReturnValue(mockWs);
-    const ws = dashboardWs();
-    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/dashboard/ws');
+    const ws = dashboardWs('secret');
+    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/dashboard/ws?key=secret');
     expect(ws).toBe(mockWs);
   });
 
-  test('positionsWs connects to websocket', () => {
+  test('positionsWs connects to websocket with api key', () => {
     const mockWs = {} as any;
     (global as any).WebSocket = jest.fn().mockReturnValue(mockWs);
-    const ws = positionsWs();
-    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/positions/ws');
+    const ws = positionsWs('secret');
+    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/positions/ws?key=secret');
     expect(ws).toBe(mockWs);
   });
 });
