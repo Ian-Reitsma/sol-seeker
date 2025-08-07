@@ -317,6 +317,18 @@
 ### Next Steps
 - None.
 
+## OpenAI Assistant - Typed API Client and Hooks
+
+**Date:** 2025-08-06
+
+### Summary
+- Generated TypeScript types from the backend OpenAPI schema and built a typed REST/WebSocket client.
+- Added reusable React hooks (`useDashboard`, `usePositions`) leveraging the client for snapshot fetching and live updates.
+- Introduced Jest tests for the client using mocked fetch and WebSocket implementations.
+
+### Next Steps
+- None.
+
 ## OpenAI Assistant - Dashboard and License Documentation
 
 **Date:** 2025-08-06
@@ -337,6 +349,30 @@
 - Introduced `/state` endpoint combining license mode and bootstrap status.
 - Timestamped `/features` and `/posterior` responses and versioned `/manifest` with typed models.
 - Extended `/dashboard/ws` payloads with risk metrics and timestamps.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Websocket API Key Enforcement
+
+**Date:** 2025-08-06
+
+### Summary
+- Required `X-API-Key` header for `/ws`, `/positions/ws`, and `/dashboard/ws` and reused existing `check_key` for validation.
+- Added tests covering authorized websocket connections and rejection of missing headers.
+- Documented the new security requirement in README.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Vite Frontend Scaffold
+
+**Date:** 2025-08-06
+
+### Summary
+- Bootstrapped a dedicated Vite + React + TypeScript web client under `web/` with npm scripts for development, build, and linting.
+- Introduced environment-driven API base URL via `VITE_API_URL` and example `.env` file.
+- Documented setup in `web/README.md`.
 
 ### Next Steps
 - None.

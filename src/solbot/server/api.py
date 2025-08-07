@@ -371,6 +371,11 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws(ws: WebSocket):
+        try:
+            check_key(ws.headers.get("X-API-Key"))
+        except HTTPException:
+            await ws.close(code=1008)
+            return
         await ws.accept()
         async with conn_lock:
             connections.append(ws)
@@ -421,6 +426,11 @@ def create_app(
 
     @app.websocket("/positions/ws")
     async def positions_ws(ws: WebSocket):
+        try:
+            check_key(ws.headers.get("X-API-Key"))
+        except HTTPException:
+            await ws.close(code=1008)
+            return
         await ws.accept()
         async with pos_lock:
             pos_connections.append(ws)
@@ -485,6 +495,11 @@ def create_app(
     async def dashboard_ws(ws: WebSocket):
         if features is None or posterior is None:
             await ws.close()
+            return
+        try:
+            check_key(ws.headers.get("X-API-Key"))
+        except HTTPException:
+            await ws.close(code=1008)
             return
         await ws.accept()
         feat_q = features.subscribe()
