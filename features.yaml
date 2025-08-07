@@ -36,3 +36,33 @@ features:
     event_kinds: [MINT]
     unit: token
     normalization: zscore
+  - index: 6
+    name: tx_per_sec
+    category: network
+    event_kinds: []
+    unit: tps
+    normalization: zscore
+  - index: 7
+    name: median_priority_fee
+    category: network
+    event_kinds: []
+    unit: lamports
+    normalization: zscore
+  - index: 8
+    name: rolling_volume
+    category: orderflow
+    event_kinds: [SWAP]
+    unit: token
+    normalization: zscore
+  - index: 9
+    name: average_fee
+    category: cost
+    event_kinds: [SWAP]
+    unit: token
+    normalization: zscore
+  - index: 10
+    name: vwap
+    category: price
+    event_kinds: [SWAP]
+    unit: price
+    normalization: zscore

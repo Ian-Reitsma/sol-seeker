@@ -4,11 +4,37 @@ import API_BASE_URL from '../api';
 const API_BASE = API_BASE_URL;
 
 export type LicenseResponse = paths['/license']['get']['responses']['200']['content']['application/json'];
-export type DashboardResponse = paths['/dashboard']['get']['responses']['200']['content']['application/json'];
 export type PositionsResponse = paths['/positions']['get']['responses']['200']['content']['application/json'];
-export type OrdersResponse = paths['/orders']['get']['responses']['200']['content']['application/json'];
 export type OrderRequest = paths['/orders']['post']['requestBody']['content']['application/json'];
-export type OrderResponse = paths['/orders']['post']['responses']['200']['content']['application/json'];
+
+export interface OrderResponse {
+  id: number;
+  token: string;
+  quantity: number;
+  side: string;
+  price: number;
+  slippage: number;
+  fee: number;
+}
+
+export type OrdersResponse = OrderResponse[];
+
+export interface RiskMetrics {
+  equity: number;
+  unrealized: number;
+  drawdown: number;
+  realized: number;
+  var: number;
+}
+
+export interface DashboardResponse {
+  features: number[] | null;
+  posterior: Record<string, number> | null;
+  positions: Record<string, unknown>;
+  orders: OrderResponse[];
+  risk: RiskMetrics;
+  timestamp: number;
+}
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {

@@ -18,6 +18,8 @@ class DBOrder(SQLModel, table=True):
     quantity: float
     side: str
     price: float
+    fee: float
+    slippage: float
     ts: datetime = Field(default_factory=datetime.utcnow)
 
 

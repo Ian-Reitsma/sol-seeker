@@ -23,10 +23,11 @@ describe('api client', () => {
   });
 
   test('getDashboard fetches dashboard', async () => {
-    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [], risk: { equity: 0, unrealized: 0, drawdown: 0 }, timestamp: 0 }) });
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [{ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }], risk: { equity: 0, unrealized: 0, drawdown: 0, realized: 0, var: 0 }, timestamp: 0 }) });
     const data = await getDashboard();
     expect(fetch).toHaveBeenCalledWith('http://api.test/dashboard');
-    expect(data.risk).toBeDefined();
+    expect(data.risk.realized).toBe(0);
+    expect(data.orders[0].slippage).toBe(0.1);
   });
 
   test('getPositions includes api key', async () => {
@@ -42,13 +43,14 @@ describe('api client', () => {
   });
 
   test('placeOrder posts with api key', async () => {
-    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 1 }) });
-    await placeOrder('k', { token: 'SOL', qty: 1, side: 'buy' });
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }) });
+    const resp = await placeOrder('k', { token: 'SOL', qty: 1, side: 'buy' });
     expect(fetch).toHaveBeenCalledWith('http://api.test/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': 'k' },
       body: JSON.stringify({ token: 'SOL', qty: 1, side: 'buy' }),
     });
+    expect(resp.slippage).toBe(0.1);
   });
 
   test('dashboardWs connects to websocket with api key', () => {

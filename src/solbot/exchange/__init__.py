@@ -1,5 +1,5 @@
 """Exchange connectors."""
 
-from .connector import AbstractConnector, PaperConnector
+from .connector import AbstractConnector, PaperConnector, ExecutionResult
 
-__all__ = ["AbstractConnector", "PaperConnector"]
+__all__ = ["AbstractConnector", "PaperConnector", "ExecutionResult"]
