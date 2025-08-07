@@ -25,10 +25,14 @@ class Strategy:
         risk: RiskManager,
         stop_loss: float = 0.02,
         take_profit: float = 0.04,
+        max_position_size: float = float("inf"),
+        liquidity_cap: float = 0.1,
     ) -> None:
         self.risk = risk
         self.stop_loss = stop_loss
         self.take_profit = take_profit
+        self.max_position_size = max_position_size
+        self.liquidity_cap = liquidity_cap
 
     # ------------------------------------------------------------------
     # Edge and sizing
@@ -43,15 +47,27 @@ class Strategy:
         edge: float,
         equity: float,
         volatility: float = 0.05,
+        liquidity: float = float("inf"),
+        price: float = 1.0,
     ) -> float:
-        """Size position using Kelly fraction with volatility targeting."""
+        """Size position using Kelly fraction with risk and liquidity clamps."""
 
         if edge <= 0:
             return 0.0
         vol = max(volatility, 1e-6)
-        kelly = edge / (vol ** 2)
-        kelly = max(0.0, min(kelly, 1.0))
-        return equity * kelly
+        kelly = max(0.0, min(edge / (vol ** 2), 1.0))
+        sharpe = self.risk.sharpe
+        if sharpe <= 0:
+            return 0.0
+        kelly *= min(sharpe, 1.0)
+        notional = equity * kelly
+        qty = notional / max(price, 1e-9)
+        qty = min(qty, self.max_position_size)
+        qty = min(qty, self.liquidity_cap * liquidity)
+        var_limit = min(self.risk.var, self.risk.es) if self.risk.equity > 0 else equity * 0.1
+        if var_limit > 0:
+            qty = min(qty, var_limit / (vol * price))
+        return max(qty, 0.0)
 
     def evaluate(
         self,
@@ -59,11 +75,13 @@ class Strategy:
         fee: float,
         equity: float,
         volatility: float = 0.05,
+        liquidity: float = float("inf"),
+        price: float = 1.0,
     ) -> Optional[TradeSignal]:
         """Return trade signal if edge positive after fees."""
 
         edge = self.expected_edge(post, fee)
-        qty = self.qty_suggestion(edge, equity, volatility)
+        qty = self.qty_suggestion(edge, equity, volatility, liquidity, price)
         if qty <= 0:
             return None
         return TradeSignal(qty=qty, edge=edge)

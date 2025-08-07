@@ -44,6 +44,7 @@ from ..types import Side
 from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
 from ..schema import SCHEMA_HASH
+from ..service import start_network_poller
 
 
 class OrderRequest(BaseModel):
@@ -157,6 +158,7 @@ def create_app(
     bootstrap: BootstrapCoordinator,
     features: FeatureEngine | None = None,
     posterior: PosteriorEngine | None = None,
+    metrics_interval: float = 0.0,
     ) -> FastAPI:
     app = FastAPI(title="sol-bot API")
     app.add_middleware(
@@ -176,6 +178,7 @@ def create_app(
     pos_connections: list[WebSocket] = []
     pos_lock = asyncio.Lock()
     order_subs: list[asyncio.Queue[dict]] = []
+    poller_task: asyncio.Task | None = None
 
     def subscribe_orders() -> asyncio.Queue[dict]:
         q: asyncio.Queue[dict] = asyncio.Queue()
@@ -204,6 +207,10 @@ def create_app(
             logging.warning("Demo mode active: trading disabled")
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
+        nonlocal poller_task
+        if features is not None and metrics_interval > 0:
+            rpc_http = cfg.rpc_ws.replace("wss", "https").replace("ws", "http")
+            poller_task = start_network_poller(features, rpc_http, metrics_interval)
 
     @app.get("/license")
     def license_info() -> dict:
@@ -345,6 +352,8 @@ def create_app(
                 "drawdown": risk.drawdown,
                 "realized": risk.total_realized(),
                 "var": risk.var,
+                "es": risk.es,
+                "sharpe": risk.sharpe,
             },
             "timestamp": int(time.time()),
         }
@@ -607,6 +616,8 @@ def create_app(
                             "drawdown": risk.drawdown,
                             "realized": risk.total_realized(),
                             "var": risk.var,
+                            "es": risk.es,
+                            "sharpe": risk.sharpe,
                         },
                         "timestamp": int(time.time()),
                     }
@@ -653,6 +664,8 @@ def create_app(
                             "drawdown": risk.drawdown,
                             "realized": risk.total_realized(),
                             "var": risk.var,
+                            "es": risk.es,
+                            "sharpe": risk.sharpe,
                         },
                         "timestamp": int(time.time()),
                     }
@@ -684,6 +697,14 @@ def create_app(
             elif isinstance(route, APIWebSocketRoute):
                 websockets.append(route.path)
         return Manifest(version=1, rest=rest, websocket=websockets, timestamp=int(time.time()))
+
+    @app.on_event("shutdown")
+    async def stop_poller() -> None:
+        nonlocal poller_task
+        if poller_task is not None:
+            poller_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await poller_task
 
 
     return app

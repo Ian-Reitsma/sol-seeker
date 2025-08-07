@@ -3,9 +3,13 @@ from solbot.engine import Strategy, RiskManager, PosteriorOutput
 
 def test_strategy_positive_edge_trades():
     risk = RiskManager()
+    risk.add_position("SOL", 1.0, 100.0)
+    risk.update_market_price("SOL", 110.0)
+    risk.update_market_price("SOL", 120.0)
+    risk.update_market_price("SOL", 130.0)
     strat = Strategy(risk)
     post = PosteriorOutput(rug=0.0, trend=0.6, revert=0.3, chop=0.1)
-    sig = strat.evaluate(post, fee=0.01, equity=1000.0, volatility=0.1)
+    sig = strat.evaluate(post, fee=0.01, equity=1000.0, volatility=0.1, liquidity=1000.0, price=10.0)
     assert sig is not None and sig.qty > 0
 
 
@@ -13,7 +17,18 @@ def test_strategy_fee_blocks_trade():
     risk = RiskManager()
     strat = Strategy(risk)
     post = PosteriorOutput(rug=0.0, trend=0.6, revert=0.3, chop=0.1)
-    sig = strat.evaluate(post, fee=0.5, equity=1000.0, volatility=0.1)
+    sig = strat.evaluate(post, fee=0.5, equity=1000.0, volatility=0.1, liquidity=1000.0, price=10.0)
+    assert sig is None
+
+
+def test_strategy_negative_sharpe_blocks_trade():
+    risk = RiskManager()
+    risk.add_position("SOL", 1.0, 100.0)
+    risk.update_market_price("SOL", 90.0)
+    risk.update_market_price("SOL", 80.0)
+    strat = Strategy(risk)
+    post = PosteriorOutput(rug=0.0, trend=1.0, revert=0.0, chop=0.0)
+    sig = strat.evaluate(post, fee=0.0, equity=1000.0, volatility=0.1, liquidity=1000.0, price=10.0)
     assert sig is None
 
 
@@ -26,6 +41,37 @@ def test_strategy_stop_loss_take_profit():
     risk.add_position("SOL", 1.0, 100.0)
     strat.check_exit("SOL", 130.0)
     assert "SOL" not in risk.positions
+
+
+def test_strategy_liquidity_and_position_caps():
+    import pytest
+
+    risk = RiskManager()
+    risk.add_position("SOL", 1.0, 100.0)
+    risk.update_market_price("SOL", 110.0)
+    risk.update_market_price("SOL", 120.0)
+    risk.update_market_price("SOL", 130.0)
+    strat = Strategy(risk, max_position_size=50, liquidity_cap=0.1)
+    post = PosteriorOutput(rug=0.0, trend=1.0, revert=0.0, chop=0.0)
+    sig = strat.evaluate(post, fee=0.0, equity=1000.0, volatility=0.1, liquidity=200.0, price=10.0)
+    assert sig is not None
+    assert sig.qty == pytest.approx(20.0)
+
+
+def test_strategy_price_scaling():
+    import pytest
+
+    risk = RiskManager()
+    risk.add_position("SOL", 1.0, 100.0)
+    risk.update_market_price("SOL", 110.0)
+    risk.update_market_price("SOL", 120.0)
+    risk.update_market_price("SOL", 130.0)
+    strat = Strategy(risk, liquidity_cap=1.0)
+    post = PosteriorOutput(rug=0.0, trend=1.0, revert=0.0, chop=0.0)
+    sig1 = strat.evaluate(post, fee=0.0, equity=1000.0, volatility=0.1, liquidity=1000.0, price=10.0)
+    sig2 = strat.evaluate(post, fee=0.0, equity=1000.0, volatility=0.1, liquidity=1000.0, price=20.0)
+    assert sig1 is not None and sig2 is not None
+    assert sig2.qty == pytest.approx(sig1.qty / 2)
 
 
 def _mk_swap(ts: int, amount_in: float, amount_out: float, fee: float, volume: float):

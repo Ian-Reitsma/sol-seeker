@@ -23,10 +23,10 @@ describe('api client', () => {
   });
 
   test('getDashboard fetches dashboard', async () => {
-    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [{ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }], risk: { equity: 0, unrealized: 0, drawdown: 0, realized: 0, var: 0 }, timestamp: 0 }) });
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [{ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }], risk: { equity: 0, unrealized: 0, drawdown: 0, realized: 0, var: 0, es: 0, sharpe: 0 }, timestamp: 0 }) });
     const data = await getDashboard();
     expect(fetch).toHaveBeenCalledWith('http://api.test/dashboard');
-    expect(data.risk.realized).toBe(0);
+    expect(data.risk.es).toBe(0);
     expect(data.orders[0].slippage).toBe(0.1);
   });
 

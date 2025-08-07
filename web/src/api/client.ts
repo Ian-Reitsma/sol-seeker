@@ -25,6 +25,8 @@ export interface RiskMetrics {
   drawdown: number;
   realized: number;
   var: number;
+  es: number;
+  sharpe: number;
 }
 
 export interface DashboardResponse {

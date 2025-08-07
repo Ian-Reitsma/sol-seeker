@@ -34,8 +34,8 @@ class FeeModel:
     def __init__(self, rate: float = 0.0) -> None:
         self.rate = rate
 
-    def apply(self, price: float, side: Side) -> float:
-        return price * (1 + self.rate) if side is Side.BUY else price * (1 - self.rate)
+    def fee(self, price: float, qty: float) -> float:
+        return abs(price * qty) * self.rate
 
 
 class SlippageModel:
@@ -49,15 +49,15 @@ class SlippageModel:
 
 
 class BacktestConnector:
-    """Connector stub whose price is externally assigned."""
+    """Connector stub returning predefined execution results."""
 
     def __init__(self) -> None:
-        self.price: float = 0.0
+        self.execution: ExecutionResult = ExecutionResult(price=0.0, slippage=0.0, fee=0.0)
 
     async def place_order(
         self, token: str, qty: float, side: Side, limit: Optional[float] = None
     ) -> ExecutionResult:
-        return ExecutionResult(price=self.price, slippage=0.0, fee=0.0)
+        return self.execution
 
 
 def load_csv(path: str) -> List[TradeBar]:
@@ -110,15 +110,16 @@ class BacktestRunner:
             action = strategy(bar)
             if action:
                 side, qty = action
-                exec_price = self.slippage_model.apply(price, side)
-                exec_price = self.fee_model.apply(exec_price, side)
-                setattr(self.engine.connector, "price", exec_price)
+                fill = self.slippage_model.apply(price, side)
+                slip = abs(fill - price)
+                fee = self.fee_model.fee(fill, qty)
+                self.engine.connector.execution = ExecutionResult(price=fill, slippage=slip, fee=fee)
                 await self.engine.place_order(token, qty, side)
                 if side is Side.BUY:
-                    cash -= exec_price * qty
+                    cash -= fill * qty + fee
                     position += qty
                 else:
-                    cash += exec_price * qty
+                    cash += fill * qty - fee
                     position -= qty
                 equity = cash + position * price
             equity_curve.append(equity)
