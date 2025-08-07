@@ -9,7 +9,7 @@ export function usePositions(apiKey: string) {
   useEffect(() => {
     let ws: WebSocket | null = null;
     getPositions(apiKey).then(setData).catch(setError);
-    ws = positionsWs();
+    ws = positionsWs(apiKey);
     ws.onmessage = (ev) => {
       try {
         setData(JSON.parse(ev.data));
