@@ -1,4 +1,7 @@
 from fastapi.testclient import TestClient
+import pytest
+from starlette.websockets import WebSocketDisconnect
+from prometheus_client import REGISTRY
 import asyncio
 
 from solbot.utils import BotConfig
@@ -32,6 +35,8 @@ class DummyLM:
 
 
 def test_api_order_flow():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
     tmp = tempfile.NamedTemporaryFile(delete=False)
     cfg = BotConfig(rpc_ws="wss://api.mainnet-beta.solana.com/", log_level="INFO", wallet="111", db_path=tmp.name, bootstrap=False)
     lm = DummyLM()
@@ -98,6 +103,20 @@ def test_api_order_flow():
         assert "timestamp" in root_data
         assert root_data["schema"] == SCHEMA_HASH
 
+        # unauthorized websocket connections should fail
+        ws = client.websocket_connect("/ws")
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()
+        ws.close()
+        ws = client.websocket_connect("/positions/ws")
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()
+        ws.close()
+        ws = client.websocket_connect("/dashboard/ws")
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()
+        ws.close()
+
         resp = client.get("/license")
         assert resp.status_code == 200
         lic = resp.json()
@@ -116,15 +135,21 @@ def test_api_order_flow():
         assert resp.status_code == 200
         assert "<iframe" in resp.text
 
-        resp = client.post(
-            "/orders",
-            json={"token": "SOL", "qty": 1, "side": "buy"},
-            headers={"X-API-Key": "test"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["token"] == "SOL"
-        assert data["quantity"] == 1
+        with client.websocket_connect("/ws", headers={"X-API-Key": "test"}) as order_ws, \
+            client.websocket_connect("/positions/ws", headers={"X-API-Key": "test"}) as pos_ws:
+            resp = client.post(
+                "/orders",
+                json={"token": "SOL", "qty": 1, "side": "buy"},
+                headers={"X-API-Key": "test"},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["token"] == "SOL"
+            assert data["quantity"] == 1
+            order_data = order_ws.receive_json()
+            assert order_data["token"] == "SOL"
+            pos_data = pos_ws.receive_json()
+            assert "SOL" in pos_data
 
         resp = client.get("/positions", headers={"X-API-Key": "test"})
         assert resp.status_code == 200
@@ -168,15 +193,6 @@ def test_api_order_flow():
         )
         assert not tasks
 
-        with client.websocket_connect("/positions/ws") as ws:
-            client.post(
-                "/orders",
-                json={"token": "SOL", "qty": 1, "side": "buy"},
-                headers={"X-API-Key": "test"},
-            )
-            data = ws.receive_json()
-            assert "SOL" in data
-
         with client.websocket_connect("/posterior/ws") as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=4.0), slot=1)
             data = ws.receive_json()
@@ -192,7 +208,7 @@ def test_api_order_flow():
         )
         assert not tasks
 
-        with client.websocket_connect("/dashboard/ws") as ws:
+        with client.websocket_connect("/dashboard/ws", headers={"X-API-Key": "test"}) as ws:
             fe.update(Event(kind=EventKind.SWAP, amount_in=6.0), slot=1)
             data = ws.receive_json()
             assert set(data) == {
