@@ -86,10 +86,11 @@ Front-end clients interact with the server via JSON resources and WebSocket feed
 * `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, open positions, open orders, risk metrics, and timestamp
 * `GET /manifest` – machine-readable listing of REST and WebSocket routes with version and timestamp
 * `GET /tv` – simple TradingView iframe for manual inspection
+* `WS /ws` – streams new orders *(requires `X-API-Key` header)*
 * `WS /features/ws` – streams objects with `event` metadata and associated `features` array
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
-* `WS /positions/ws` – streams position snapshots after each order
-* `WS /dashboard/ws` – streams combined dashboard updates with features, posterior, positions, orders, risk metrics, and timestamp whenever new events arrive
+* `WS /positions/ws` – streams position snapshots after each order *(requires `X-API-Key` header)*
+* `WS /dashboard/ws` – streams combined dashboard updates with features, posterior, positions, orders, risk metrics, and timestamp whenever new events arrive *(requires `X-API-Key` header)*
 
 Example usage:
 
@@ -117,10 +118,13 @@ curl http://127.0.0.1:8000/state
 curl http://127.0.0.1:8000/dashboard
 
 # stream dashboard updates
-websocat ws://127.0.0.1:8000/dashboard/ws
+websocat -H "X-API-Key: $API_KEY" ws://127.0.0.1:8000/dashboard/ws
 
 # stream position updates
-websocat ws://127.0.0.1:8000/positions/ws
+websocat -H "X-API-Key: $API_KEY" ws://127.0.0.1:8000/positions/ws
+
+# stream order updates
+websocat -H "X-API-Key: $API_KEY" ws://127.0.0.1:8000/ws
 ```
 
 Example responses:
