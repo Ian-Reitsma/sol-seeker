@@ -24,6 +24,8 @@ class DummyLM:
 class DummyOracle(CoingeckoOracle):
     async def price(self, token: str) -> float:
         return 10.0
+    async def volume(self, token: str) -> float:
+        return 1_000_000.0
 
 
 class DummyAssets(AssetService):
@@ -46,6 +48,11 @@ def build_client() -> TestClient:
     dal = DAL(cfg.db_path)
     oracle = DummyOracle(dal)
     connector = PaperConnector(dal, oracle)
+
+    async def no_fee():
+        return 0.0
+
+    connector._get_fees = no_fee  # type: ignore[attr-defined]
     risk = RiskManager()
     trade = TradeEngine(risk, connector, dal)
     fe = PyFeatureEngine()

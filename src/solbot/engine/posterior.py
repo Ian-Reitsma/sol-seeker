@@ -24,7 +24,7 @@ class PosteriorEngine:
     first ``n_features`` elements of the input feature vector.
     """
 
-    def __init__(self, n_features: int = 10) -> None:
+    def __init__(self, n_features: int = 11) -> None:
         self.n_features = n_features
         self.w_rug = np.zeros(n_features, dtype=np.float64)
         self.W_regime = np.zeros((3, n_features), dtype=np.float64)
@@ -83,4 +83,33 @@ class PosteriorEngine:
         y[regime] = 1.0
         error = y - probs
         self.W_regime += lr * error[:, None] @ feat[None, :]
+
+    # ------------------------------------------------------------------
+    # Action selection
+    # ------------------------------------------------------------------
+    def decide_action(
+        self, x: Sequence[float], volume_thr: float = 0.0, fee_thr: float = 1.0
+    ) -> str:
+        """Return trading action based on posterior and cost features.
+
+        Parameters
+        ----------
+        x:
+            Feature vector containing rolling volume, average fee and vwap at
+            indices 8, 9 and 10 respectively.
+        volume_thr:
+            Minimum normalized rolling volume required to enter a position.
+        fee_thr:
+            Maximum normalized average fee tolerated when entering.  Fees above
+            this threshold trigger an exit.
+        """
+
+        out = self.predict(x)
+        vol = x[8] if len(x) > 8 else 0.0
+        fee = x[9] if len(x) > 9 else 0.0
+        if out.trend > max(out.revert, out.chop) and vol > volume_thr and fee < fee_thr:
+            return "enter"
+        if out.revert > out.trend or fee > fee_thr:
+            return "exit"
+        return "flat"
 

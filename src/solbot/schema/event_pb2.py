@@ -33,3 +33,5 @@ class Event:
     amount_out: float = 0.0
     reserve_a: float = 0.0
     reserve_b: float = 0.0
+    fee: float = 0.0
+    volume: float = 0.0

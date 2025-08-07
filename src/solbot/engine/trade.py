@@ -7,7 +7,7 @@ import asyncio
 from google.protobuf.json_format import MessageToDict
 
 from .risk import RiskManager
-from ..exchange import AbstractConnector
+from ..exchange import AbstractConnector, ExecutionResult
 from ..persistence import DAL, DBOrder
 from ..types import Side
 
@@ -19,6 +19,8 @@ class Order:
     token: str
     quantity: float
     price: float
+    slippage: float
+    fee: float
     side: Side
     id: int
 
@@ -42,15 +44,30 @@ class TradeEngine:
         self, token: str, qty: float, side: Side, limit: Optional[float] = None
     ) -> Order:
         async with self.lock:
-            price = await self.connector.place_order(token, qty, side, limit)
-            order = Order(token=token, quantity=qty, price=price, side=side, id=self.next_id)
+            execution: ExecutionResult = await self.connector.place_order(token, qty, side, limit)
+            order = Order(
+                token=token,
+                quantity=qty,
+                price=execution.price,
+                slippage=execution.slippage,
+                fee=execution.fee,
+                side=side,
+                id=self.next_id,
+            )
             self.next_id += 1
             self.orders.append(order)
-            self.dal.add_order(DBOrder(id=None, token=token, quantity=qty, side=side.value, price=price))
-            if side is Side.BUY:
-                self.risk.add_position(token, qty, price)
-            else:
-                self.risk.remove_position(token, qty, price)
+            self.dal.add_order(
+                DBOrder(
+                    id=None,
+                    token=token,
+                    quantity=qty,
+                    side=side.value,
+                    price=order.price,
+                    fee=order.fee,
+                    slippage=order.slippage,
+                )
+            )
+            self.risk.record_trade(token, qty, execution.price, side, execution.fee)
             self.dal.upsert_position(self.risk.positions.get(token))
             return order
 

@@ -6,9 +6,16 @@ from solbot.schema import Event, EventKind
 
 
 def _mk_event(kind: EventKind, **kwargs) -> Event:
-    return Event(kind=kind, ts=kwargs.get("ts", 0), amount_in=kwargs.get("amount_in", 0.0),
-                 amount_out=kwargs.get("amount_out", 0.0), reserve_a=kwargs.get("reserve_a", 0.0),
-                 reserve_b=kwargs.get("reserve_b", 0.0))
+    return Event(
+        kind=kind,
+        ts=kwargs.get("ts", 0),
+        amount_in=kwargs.get("amount_in", 0.0),
+        amount_out=kwargs.get("amount_out", 0.0),
+        reserve_a=kwargs.get("reserve_a", 0.0),
+        reserve_b=kwargs.get("reserve_b", 0.0),
+        fee=kwargs.get("fee", 0.0),
+        volume=kwargs.get("volume", 0.0),
+    )
 
 
 def test_f01_add_liquidity_updates():
@@ -129,3 +136,17 @@ def test_unsubscribe_removes_queue():
     assert q in fe._subs
     fe.unsubscribe(q)
     assert q not in fe._subs
+
+
+def test_fee_and_vwap_features():
+    fe = PyFeatureEngine()
+    ev1 = _mk_event(EventKind.SWAP, amount_in=1.0, amount_out=2.0, fee=0.1, volume=5.0, ts=1)
+    fe.update(ev1, slot=1)
+    ev2 = _mk_event(EventKind.SWAP, amount_in=2.0, amount_out=4.0, fee=0.2, volume=10.0, ts=2)
+    fe.update(ev2, slot=1)
+    assert fe.curr[8] == 15.0  # rolling volume
+    assert np.isclose(fe.curr[9], 0.15)  # average fee
+    price1 = 2.0 / 1.0
+    price2 = 4.0 / 2.0
+    expected_vwap = (price1 * 5.0 + price2 * 10.0) / 15.0
+    assert np.isclose(fe.curr[10], expected_vwap)

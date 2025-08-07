@@ -47,6 +47,11 @@ def test_api_order_flow():
 
     oracle = DummyOracle(dal)
     connector = PaperConnector(dal, oracle)
+
+    async def no_fee():
+        return 0.0
+
+    connector._get_fees = no_fee  # type: ignore[attr-defined]
     risk = RiskManager()
     trade = TradeEngine(risk, connector, dal)
     fe = PyFeatureEngine()
@@ -146,8 +151,10 @@ def test_api_order_flow():
             data = resp.json()
             assert data["token"] == "SOL"
             assert data["quantity"] == 1
+            assert pytest.approx(data["slippage"], rel=1e-6) >= 0.0
             order_data = order_ws.receive_json()
             assert order_data["token"] == "SOL"
+            assert "fee" in order_data and "slippage" in order_data
             pos_data = pos_ws.receive_json()
             assert "SOL" in pos_data
 
@@ -222,7 +229,7 @@ def test_api_order_flow():
             }
             assert len(data["features"]) == 256
             assert len(data["orders"]) >= 1
-            assert set(data["risk"]) == {"equity", "unrealized", "drawdown"}
+            assert set(data["risk"]) == {"equity", "unrealized", "drawdown", "realized", "var"}
         client.portal.call(asyncio.sleep, 0)
         tasks = client.portal.call(
             lambda: [
@@ -244,6 +251,8 @@ def test_api_order_flow():
         assert dash["risk"]["equity"] == risk.equity
         assert dash["risk"]["unrealized"] == 0.0
         assert dash["risk"]["drawdown"] == risk.drawdown
+        assert dash["risk"]["realized"] == risk.total_realized()
+        assert dash["risk"]["var"] == risk.var
 
         resp = client.get("/manifest")
         assert resp.status_code == 200

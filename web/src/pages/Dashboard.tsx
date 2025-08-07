@@ -12,11 +12,15 @@ interface Order {
   quantity: number;
   side: string;
   price: number;
+  slippage: number;
+  fee: number;
 }
 interface Risk {
   equity: number;
   unrealized: number;
   drawdown: number;
+  realized: number;
+  var: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -115,6 +119,8 @@ const Dashboard: React.FC = () => {
           <ul>
             <li>Equity: {risk.equity}</li>
             <li>Unrealized: {risk.unrealized}</li>
+            <li>Realized: {risk.realized}</li>
+            <li>VaR: {risk.var}</li>
             <li>Drawdown: {risk.drawdown}</li>
           </ul>
         )}
@@ -150,6 +156,8 @@ const Dashboard: React.FC = () => {
               <th>Qty</th>
               <th>Side</th>
               <th>Price</th>
+              <th>Slippage</th>
+              <th>Fee</th>
             </tr>
           </thead>
           <tbody>
@@ -160,6 +168,8 @@ const Dashboard: React.FC = () => {
                 <td>{o.quantity}</td>
                 <td>{o.side}</td>
                 <td>{o.price}</td>
+                <td>{o.slippage}</td>
+                <td>{o.fee}</td>
               </tr>
             ))}
           </tbody>

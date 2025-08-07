@@ -13,6 +13,8 @@ interface Order {
   quantity: number;
   side: string;
   price: number;
+  slippage: number;
+  fee: number;
 }
 
 interface Position {
@@ -103,6 +105,8 @@ const Trading: React.FC = () => {
             <th>Qty</th>
             <th>Side</th>
             <th>Price</th>
+            <th>Slippage</th>
+            <th>Fee</th>
           </tr>
         </thead>
         <tbody>
@@ -113,6 +117,8 @@ const Trading: React.FC = () => {
               <td>{o.quantity}</td>
               <td>{o.side}</td>
               <td>{o.price}</td>
+              <td>{o.slippage}</td>
+              <td>{o.fee}</td>
             </tr>
           ))}
         </tbody>

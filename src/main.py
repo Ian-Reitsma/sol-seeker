@@ -12,6 +12,7 @@ from solbot.engine import (
     PosteriorEngine,
     RiskManager,
     PyFeatureEngine,
+    Strategy,
 )
 from solbot.utils import (
     parse_args,
@@ -37,14 +38,20 @@ def main() -> None:
     streamer = data.EventStream(cfg.rpc_ws)
     posterior = PosteriorEngine()
     risk = RiskManager()
+    strategy = Strategy(risk)
     fe = PyFeatureEngine()
 
     for event in streamer.stream_events():
         vec = fe.update(event, slot=int(event.ts))
         features = vec[: posterior.n_features]
         post = posterior.predict(features)
-        print(f"event {event.kind.name}: trend={post.trend:.2f}")
-        risk.update_equity(risk.equity + 0.0)  # placeholder for real P&L tracking
+        fee = 0.001  # placeholder fee estimate
+        equity = risk.portfolio_value() or 0.0
+        signal = strategy.evaluate(post, fee, equity)
+        if signal:
+            print(f"event {event.kind.name}: edge={signal.edge:.3f} qty={signal.qty:.3f}")
+            risk.add_position("SOL", signal.qty, 1.0)
+        strategy.check_exit("SOL", 1.0)
 
 
 if __name__ == "__main__":

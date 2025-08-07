@@ -48,9 +48,9 @@ if _YAML.get("version") != SCHEMA_VERSION:
     raise ValueError("feature schema version mismatch")
 
 FEATURES: List[Dict] = _YAML.get("features", [])
-# we touch indices up to 5, ensure base dim is at least 6 so the vector is
+# we touch indices up to 10, ensure base dim is at least 11 so the vector is
 # forward compatible with the spec's initial 64 dimensional subset
-BASE_DIM = max(len(FEATURES), 6)
+BASE_DIM = max(len(FEATURES), 11)
 TOTAL_DIM = 256
 LAM = 0.995
 EPS = 1e-8
@@ -90,6 +90,10 @@ class PyFeatureEngine(FeatureEngine):
         self._slot: Optional[int] = None
         self._last_ts: Optional[int] = None
         self._cum_liq = 0.0
+        self._vol_sum = 0.0
+        self._fee_sum = 0.0
+        self._pv_sum = 0.0
+        self._swap_count = 0
         self._history: Deque[Tuple[Event, np.ndarray]] = deque(maxlen=HISTORY_SIZE)
         self._subs: List["queue.Queue[Tuple[Event, np.ndarray]]"] = []
 
@@ -124,6 +128,17 @@ class PyFeatureEngine(FeatureEngine):
             signed = event.amount_in - event.amount_out
             self._update_idx(2, self.curr[2] + signed, slot)
             self._update_idx(3, self.curr[3] + abs(signed), slot)
+            self._vol_sum += event.volume
+            self._fee_sum += event.fee
+            self._pv_sum += event.volume * (
+                event.amount_out / (event.amount_in + EPS)
+            )
+            self._swap_count += 1
+            self._update_idx(8, self._vol_sum, slot)
+            avg_fee = self._fee_sum / max(self._swap_count, 1)
+            self._update_idx(9, avg_fee, slot)
+            vwap = self._pv_sum / max(self._vol_sum, EPS)
+            self._update_idx(10, vwap, slot)
             if self._last_ts is not None:
                 dt = max(event.ts - self._last_ts, 1)
                 self._update_idx(4, 1000.0 / dt, slot)
@@ -146,6 +161,34 @@ class PyFeatureEngine(FeatureEngine):
                 with contextlib.suppress(Exception):
                     q.get_nowait()
                     q.put_nowait((event, vec.copy()))
+        return vec
+
+    def update_network_metrics(self, volume: float, fee: float, slot: int) -> FeatureVector:
+        """Ingest network-wide volume and prioritization fee statistics."""
+
+        if self._slot is None:
+            self._slot = slot
+        elif slot != self._slot:
+            self._rotate(slot)
+            self._slot = slot
+
+        if self._decay_slot != slot:
+            self._decay_inactive(slot)
+            self._decay_slot = slot
+
+        self._update_idx(6, volume, slot)
+        self._update_idx(7, fee, slot)
+
+        vec = self._write_out()
+        dummy = Event(ts=0, kind=EventKind.NONE)
+        self._history.append((dummy, vec[: self.dim].copy()))
+        for q in list(self._subs):
+            try:
+                q.put_nowait((dummy, vec.copy()))
+            except queue.Full:
+                with contextlib.suppress(Exception):
+                    q.get_nowait()
+                    q.put_nowait((dummy, vec.copy()))
         return vec
 
     def _update_idx(self, i: int, value: float, slot: int) -> None:
@@ -215,6 +258,10 @@ class PyFeatureEngine(FeatureEngine):
         self.curr.fill(0.0)
         self.norm.fill(0.0)
         self._cum_liq = 0.0
+        self._vol_sum = 0.0
+        self._fee_sum = 0.0
+        self._pv_sum = 0.0
+        self._swap_count = 0
         self.last_touched.fill(slot - 1)
 
     def reset(self) -> None:
@@ -228,6 +275,10 @@ class PyFeatureEngine(FeatureEngine):
         self._slot = None
         self._last_ts = None
         self._cum_liq = 0.0
+        self._vol_sum = 0.0
+        self._fee_sum = 0.0
+        self._pv_sum = 0.0
+        self._swap_count = 0
         self.last_touched.fill(0)
         self._decay_slot = -1
 

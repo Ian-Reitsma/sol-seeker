@@ -59,6 +59,8 @@ class OrderResponse(BaseModel):
     quantity: float
     side: Side
     price: float
+    slippage: float
+    fee: float
 
 
 class FeatureInfo(BaseModel):
@@ -320,15 +322,29 @@ def create_app(
             posterior.predict(vec).__dict__ if (features and posterior) else None
         )
         unrealized = sum(p.unrealized for p in risk.positions.values())
+        orders = [
+            {
+                "id": o.id,
+                "token": o.token,
+                "quantity": o.quantity,
+                "side": o.side.value,
+                "price": o.price,
+                "slippage": o.slippage,
+                "fee": o.fee,
+            }
+            for o in trade.list_orders()
+        ] if bootstrap.is_ready() else []
         return {
             "features": vec.tolist() if vec is not None else None,
             "posterior": posterior_out,
             "positions": trade.list_positions() if bootstrap.is_ready() else {},
-            "orders": [o.__dict__ for o in trade.list_orders()] if bootstrap.is_ready() else [],
+            "orders": orders,
             "risk": {
                 "equity": risk.equity,
                 "unrealized": unrealized,
                 "drawdown": risk.drawdown,
+                "realized": risk.total_realized(),
+                "var": risk.var,
             },
             "timestamp": int(time.time()),
         }
@@ -343,7 +359,18 @@ def create_app(
     async def orders(key: None = Depends(check_key)) -> list[dict]:
         if not bootstrap.is_ready():
             raise HTTPException(status_code=503, detail="state: BOOTSTRAPPING")
-        return [order.__dict__ for order in trade.list_orders()]
+        return [
+            {
+                "id": o.id,
+                "token": o.token,
+                "quantity": o.quantity,
+                "side": o.side.value,
+                "price": o.price,
+                "slippage": o.slippage,
+                "fee": o.fee,
+            }
+            for o in trade.list_orders()
+        ]
 
     @app.post("/orders", response_model=OrderResponse)
     async def place_order(req: OrderRequest, key: None = Depends(check_key)) -> OrderResponse:
@@ -354,9 +381,18 @@ def create_app(
         start = time.perf_counter_ns()
         order = await trade.place_order(req.token, req.qty, req.side, req.limit)
         latency_hist.observe(time.perf_counter_ns() - start)
+        payload = {
+            "id": order.id,
+            "token": order.token,
+            "quantity": order.quantity,
+            "side": order.side.value,
+            "price": order.price,
+            "slippage": order.slippage,
+            "fee": order.fee,
+        }
         for ws in list(connections):
             try:
-                await ws.send_json(order.__dict__)
+                await ws.send_json(payload)
             except WebSocketDisconnect:
                 connections.remove(ws)
         positions = trade.list_positions()
@@ -366,8 +402,8 @@ def create_app(
             except WebSocketDisconnect:
                 pos_connections.remove(ws)
         for q in list(order_subs):
-            q.put_nowait(order.__dict__)
-        return OrderResponse(**order.__dict__)
+            q.put_nowait(payload)
+        return OrderResponse(**payload)
 
     @app.websocket("/ws")
     async def ws(ws: WebSocket):
@@ -551,13 +587,26 @@ def create_app(
                         "positions": trade.list_positions()
                         if bootstrap.is_ready()
                         else {},
-                        "orders": [o.__dict__ for o in trade.list_orders()]
+                        "orders": [
+                            {
+                                "id": o.id,
+                                "token": o.token,
+                                "quantity": o.quantity,
+                                "side": o.side.value,
+                                "price": o.price,
+                                "slippage": o.slippage,
+                                "fee": o.fee,
+                            }
+                            for o in trade.list_orders()
+                        ]
                         if bootstrap.is_ready()
                         else [],
                         "risk": {
                             "equity": risk.equity,
                             "unrealized": sum(p.unrealized for p in risk.positions.values()),
                             "drawdown": risk.drawdown,
+                            "realized": risk.total_realized(),
+                            "var": risk.var,
                         },
                         "timestamp": int(time.time()),
                     }
@@ -584,13 +633,26 @@ def create_app(
                         "positions": trade.list_positions()
                         if bootstrap.is_ready()
                         else {},
-                        "orders": [o.__dict__ for o in trade.list_orders()]
+                        "orders": [
+                            {
+                                "id": o.id,
+                                "token": o.token,
+                                "quantity": o.quantity,
+                                "side": o.side.value,
+                                "price": o.price,
+                                "slippage": o.slippage,
+                                "fee": o.fee,
+                            }
+                            for o in trade.list_orders()
+                        ]
                         if bootstrap.is_ready()
                         else [],
                         "risk": {
                             "equity": risk.equity,
                             "unrealized": sum(p.unrealized for p in risk.positions.values()),
                             "drawdown": risk.drawdown,
+                            "realized": risk.total_realized(),
+                            "var": risk.var,
                         },
                         "timestamp": int(time.time()),
                     }
