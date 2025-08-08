@@ -30,8 +30,15 @@
     </script>
     
     <script>
-    // Basic connection check to API - CODEX AGENT: BUILD THIS THOROUGHLY IN THE CONTEXT OF THE API
-    fetch('/health').then(r => r.json()).then(h => console.log('API health', h)).catch(console.error);
+    // Basic connection check to API with configurable base and API key
+    const API_BASE = localStorage.getItem('apiBase') || window.location.origin;
+    const API_KEY = localStorage.getItem('apiKey') || localStorage.getItem('sol_seeker_api_key') || '';
+    window.API_BASE = API_BASE;
+    window.API_KEY = API_KEY;
+    fetch(`${API_BASE}/health`, { headers: API_KEY ? { 'X-API-Key': API_KEY } : {} })
+        .then(r => r.json())
+        .then(h => console.log('API health', h))
+        .catch(err => console.error('API health check failed', err));
     </script>
     
     <style>
@@ -580,7 +587,7 @@
                         <span class="text-sm hologram-text text-blade-amber/80">SYSTEM STATUS</span>
                         <div class="w-3 h-3 bg-cyan-glow rounded-full status-online"></div>
                     </div>
-                    <div class="text-2xl font-bold cyan-glow data-flicker">
+                    <div class="text-2xl font-bold cyan-glow data-flicker" id="systemStatus">
                         OPERATIONAL
                     </div>
                     <div class="text-sm hologram-text text-blade-amber/80 mt-1">
@@ -2765,12 +2772,23 @@
 
         // Trading toggle functionality
         let tradingActive = false;
-        document.getElementById('tradingToggle').addEventListener('click', function() {
-            tradingActive = !tradingActive;
-            this.textContent = tradingActive ? '⏸ PAUSE' : '▶ START';
-            this.className = tradingActive ? 
+        const tradingToggle = document.getElementById('tradingToggle');
+        function updateTradingButton() {
+            tradingToggle.textContent = tradingActive ? '⏸ PAUSE' : '▶ START';
+            tradingToggle.className = tradingActive ?
                 'control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative bg-cyan-glow/20 border-cyan-glow/50 text-cyan-glow' :
                 'control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative';
+        }
+        updateTradingButton();
+        tradingToggle.addEventListener('click', async function() {
+            const next = !tradingActive;
+            try {
+                await SolSeekerAPI.setState({ running: next });
+                tradingActive = next;
+                updateTradingButton();
+            } catch (err) {
+                console.error('trading toggle failed', err);
+            }
         });
 
         // Tab functionality for positions/history
@@ -2800,28 +2818,52 @@
         let selectedPosition = null;
         
         positionRows.forEach(row => {
-            row.addEventListener('click', function() {
+            row.addEventListener('click', async function() {
                 // Remove previous selection
                 if (selectedPosition) {
                     selectedPosition.classList.remove('selected');
                 }
-                
+
                 // Add selection to clicked row
                 this.classList.add('selected');
                 selectedPosition = this;
-                
+
                 // Show position details modal
-                showPositionDetails(this.getAttribute('data-token'));
+                await showPositionDetails(this.getAttribute('data-token'));
             });
+        });
+
+        const positionModal = document.getElementById('positionModal');
+        document.getElementById('closeModal').addEventListener('click', () => {
+            positionModal.classList.remove('show');
+            if (selectedPosition) {
+                selectedPosition.classList.remove('selected');
+                selectedPosition = null;
+            }
+        });
+        positionModal.addEventListener('click', e => {
+            if (e.target === positionModal) {
+                positionModal.classList.remove('show');
+                if (selectedPosition) {
+                    selectedPosition.classList.remove('selected');
+                    selectedPosition = null;
+                }
+            }
         });
 
         // Settings panel functionality
         const settingsToggle = document.getElementById('settingsToggle');
         const settingsPanel = document.getElementById('settingsPanel');
         const closeSettings = document.getElementById('closeSettings');
-        
-        settingsToggle.addEventListener('click', function() {
+
+        settingsToggle.addEventListener('click', async function() {
             settingsPanel.classList.add('settings-panel-open');
+            try {
+                const s = await SolSeekerAPI.getState();
+                console.log('state', s);
+            } catch (err) {
+                console.error('failed to load state', err);
+            }
         });
         
         closeSettings.addEventListener('click', function() {
@@ -3129,15 +3171,15 @@
         document.querySelector('.emergency-stop').addEventListener('click', async function() {
             if (confirm('EMERGENCY STOP: This will immediately close all positions and halt trading. Continue?')) {
                 try {
-                    const response = await SolSeekerAPI.post('/state', { 
-                        emergency_stop: true 
+                    const response = await SolSeekerAPI.setState({
+                        running: false,
+                        emergency_stop: true
                     });
                     
                     if (response) {
                         // Update UI to reflect emergency stop
-                        document.getElementById('tradingToggle').textContent = '▶ START';
-                        document.getElementById('tradingToggle').className = 'control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative';
                         tradingActive = false;
+                        updateTradingButton();
                         
                         // Show confirmation
                         this.textContent = '✓ STOPPED';
@@ -3178,8 +3220,8 @@
         // Complete Sol-Seeker API Client
         class SolSeekerAPI {
             constructor() {
-                this.baseURL = window.location.origin; // Assumes API is on same domain
-                this.apiKey = localStorage.getItem('sol_seeker_api_key') || '';
+                this.baseURL = window.API_BASE || window.location.origin;
+                this.apiKey = window.API_KEY || localStorage.getItem('sol_seeker_api_key') || '';
                 this.isConnected = false;
                 this.retryCount = 0;
                 this.maxRetries = 3;
