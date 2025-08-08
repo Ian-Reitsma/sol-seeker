@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 from .spec import idx
 
 try:  # Attempt to import the compiled rustcore extension.
@@ -25,7 +25,7 @@ class FeatureEngine:
     def __init__(self) -> None:
         self._core = rustcore.FeatureEngine()
 
-    def push_event(self, evt: rustcore.PyEvent | Dict[str, Any]) -> None:
+    def push_event(self, evt: Union[rustcore.PyEvent, Dict[str, Any]]) -> None:
         """Push a parsed event into the engine."""
 
         if isinstance(evt, rustcore.PyEvent):

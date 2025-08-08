@@ -164,8 +164,8 @@ def create_app(
     trade: TradeEngine,
     assets: AssetService,
     bootstrap: BootstrapCoordinator,
-    features: FeatureEngine | None = None,
-    posterior: PosteriorEngine | None = None,
+    features: Optional[FeatureEngine] = None,
+    posterior: Optional[PosteriorEngine] = None,
     metrics_interval: float = 0.0,
     ) -> FastAPI:
     app = FastAPI(title="sol-bot API")
@@ -186,7 +186,7 @@ def create_app(
     pos_connections: list[WebSocket] = []
     pos_lock = asyncio.Lock()
     order_subs: list[asyncio.Queue[dict]] = []
-    poller_task: asyncio.Task | None = None
+    poller_task: Optional[asyncio.Task] = None
     runtime_state = {"running": True, "emergency_stop": False, "settings": {}}
 
     def subscribe_orders() -> asyncio.Queue[dict]:
@@ -389,7 +389,7 @@ def create_app(
         return trade.list_positions()
 
     @app.get("/orders")
-    async def orders(status: str | None = Query(None), key: None = Depends(check_key)) -> list[dict]:
+    async def orders(status: Optional[str] = Query(None), key: None = Depends(check_key)) -> list[dict]:
         if not bootstrap.is_ready():
             raise HTTPException(status_code=503, detail="state: BOOTSTRAPPING")
         return [
