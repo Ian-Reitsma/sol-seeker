@@ -58,6 +58,43 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "summary": "Update State",
+                "operationId": "update_state_state_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StateUpdate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Update State State Post"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/": {
@@ -260,6 +297,17 @@
             "get": {
                 "summary": "Orders",
                 "operationId": "orders_orders_get",
+                "parameters": [
+                    {
+                        "required": false,
+                        "schema": {
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -616,12 +664,17 @@
                     "timestamp": {
                         "type": "integer",
                         "title": "Timestamp"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
                     }
                 },
                 "type": "object",
                 "required": [
                     "features",
-                    "timestamp"
+                    "timestamp",
+                    "status"
                 ],
                 "title": "FeatureSnapshot"
             },
@@ -726,6 +779,14 @@
                     "fee": {
                         "type": "number",
                         "title": "Fee"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "title": "Timestamp"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
                     }
                 },
                 "type": "object",
@@ -736,9 +797,29 @@
                     "side",
                     "price",
                     "slippage",
-                    "fee"
+                    "fee",
+                    "timestamp",
+                    "status"
                 ],
                 "title": "OrderResponse"
+            },
+            "StateUpdate": {
+                "properties": {
+                    "running": {
+                        "type": "boolean",
+                        "title": "Running"
+                    },
+                    "emergency_stop": {
+                        "type": "boolean",
+                        "title": "Emergency Stop"
+                    },
+                    "settings": {
+                        "type": "object",
+                        "title": "Settings"
+                    }
+                },
+                "type": "object",
+                "title": "StateUpdate"
             },
             "PosteriorSnapshot": {
                 "properties": {

@@ -73,17 +73,20 @@ commit and schema hash.
 
 ### Dashboard API
 
-Front-end clients interact with the server via JSON resources and WebSocket feeds:
+Front-end clients interact with the server via JSON resources and WebSocket feeds. Every dashboard control should communicate with these endpoints so the UI always reflects backend state:
 
 * `GET /` – resource index with a map of endpoints, TradingView template URL, timestamp, and schema hash
 * `GET /features` – latest normalized feature vector with timestamp
 * `GET /posterior` – most recent posterior probabilities over market regimes with timestamp
 * `GET /license` – license status for the configured wallet
 * `GET /state` – combined license mode and bootstrap status
+* `POST /state` – update runtime trading state (start/pause trading, emergency stop, and custom settings)
 * `GET /positions` – open positions *(requires `X-API-Key` header)*
 * `POST /orders` – place paper trade order *(requires `X-API-Key` header)*
+* `GET /orders` – list recent orders, optionally filtered by `status` (`open` or `closed`) *(requires `X-API-Key` header)*
 * `GET /features/schema` – mapping of feature indices to names with schema hash and timestamp metadata
 * `GET /dashboard` – consolidated view containing the latest feature vector, posterior probabilities, open positions, open orders, risk metrics, and timestamp
+* `GET /chart/{symbol}` – price history points or a TradingView URL for embedding charts
 * `GET /manifest` – machine-readable listing of REST and WebSocket routes with version and timestamp
 * `GET /tv` – simple TradingView iframe for manual inspection
 * `WS /ws` – streams new orders *(requires `X-API-Key` header)*
@@ -91,6 +94,10 @@ Front-end clients interact with the server via JSON resources and WebSocket feed
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
 * `WS /positions/ws` – streams position snapshots after each order *(requires `X-API-Key` header)*
 * `WS /dashboard/ws` – streams combined dashboard updates with features, posterior, positions, orders, risk metrics, and timestamp whenever new events arrive *(requires `X-API-Key` header)*
+* `WS /orders/ws` – streams newly executed orders and closures in real time *(requires `X-API-Key` header)*
+
+The dashboard derives open-position metrics and position‑detail modals by fetching `/positions` and listening on `/positions/ws`, while the trading feed and History tab stream new executions and closures from `/orders/ws` and load past trades via `/orders?status=closed`.
+Users may configure the API base URL and API key in the settings panel; these values are stored in local storage and appended to all REST and WebSocket requests.
 
 Example usage:
 
@@ -114,6 +121,15 @@ curl http://127.0.0.1:8000/license
 # fetch combined state snapshot
 curl http://127.0.0.1:8000/state
 
+# pause trading
+curl -X POST -H "Content-Type: application/json" -d '{"running":false}' http://127.0.0.1:8000/state
+
+# fetch price chart or TradingView URL for SOL
+curl http://127.0.0.1:8000/chart/SOL
+
+# trigger emergency stop
+curl -X POST -H "Content-Type: application/json" -d '{"emergency_stop":true}' http://127.0.0.1:8000/state
+
 # fetch combined dashboard snapshot
 curl http://127.0.0.1:8000/dashboard
 
@@ -135,6 +151,9 @@ Example responses:
 
 // GET /state
 {
+  "running": true,
+  "emergency_stop": false,
+  "settings": {},
   "license": {"wallet":"11111111111111111111111111111111","mode":"full","timestamp":1697040000},
   "status": {"state":"RUNNING"},
   "timestamp": 1697040000
@@ -145,7 +164,7 @@ Example responses:
   "features": [0.0, 1.2, 0.3, ...],
   "posterior": {"rug":0.05,"trend":0.7,"revert":0.2,"chop":0.05},
   "positions": {"SOL":{"qty":1,"px":10.0}},
-  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0}],
+  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0,"slippage":0.1,"fee":0.01,"timestamp":1697040000,"status":"closed"}],
   "risk": {"equity":1000.0,"unrealized":0.0,"drawdown":0.0},
   "timestamp": 1697040000
 }
@@ -156,7 +175,7 @@ Example responses:
   "features": [0.0, 1.2, 0.3, ...],
   "posterior": {"rug":0.05,"trend":0.7,"revert":0.2,"chop":0.05},
   "positions": {"SOL":{"qty":1,"px":10.0}},
-  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0}],
+  "orders": [{"id":1,"token":"SOL","quantity":1,"side":"buy","price":10.0,"slippage":0.1,"fee":0.01,"timestamp":1697040000,"status":"closed"}],
   "risk": {"equity":1000.0,"unrealized":0.0,"drawdown":0.0},
   "timestamp": 1697040000
 }
@@ -232,3 +251,4 @@ and is z-score normalised via the exponentially decaying Welford update.
 | 5     | `minted_amount`    | `MINT`                              | token     |
 
 Normalization: all features use z-score normalization with λ=0.995 and ε=1e‑8.
+

@@ -3,6 +3,14 @@ import API_BASE_URL from '../api';
 
 const API_BASE = API_BASE_URL;
 
+function promptApiKey(): void {
+  const key = window.prompt('API key required. Please enter your API key:');
+  if (key) {
+    localStorage.setItem('apiKey', key);
+    window.dispatchEvent(new CustomEvent('apiKey', { detail: key }));
+  }
+}
+
 export type LicenseResponse = paths['/license']['get']['responses']['200']['content']['application/json'];
 export type PositionsResponse = paths['/positions']['get']['responses']['200']['content']['application/json'];
 export type OrderRequest = paths['/orders']['post']['requestBody']['content']['application/json'];
@@ -15,6 +23,8 @@ export interface OrderResponse {
   price: number;
   slippage: number;
   fee: number;
+  timestamp: number;
+  status: string;
 }
 
 export type OrdersResponse = OrderResponse[];
@@ -39,6 +49,10 @@ export interface DashboardResponse {
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
+  if (res.status === 401) {
+    promptApiKey();
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
@@ -62,8 +76,9 @@ export async function getPositions(apiKey: string): Promise<PositionsResponse> {
   return handleResponse<PositionsResponse>(res);
 }
 
-export async function getOrders(apiKey: string): Promise<OrdersResponse> {
-  const res = await fetch(`${API_BASE}/orders`, {
+export async function getOrders(apiKey: string, status?: string): Promise<OrdersResponse> {
+  const url = status ? `${API_BASE}/orders?status=${encodeURIComponent(status)}` : `${API_BASE}/orders`;
+  const res = await fetch(url, {
     headers: { 'X-API-Key': apiKey }
   });
   return handleResponse<OrdersResponse>(res);
@@ -85,14 +100,26 @@ function httpToWs(url: string): string {
   return url.replace(/^http/, 'ws');
 }
 
-export function dashboardWs(apiKey: string): WebSocket {
-  return new WebSocket(
-    `${httpToWs(API_BASE)}/dashboard/ws?key=${encodeURIComponent(apiKey)}`
+function createWs(path: string, apiKey: string): WebSocket {
+  const ws = new WebSocket(
+    `${httpToWs(API_BASE)}${path}?key=${encodeURIComponent(apiKey)}`
   );
+  ws.onclose = (ev) => {
+    if (ev.code === 1008) {
+      promptApiKey();
+    }
+  };
+  return ws;
+}
+
+export function dashboardWs(apiKey: string): WebSocket {
+  return createWs('/dashboard/ws', apiKey);
 }
 
 export function positionsWs(apiKey: string): WebSocket {
-  return new WebSocket(
-    `${httpToWs(API_BASE)}/positions/ws?key=${encodeURIComponent(apiKey)}`
-  );
+  return createWs('/positions/ws', apiKey);
+}
+
+export function ordersWs(apiKey: string): WebSocket {
+  return createWs('/orders/ws', apiKey);
 }

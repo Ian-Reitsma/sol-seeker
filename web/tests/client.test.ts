@@ -8,6 +8,7 @@ import {
   placeOrder,
   dashboardWs,
   positionsWs,
+  ordersWs,
 } from '../src/api/client';
 
 describe('api client', () => {
@@ -23,7 +24,7 @@ describe('api client', () => {
   });
 
   test('getDashboard fetches dashboard', async () => {
-    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [{ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }], risk: { equity: 0, unrealized: 0, drawdown: 0, realized: 0, var: 0, es: 0, sharpe: 0 }, timestamp: 0 }) });
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ features: [], posterior: null, positions: {}, orders: [{ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01, timestamp: 0, status: 'closed' }], risk: { equity: 0, unrealized: 0, drawdown: 0, realized: 0, var: 0, es: 0, sharpe: 0 }, timestamp: 0 }) });
     const data = await getDashboard();
     expect(fetch).toHaveBeenCalledWith('http://api.test/dashboard');
     expect(data.risk.es).toBe(0);
@@ -43,7 +44,7 @@ describe('api client', () => {
   });
 
   test('placeOrder posts with api key', async () => {
-    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01 }) });
+    (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 1, token: 'SOL', quantity: 1, side: 'buy', price: 10, slippage: 0.1, fee: 0.01, timestamp: 0, status: 'closed' }) });
     const resp = await placeOrder('k', { token: 'SOL', qty: 1, side: 'buy' });
     expect(fetch).toHaveBeenCalledWith('http://api.test/orders', {
       method: 'POST',
@@ -51,6 +52,7 @@ describe('api client', () => {
       body: JSON.stringify({ token: 'SOL', qty: 1, side: 'buy' }),
     });
     expect(resp.slippage).toBe(0.1);
+    expect(resp.status).toBe('closed');
   });
 
   test('dashboardWs connects to websocket with api key', () => {
@@ -66,6 +68,14 @@ describe('api client', () => {
     (global as any).WebSocket = jest.fn().mockReturnValue(mockWs);
     const ws = positionsWs('secret');
     expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/positions/ws?key=secret');
+    expect(ws).toBe(mockWs);
+  });
+
+  test('ordersWs connects to websocket with api key', () => {
+    const mockWs = {} as any;
+    (global as any).WebSocket = jest.fn().mockReturnValue(mockWs);
+    const ws = ordersWs('secret');
+    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/orders/ws?key=secret');
     expect(ws).toBe(mockWs);
   });
 });
