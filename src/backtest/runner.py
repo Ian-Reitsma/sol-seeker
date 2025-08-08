@@ -85,8 +85,8 @@ class BacktestRunner:
     def __init__(
         self,
         engine: TradeEngine,
-        fee_model: FeeModel | None = None,
-        slippage_model: SlippageModel | None = None,
+        fee_model: Optional[FeeModel] = None,
+        slippage_model: Optional[SlippageModel] = None,
         initial_cash: float = 0.0,
     ) -> None:
         self.engine = engine
