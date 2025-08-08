@@ -2143,23 +2143,58 @@
                 settingsPanel.classList.remove('settings-panel-open');
             }
         });
-        
-        // Slider functionality
+
+        // Slider functionality and auto-saving of settings
+        let settingsTimer;
+        function collectSettings() {
+            return {
+                max_drawdown: parseFloat(document.getElementById('maxDrawdown').value) / 100,
+                max_position_size: parseFloat(document.getElementById('maxPosition').value),
+                max_concurrent_trades: parseInt(document.getElementById('maxTrades').value),
+                strategies: {
+                    listing_sniper: document.getElementById('sniperToggle').checked,
+                    arbitrage: document.getElementById('arbToggle').checked,
+                    market_making: document.getElementById('mmToggle').checked
+                },
+                rpc_provider: document.getElementById('rpcSelect').value,
+                auto_failover: document.getElementById('failoverToggle').checked
+            };
+        }
+
+        function queueSettingsSave() {
+            clearTimeout(settingsTimer);
+            settingsTimer = setTimeout(async () => {
+                try {
+                    await SolSeekerAPI.post('/state', { settings: collectSettings() });
+                } catch (err) {
+                    console.error('auto save settings failed', err);
+                }
+            }, 500);
+        }
+
         const sliders = [
             { slider: 'maxDrawdown', display: 'drawdownValue', suffix: '%' },
             { slider: 'maxPosition', display: 'positionValue', suffix: '' },
             { slider: 'maxTrades', display: 'tradesValue', suffix: '' }
         ];
-        
+
         sliders.forEach(({ slider, display, suffix }) => {
             const sliderElement = document.getElementById(slider);
             const displayElement = document.getElementById(display);
-            
+
             sliderElement.addEventListener('input', function() {
                 displayElement.textContent = this.value + suffix;
+                queueSettingsSave();
             });
         });
-        
+
+        ['sniperToggle', 'arbToggle', 'mmToggle', 'failoverToggle'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', queueSettingsSave);
+        });
+        const rpcSelect = document.getElementById('rpcSelect');
+        if (rpcSelect) rpcSelect.addEventListener('change', queueSettingsSave);
+
         // Resource monitoring simulation
         async function updateResourceMetrics() {
             const status = await SolSeekerAPI.getStatus();
@@ -2431,23 +2466,9 @@
         document.getElementById('saveSettings').addEventListener('click', async function() {
             this.textContent = 'SAVING...';
             this.disabled = true;
-            
+
             try {
-                // Collect current settings
-                const settings = {
-                    max_drawdown: parseFloat(document.getElementById('maxDrawdown').value) / 100,
-                    max_position_size: parseFloat(document.getElementById('maxPosition').value),
-                    max_concurrent_trades: parseInt(document.getElementById('maxTrades').value),
-                    strategies: {
-                        listing_sniper: document.getElementById('sniperToggle').checked,
-                        arbitrage: document.getElementById('arbToggle').checked,
-                        market_making: document.getElementById('mmToggle').checked
-                    },
-                    rpc_provider: document.getElementById('rpcSelect').value,
-                    auto_failover: document.getElementById('failoverToggle').checked
-                };
-                
-                // Send to API
+                const settings = collectSettings();
                 const response = await SolSeekerAPI.post('/state', { settings });
 
                 if (response) {
@@ -3029,7 +3050,7 @@
                     ws.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
-                            onMessage(data);
+                            requestAnimationFrame(() => onMessage(data));
                         } catch (error) {
                             console.error('Error parsing WebSocket message:', error);
                         }
