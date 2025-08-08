@@ -5,6 +5,7 @@ import {
   placeOrder,
   dashboardWs,
   positionsWs,
+  ordersWs,
 } from '../api/client';
 
 interface Order {
@@ -32,6 +33,15 @@ const Trading: React.FC = () => {
   const [positions, setPositions] = useState<Record<string, Position>>({});
 
   useEffect(() => {
+    const handler = (e: Event) => {
+      const key = (e as CustomEvent<string>).detail;
+      setApiKey(key);
+    };
+    window.addEventListener('apiKey', handler as EventListener);
+    return () => window.removeEventListener('apiKey', handler as EventListener);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('apiKey', apiKey);
   }, [apiKey]);
 
@@ -39,10 +49,14 @@ const Trading: React.FC = () => {
     if (!apiKey) return;
     getOrders(apiKey)
       .then((o) => setOrders(o as unknown as Order[]))
-      .catch(() => setOrders([]));
+      .catch((e) => {
+        if (e.message !== 'Unauthorized') setOrders([]);
+      });
     getPositions(apiKey)
       .then(setPositions)
-      .catch(() => setPositions({}));
+      .catch((e) => {
+        if (e.message !== 'Unauthorized') setPositions({});
+      });
 
     const posWs = positionsWs(apiKey);
     posWs.onmessage = (ev) => setPositions(JSON.parse(ev.data));
@@ -57,9 +71,21 @@ const Trading: React.FC = () => {
       }
     };
 
+    const ordWs = ordersWs(apiKey);
+    ordWs.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.orders) setOrders(msg.orders);
+        else if (msg.order) setOrders((o) => [...o, msg.order]);
+      } catch {
+        // ignore parse errors
+      }
+    };
+
     return () => {
       posWs.close();
       dashWs.close();
+      ordWs.close();
     };
   }, [apiKey]);
 

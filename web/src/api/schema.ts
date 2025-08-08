@@ -393,6 +393,8 @@ export interface components {
             features: number[];
             /** Timestamp */
             timestamp: number;
+            /** Status */
+            status: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -431,6 +433,12 @@ export interface components {
             side: components["schemas"]["Side"];
             /** Price */
             price: number;
+            /** Slippage */
+            slippage: number;
+            /** Fee */
+            fee: number;
+            /** Timestamp */
+            timestamp: number;
         };
         /** PosteriorSnapshot */
         PosteriorSnapshot: {

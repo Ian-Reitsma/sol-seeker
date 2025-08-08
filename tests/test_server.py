@@ -138,6 +138,30 @@ def test_api_order_flow():
         assert "status" in st
         assert "timestamp" in st
 
+        resp = client.post("/state", json={"running": False, "settings": {"x": 1}})
+        assert resp.status_code == 200
+        st2 = resp.json()
+        assert st2["running"] is False
+        assert st2["settings"] == {"x": 1}
+        resp = client.post(
+            "/orders",
+            json={"token": "SOL", "qty": 1, "side": "buy"},
+            headers={"X-API-Key": "test"},
+        )
+        assert resp.status_code == 400
+        resp = client.post("/state", json={"running": True})
+        assert resp.status_code == 200
+        resp = client.post("/state", json={"emergency_stop": True})
+        assert resp.status_code == 200
+        resp = client.post(
+            "/orders",
+            json={"token": "SOL", "qty": 1, "side": "buy"},
+            headers={"X-API-Key": "test"},
+        )
+        assert resp.status_code == 400
+        resp = client.post("/state", json={"emergency_stop": False})
+        assert resp.status_code == 200
+
         resp = client.get("/tv")
         assert resp.status_code == 200
         assert "<iframe" in resp.text
@@ -154,9 +178,13 @@ def test_api_order_flow():
             assert data["token"] == "SOL"
             assert data["quantity"] == 1
             assert pytest.approx(data["slippage"], rel=1e-6) >= 0.0
+            assert data["status"] == "closed"
+            assert "timestamp" in data
             order_data = order_ws.receive_json()
             assert order_data["token"] == "SOL"
             assert "fee" in order_data and "slippage" in order_data
+            assert order_data["status"] == "closed"
+            assert "timestamp" in order_data
             pos_data = pos_ws.receive_json()
             assert "SOL" in pos_data
 
@@ -164,6 +192,14 @@ def test_api_order_flow():
         assert resp.status_code == 200
         positions = resp.json()
         assert "SOL" in positions
+
+        resp = client.get("/orders?status=closed", headers={"X-API-Key": "test"})
+        assert resp.status_code == 200
+        closed = resp.json()
+        assert closed and closed[0]["status"] == "closed"
+        resp = client.get("/orders?status=open", headers={"X-API-Key": "test"})
+        assert resp.status_code == 200
+        assert resp.json() == []
 
         resp = client.get("/features")
         assert resp.status_code == 200

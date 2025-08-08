@@ -31,8 +31,8 @@
     
     <script>
     // Basic connection check to API with configurable base and API key
-    const API_BASE = localStorage.getItem('apiBase') || window.location.origin;
-    const API_KEY = localStorage.getItem('apiKey') || localStorage.getItem('sol_seeker_api_key') || '';
+    const API_BASE = localStorage.getItem('sol_seeker_api_base') || window.location.origin;
+    const API_KEY = localStorage.getItem('sol_seeker_api_key') || '';
     window.API_BASE = API_BASE;
     window.API_KEY = API_KEY;
     fetch(`${API_BASE}/health`, { headers: API_KEY ? { 'X-API-Key': API_KEY } : {} })
@@ -41,423 +41,7 @@
         .catch(err => console.error('API health check failed', err));
     </script>
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
-        
-        body {
-            background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
-            background-attachment: fixed;
-        }
-        
-        .hologram-panel {
-            background: rgba(17, 17, 17, 0.9);
-            border: 1px solid #ff8c00;
-            box-shadow: 
-                0 0 20px rgba(255, 140, 0, 0.3),
-                inset 0 0 20px rgba(255, 140, 0, 0.05);
-            backdrop-filter: blur(10px);
-            position: relative;
-        }
-        
-        .hologram-panel::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: -1px;
-            right: -1px;
-            bottom: -1px;
-            background: linear-gradient(45deg, transparent, #ff8c00, transparent, #00e5ff, transparent);
-            background-size: 400% 400%;
-            z-index: -1;
-            border-radius: inherit;
-            animation: borderFlow 8s ease-in-out infinite;
-        }
-        
-        @keyframes borderFlow {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        
-        .amber-glow {
-            color: #ff8c00;
-            text-shadow: 
-                0 0 5px #ff8c00,
-                0 0 10px #ff8c00,
-                0 0 15px #ff8c00;
-        }
-        
-        .cyan-glow {
-            color: #00e5ff;
-            text-shadow: 
-                0 0 5px #00e5ff,
-                0 0 10px #00e5ff,
-                0 0 15px #00e5ff;
-        }
-        
-        .data-flicker {
-            animation: dataFlicker 3s ease-in-out infinite;
-        }
-        
-        @keyframes dataFlicker {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-            75% { opacity: 0.9; }
-        }
-        
-        .scan-lines {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .scan-lines::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(255, 140, 0, 0.03) 2px,
-                rgba(255, 140, 0, 0.03) 4px
-            );
-            pointer-events: none;
-        }
-        
-        .hologram-text {
-            font-family: 'Share Tech Mono', monospace;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-        
-        .metric-card {
-            background: linear-gradient(135deg, rgba(255, 140, 0, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(255, 140, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-        
-        .metric-card:hover {
-            border-color: rgba(255, 140, 0, 0.6);
-            box-shadow: 0 0 25px rgba(255, 140, 0, 0.2);
-        }
-        
-        .status-online {
-            color: #00e5ff;
-            animation: statusPulse 2s ease-in-out infinite;
-        }
-        
-        .status-demo {
-            color: #ffab00;
-            animation: statusPulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes statusPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        
-        .control-button {
-            background: rgba(255, 140, 0, 0.1);
-            border: 1px solid rgba(255, 140, 0, 0.3);
-            color: #ff8c00;
-            transition: all 0.3s ease;
-        }
-        
-        .control-button:hover {
-            background: rgba(255, 140, 0, 0.2);
-            border-color: #ff8c00;
-            box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
-        }
-        
-        .emergency-stop {
-            background: rgba(255, 107, 53, 0.1);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            color: #ff6b35;
-        }
-        
-        .emergency-stop:hover {
-            background: rgba(255, 107, 53, 0.2);
-            border-color: #ff6b35;
-            box-shadow: 0 0 15px rgba(255, 107, 53, 0.4);
-        }
-        
-        .chart-container {
-            background: radial-gradient(ellipse at center, rgba(255, 140, 0, 0.05) 0%, rgba(0, 0, 0, 0.9) 70%);
-            border: 1px solid rgba(255, 140, 0, 0.2);
-        }
-        
-        .feed-scroll {
-            max-height: 400px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: #ff8c00 #111111;
-        }
-        
-        .feed-scroll::-webkit-scrollbar {
-            width: 3px;
-        }
-        
-        .feed-scroll::-webkit-scrollbar-track {
-            background: #111111;
-        }
-        
-        .feed-scroll::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #ff8c00, #ff6b35);
-            border-radius: 2px;
-        }
-        
-        .tooltip {
-            visibility: hidden;
-            opacity: 0;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(15px);
-            background: rgba(17, 17, 17, 0.95);
-            border: 1px solid rgba(255, 140, 0, 0.5);
-        }
-        
-        .tooltip-trigger:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-        
-        .atmospheric-glow {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-            background: radial-gradient(
-                circle at 20% 80%,
-                rgba(255, 140, 0, 0.1) 0%,
-                transparent 50%
-            ),
-            radial-gradient(
-                circle at 80% 20%,
-                rgba(0, 229, 255, 0.05) 0%,
-                transparent 50%
-            );
-        }
-        
-        .sparkline {
-            stroke-width: 2;
-            fill: none;
-            filter: drop-shadow(0 0 3px currentColor);
-        }
-        
-        .regime-pulse {
-            animation: regimePulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes regimePulse {
-            0%, 100% { 
-                opacity: 1; 
-                transform: scale(1);
-                box-shadow: 0 0 10px currentColor;
-            }
-            50% { 
-                opacity: 0.7; 
-                transform: scale(1.1);
-                box-shadow: 0 0 20px currentColor;
-            }
-        }
-        
-        .strategy-module {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .strategy-module::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .strategy-module:hover::before {
-            left: 100%;
-        }
-        
-        .neural-grid {
-            background-image: 
-                radial-gradient(circle at 25% 25%, rgba(0, 229, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 75% 75%, rgba(255, 140, 0, 0.1) 0%, transparent 50%);
-        }
-        
-        .quantum-sync {
-            animation: quantumSync 3s ease-in-out infinite;
-        }
-        
-        @keyframes quantumSync {
-            0%, 100% { opacity: 0.6; }
-            33% { opacity: 1; }
-            66% { opacity: 0.8; }
-        }
-        
-        .position-row {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .position-row:hover {
-            background: rgba(255, 140, 0, 0.05);
-            border-color: rgba(255, 140, 0, 0.4);
-        }
-        
-        .position-row.selected {
-            background: rgba(0, 229, 255, 0.1);
-            border-color: rgba(0, 229, 255, 0.5);
-        }
-        
-        .new-position {
-            animation: newPositionFlash 3s ease-in-out;
-        }
-        
-        @keyframes newPositionFlash {
-            0%, 100% { background: rgba(17, 17, 17, 0.5); }
-            50% { background: rgba(0, 229, 255, 0.2); }
-        }
-        
-        .risk-warning {
-            animation: riskPulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes riskPulse {
-            0%, 100% { 
-                background: rgba(255, 107, 53, 0.1);
-                border-color: rgba(255, 107, 53, 0.3);
-            }
-            50% { 
-                background: rgba(255, 107, 53, 0.2);
-                border-color: rgba(255, 107, 53, 0.6);
-            }
-        }
-        
-        .wallet-group {
-            border-left: 3px solid;
-            padding-left: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .wallet-sniper {
-            border-left-color: #00e5ff;
-        }
-        
-        .wallet-arb {
-            border-left-color: #ff8c00;
-        }
-        
-        .wallet-mm {
-            border-left-color: #ffab00;
-        }
-        
-        .tab-button {
-            transition: all 0.3s ease;
-        }
-        
-        .tab-button.active {
-            background: rgba(255, 140, 0, 0.2);
-            border-color: rgba(255, 140, 0, 0.6);
-            color: #ff8c00;
-        }
-        
-        .tab-button:not(.active) {
-            background: rgba(17, 17, 17, 0.5);
-            border-color: rgba(255, 140, 0, 0.2);
-            color: rgba(255, 140, 0, 0.6);
-        }
-        
-        .position-details-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .position-details-modal.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .modal-content {
-            background: rgba(17, 17, 17, 0.95);
-            border: 1px solid rgba(255, 140, 0, 0.5);
-            border-radius: 8px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-        }
-        
-        .position-details-modal.show .modal-content {
-            transform: scale(1);
-        }
-        
-        .token-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff8c00, #00e5ff);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .slider {
-            background: #0a0a0a;
-            outline: none;
-            border: 1px solid rgba(255, 140, 0, 0.3);
-        }
-        
-        .slider::-webkit-slider-thumb {
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff8c00, #00e5ff);
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
-        }
-        
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff8c00, #00e5ff);
-            cursor: pointer;
-            border: 2px solid #ffffff;
-            box-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
-        }
-        
-        .settings-panel-open {
-            transform: translateX(0) !important;
-        }
-    </style>
+        <link rel="stylesheet" href="dashboard.css">
 </head>
 <body class="text-white font-display min-h-screen relative">
     <!-- Atmospheric Background -->
@@ -570,15 +154,11 @@
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">OPEN POSITIONS</span>
                         <div class="w-8 h-8 rounded-full bg-blade-amber/20 flex items-center justify-center">
-                            <span class="text-xs hologram-text amber-glow">7</span>
+                            <span id="openPositionsTotal" class="text-xs hologram-text amber-glow">0</span>
                         </div>
                     </div>
-                    <div class="text-3xl font-bold amber-glow data-flicker">
-                        7 ACTIVE
-                    </div>
-                    <div class="text-sm hologram-text text-cyan-glow/80 mt-1">
-                        3 LONG • 4 SHORT
-                    </div>
+                    <div id="openPositionsActive" class="text-3xl font-bold amber-glow data-flicker">0 ACTIVE</div>
+                    <div id="openPositionsBreakdown" class="text-sm hologram-text text-cyan-glow/80 mt-1">0 LONG • 0 SHORT</div>
                 </div>
 
                 <!-- System Status -->
@@ -619,326 +199,12 @@
                     
                     <!-- Active Positions Tab -->
                     <div id="positionsTab" class="tab-content">
-                        <!-- Wallet A (Sniper) -->
-                        <div class="wallet-group wallet-sniper mb-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-3 h-3 bg-cyan-glow rounded-full status-online"></div>
-                                    <div>
-                                        <div class="hologram-text text-cyan-glow font-bold">WALLET A (SNIPER)</div>
-                                        <div class="hologram-text text-xs text-blade-amber/60">...7x9K • BALANCE: 12.4 SOL</div>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="hologram-text text-white text-sm">4 POSITIONS</div>
-                                    <div class="hologram-text text-cyan-glow text-xs">+3.2 SOL</div>
-                                </div>
-                            </div>
-                            
-                            <!-- Position Rows -->
-                            <div class="space-y-2">
-                                <!-- NOVA Token - New Position -->
-                                <div class="position-row new-position bg-void-black/50 p-3 rounded border border-blade-cyan/30 hover:border-blade-cyan/60" data-token="NOVA">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">N</div>
-                                            <div>
-                                                <div class="flex items-center space-x-2">
-                                                    <span class="hologram-text text-white font-bold">$NOVA</span>
-                                                    <span class="px-2 py-1 bg-cyan-glow/20 text-cyan-glow rounded text-xs hologram-text">NEW</span>
-                                                </div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">2,500 TOKENS (0.8 SOL)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-cyan-glow font-bold">+0.24 SOL</div>
-                                            <div class="hologram-text text-cyan-glow text-xs">(+30.0%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $0.00032 • CURRENT: $0.00042</div>
-                                        <div class="hologram-text text-cyan-glow">VIA SNIPER</div>
-                                    </div>
-                                </div>
-
-                                <!-- FLUX Token -->
-                                <div class="position-row bg-void-black/50 p-3 rounded border border-blade-amber/30 hover:border-blade-amber/60" data-token="FLUX">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">F</div>
-                                            <div>
-                                                <div class="hologram-text text-white font-bold">$FLUX</div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">1,800 TOKENS (1.2 SOL)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-cyan-glow font-bold">+0.18 SOL</div>
-                                            <div class="hologram-text text-cyan-glow text-xs">(+15.0%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $0.00067 • CURRENT: $0.00077</div>
-                                        <div class="hologram-text text-cyan-glow">VIA SNIPER</div>
-                                    </div>
-                                </div>
-
-                                <!-- RISK Token - High Risk Warning -->
-                                <div class="position-row risk-warning bg-void-black/50 p-3 rounded border border-blade-orange/30" data-token="RISK">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">R</div>
-                                            <div>
-                                                <div class="flex items-center space-x-2">
-                                                    <span class="hologram-text text-white font-bold">$RISK</span>
-                                                    <span class="px-2 py-1 bg-blade-orange/20 text-blade-orange rounded text-xs hologram-text">⚠ HIGH RISK</span>
-                                                </div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">5,000 TOKENS (0.5 SOL)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-blade-orange font-bold">-0.08 SOL</div>
-                                            <div class="hologram-text text-blade-orange text-xs">(-16.0%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $0.00010 • CURRENT: $0.00008</div>
-                                        <div class="hologram-text text-blade-orange">VIA SNIPER</div>
-                                    </div>
-                                </div>
-
-                                <!-- BEAM Token -->
-                                <div class="position-row bg-void-black/50 p-3 rounded border border-blade-yellow/30 hover:border-blade-yellow/60" data-token="BEAM">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">B</div>
-                                            <div>
-                                                <div class="hologram-text text-white font-bold">$BEAM</div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">3,200 TOKENS (0.9 SOL)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-blade-yellow font-bold">+0.05 SOL</div>
-                                            <div class="hologram-text text-blade-yellow text-xs">(+5.6%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $0.00028 • CURRENT: $0.00030</div>
-                                        <div class="hologram-text text-blade-yellow">VIA SNIPER</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Wallet B (Arbitrage) -->
-                        <div class="wallet-group wallet-arb mb-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-3 h-3 bg-blade-amber rounded-full status-online"></div>
-                                    <div>
-                                        <div class="hologram-text text-blade-amber font-bold">WALLET B (ARBITRAGE)</div>
-                                        <div class="hologram-text text-xs text-blade-amber/60">...3m8L • BALANCE: 8.7 SOL</div>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="hologram-text text-white text-sm">2 POSITIONS</div>
-                                    <div class="hologram-text text-blade-amber text-xs">+1.1 SOL</div>
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <!-- SOL/USDC -->
-                                <div class="position-row bg-void-black/50 p-3 rounded border border-blade-amber/30 hover:border-blade-amber/60" data-token="SOL">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">S</div>
-                                            <div>
-                                                <div class="hologram-text text-white font-bold">SOL/USDC</div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">15.2 SOL (2.5X LEVERAGE)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-cyan-glow font-bold">+0.89 SOL</div>
-                                            <div class="hologram-text text-cyan-glow text-xs">(+12.4%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $139.20 • CURRENT: $142.85</div>
-                                        <div class="hologram-text text-blade-amber">VIA ARBITRAGE</div>
-                                    </div>
-                                </div>
-
-                                <!-- RAY/SOL -->
-                                <div class="position-row bg-void-black/50 p-3 rounded border border-blade-orange/30 hover:border-blade-orange/60" data-token="RAY">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">R</div>
-                                            <div>
-                                                <div class="hologram-text text-white font-bold">RAY/SOL</div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">850 RAY (1.8X LEVERAGE)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-blade-orange font-bold">-0.21 SOL</div>
-                                            <div class="hologram-text text-blade-orange text-xs">(-3.2%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $2.42 • CURRENT: $2.34</div>
-                                        <div class="hologram-text text-blade-orange">VIA ARBITRAGE</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Wallet C (Market Making) -->
-                        <div class="wallet-group wallet-mm">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-3 h-3 bg-blade-yellow rounded-full opacity-50"></div>
-                                    <div>
-                                        <div class="hologram-text text-blade-yellow font-bold">WALLET C (MARKET MAKING)</div>
-                                        <div class="hologram-text text-xs text-blade-amber/60">...9pQx • BALANCE: 5.3 SOL</div>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="hologram-text text-white text-sm">1 POSITION</div>
-                                    <div class="hologram-text text-blade-yellow text-xs">+0.12 SOL</div>
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <!-- ORCA/USDC -->
-                                <div class="position-row bg-void-black/50 p-3 rounded border border-blade-yellow/30 hover:border-blade-yellow/60" data-token="ORCA">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="token-icon">O</div>
-                                            <div>
-                                                <div class="hologram-text text-white font-bold">ORCA/USDC</div>
-                                                <div class="hologram-text text-xs text-blade-amber/60">2,400 ORCA (3.0X LEVERAGE)</div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="hologram-text text-cyan-glow font-bold">+0.12 SOL</div>
-                                            <div class="hologram-text text-cyan-glow text-xs">(+8.7%)</div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2 flex items-center justify-between text-xs">
-                                        <div class="hologram-text text-blade-amber/60">ENTRY: $5.05 • CURRENT: $5.49</div>
-                                        <div class="hologram-text text-blade-yellow">VIA MARKET MAKING</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div id="positionsList" class="space-y-2"></div>
                     </div>
 
                     <!-- Trade History Tab -->
                     <div id="historyTab" class="tab-content hidden">
-                        <div class="space-y-3">
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 bg-cyan-glow/20 rounded flex items-center justify-center">
-                                            <span class="hologram-text text-cyan-glow text-xs">↗</span>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-white font-bold">$APEX CLOSED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">14:15:32 • SNIPER STRATEGY</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-cyan-glow font-bold">+1.24 SOL</div>
-                                        <div class="hologram-text text-cyan-glow text-xs">(+45.2%)</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    BOUGHT: $0.00085 • SOLD: $0.00123 • QTY: 3,500 tokens
-                                </div>
-                            </div>
-
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-orange/30">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 bg-blade-orange/20 rounded flex items-center justify-center">
-                                            <span class="hologram-text text-blade-orange text-xs">↘</span>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-white font-bold">$DRIFT CLOSED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">13:42:18 • ARBITRAGE STRATEGY</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-blade-orange font-bold">-0.15 SOL</div>
-                                        <div class="hologram-text text-blade-orange text-xs">(-8.3%)</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    BOUGHT: $1.82 • SOLD: $1.67 • QTY: 180 tokens
-                                </div>
-                            </div>
-
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 bg-blade-amber/20 rounded flex items-center justify-center">
-                                            <span class="hologram-text text-blade-amber text-xs">↗</span>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-white font-bold">$MANGO CLOSED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">12:28:45 • MEAN-REVERSION STRATEGY</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-cyan-glow font-bold">+0.67 SOL</div>
-                                        <div class="hologram-text text-cyan-glow text-xs">(+22.1%)</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    BOUGHT: $0.034 • SOLD: $0.042 • QTY: 2,100 tokens
-                                </div>
-                            </div>
-
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 bg-cyan-glow/20 rounded flex items-center justify-center">
-                                            <span class="hologram-text text-cyan-glow text-xs">↗</span>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-white font-bold">$SERUM CLOSED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">11:55:12 • SNIPER STRATEGY</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-cyan-glow font-bold">+0.89 SOL</div>
-                                        <div class="hologram-text text-cyan-glow text-xs">(+31.8%)</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    BOUGHT: $8.45 • SOLD: $11.14 • QTY: 125 tokens
-                                </div>
-                            </div>
-
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/30">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 bg-blade-yellow/20 rounded flex items-center justify-center">
-                                            <span class="hologram-text text-blade-yellow text-xs">↗</span>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-white font-bold">$STEP CLOSED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">10:33:28 • MARKET MAKING STRATEGY</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-blade-yellow font-bold">+0.23 SOL</div>
-                                        <div class="hologram-text text-blade-yellow text-xs">(+12.7%)</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    BOUGHT: $0.045 • SOLD: $0.051 • QTY: 890 tokens
-                                </div>
-                            </div>
-                        </div>
+                        <div id="historyList" class="space-y-3"></div>
                     </div>
                 </div>
 
@@ -1092,12 +358,12 @@
                         <svg class="w-full h-full" viewBox="0 0 1000 400" id="equitySvg">
                             <defs>
                                 <linearGradient id="equityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#00e5ff;stop-opacity:0.6" />
-                                    <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:0.1" />
+                                    <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.6" />
+                                    <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.1" />
                                 </linearGradient>
                                 <linearGradient id="drawdownGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:0.4" />
-                                    <stop offset="100%" style="stop-color:#ff6b35;stop-opacity:0.1" />
+                                    <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.4" />
+                                    <stop offset="100%" stop-color="#ff6b35" stop-opacity="0.1" />
                                 </linearGradient>
                                 <filter id="equityGlow">
                                     <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -1155,12 +421,12 @@
                             <svg class="w-full h-full" viewBox="0 0 500 300">
                                 <defs>
                                     <linearGradient id="profitGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#00e5ff;stop-opacity:0.8" />
-                                        <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:0.4" />
+                                        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.8" />
+                                        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.4" />
                                     </linearGradient>
                                     <linearGradient id="lossGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:0.8" />
-                                        <stop offset="100%" style="stop-color:#ff6b35;stop-opacity:0.4" />
+                                        <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.8" />
+                                        <stop offset="100%" stop-color="#ff6b35" stop-opacity="0.4" />
                                     </linearGradient>
                                 </defs>
                                 <!-- Grid -->
@@ -1246,9 +512,9 @@
                             <svg class="w-full h-full" viewBox="0 0 800 300">
                                 <defs>
                                     <linearGradient id="marketGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#ff8c00;stop-opacity:0.4" />
-                                        <stop offset="50%" style="stop-color:#00e5ff;stop-opacity:0.2" />
-                                        <stop offset="100%" style="stop-color:#ff8c00;stop-opacity:0.1" />
+                                        <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.4" />
+                                        <stop offset="50%" stop-color="#00e5ff" stop-opacity="0.2" />
+                                        <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.1" />
                                     </linearGradient>
                                 </defs>
                                 <!-- Candlesticks -->
@@ -1317,16 +583,16 @@
                             <svg class="w-full h-full" viewBox="0 0 500 300">
                                 <defs>
                                     <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#00e5ff;stop-opacity:0.6" />
-                                        <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:0.1" />
+                                        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.6" />
+                                        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.1" />
                                     </linearGradient>
                                     <linearGradient id="meanRevertGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#ff8c00;stop-opacity:0.6" />
-                                        <stop offset="100%" style="stop-color:#ff8c00;stop-opacity:0.1" />
+                                        <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.6" />
+                                        <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.1" />
                                     </linearGradient>
                                     <linearGradient id="chopGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#ffab00;stop-opacity:0.6" />
-                                        <stop offset="100%" style="stop-color:#ffab00;stop-opacity:0.1" />
+                                        <stop offset="0%" stop-color="#ffab00" stop-opacity="0.6" />
+                                        <stop offset="100%" stop-color="#ffab00" stop-opacity="0.1" />
                                     </linearGradient>
                                 </defs>
                                 <!-- Grid -->
@@ -1377,16 +643,16 @@
                                                 </feMerge>
                                             </filter>
                                             <linearGradient id="trendRegion" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" style="stop-color:#00e5ff;stop-opacity:0.3" />
-                                                <stop offset="100%" style="stop-color:#00e5ff;stop-opacity:0.1" />
+                                                <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.3" />
+                                                <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.1" />
                                             </linearGradient>
                                             <linearGradient id="revertRegion" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" style="stop-color:#ff8c00;stop-opacity:0.3" />
-                                                <stop offset="100%" style="stop-color:#ff8c00;stop-opacity:0.1" />
+                                                <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.3" />
+                                                <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.1" />
                                             </linearGradient>
                                             <linearGradient id="chopRegion" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" style="stop-color:#ffab00;stop-opacity:0.3" />
-                                                <stop offset="100%" style="stop-color:#ffab00;stop-opacity:0.1" />
+                                                <stop offset="0%" stop-color="#ffab00" stop-opacity="0.3" />
+                                                <stop offset="100%" stop-color="#ffab00" stop-opacity="0.1" />
                                             </linearGradient>
                                         </defs>
                                         
@@ -1429,7 +695,7 @@
                                         <span class="hologram-text text-xs cyan-glow font-bold">68%</span>
                                     </div>
                                     <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                        <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000" style="width: 68%"></div>
+                                        <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000 w-[68%]"></div>
                                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                     </div>
                                     <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -1448,7 +714,7 @@
                                         <span class="hologram-text text-xs text-blade-amber font-bold">22%</span>
                                     </div>
                                     <div class="w-full bg-void-black rounded-full h-2">
-                                        <div class="bg-gradient-to-r from-blade-amber to-blade-orange h-2 rounded-full transition-all duration-1000" style="width: 22%"></div>
+                                        <div class="bg-gradient-to-r from-blade-amber to-blade-orange h-2 rounded-full transition-all duration-1000 w-[22%]"></div>
                                     </div>
                                     <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
                                         MEAN-REVERT: 22% - Low probability of mean-reverting<br/>
@@ -1466,7 +732,7 @@
                                         <span class="hologram-text text-xs text-blade-yellow font-bold">10%</span>
                                     </div>
                                     <div class="w-full bg-void-black rounded-full h-2">
-                                        <div class="bg-gradient-to-r from-blade-yellow to-blade-amber h-2 rounded-full transition-all duration-1000" style="width: 10%"></div>
+                                        <div class="bg-gradient-to-r from-blade-yellow to-blade-amber h-2 rounded-full transition-all duration-1000 w-[10%]"></div>
                                     </div>
                                     <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
                                         CHOP: 10% - Very low probability of choppy,<br/>
@@ -1638,7 +904,7 @@
                                     </div>
                                 </div>
                                 <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                    <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full" style="width: 87%"></div>
+                                    <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full w-[87%]"></div>
                                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                 </div>
                                 <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -1682,7 +948,7 @@
                                     </div>
                                 </div>
                                 <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                    <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full" style="width: 65%"></div>
+                                    <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full w-[65%]"></div>
                                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                 </div>
                                 <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -1726,7 +992,7 @@
                                     </div>
                                 </div>
                                 <div class="w-full bg-void-black rounded-full h-2">
-                                    <div class="bg-gradient-to-r from-blade-orange to-blade-amber h-2 rounded-full opacity-50" style="width: 25%"></div>
+                                    <div class="bg-gradient-to-r from-blade-orange to-blade-amber h-2 rounded-full opacity-50 w-[25%]"></div>
                                 </div>
                                 <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
                                     MARKET MAKER NEURAL: Currently in standby mode<br/>
@@ -1769,7 +1035,7 @@
                                     </div>
                                 </div>
                                 <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                    <div class="bg-gradient-to-r from-blade-yellow to-cyan-glow h-2 rounded-full" style="width: 78%"></div>
+                                    <div class="bg-gradient-to-r from-blade-yellow to-cyan-glow h-2 rounded-full w-[78%]"></div>
                                     <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                 </div>
                                 <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -2116,7 +1382,7 @@
                                             <span class="hologram-text text-cyan-glow text-xs font-bold">GREED (78)</span>
                                         </div>
                                         <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                            <div class="bg-gradient-to-r from-blade-orange via-blade-yellow to-cyan-glow h-2 rounded-full" style="width: 78%"></div>
+                                            <div class="bg-gradient-to-r from-blade-orange via-blade-yellow to-cyan-glow h-2 rounded-full w-[78%]"></div>
                                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                         </div>
                                     </div>
@@ -2127,7 +1393,7 @@
                                             <span class="hologram-text text-blade-amber text-xs font-bold">HIGH (8.4/10)</span>
                                         </div>
                                         <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                            <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full" style="width: 84%"></div>
+                                            <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full w-[84%]"></div>
                                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                         </div>
                                     </div>
@@ -2138,7 +1404,7 @@
                                             <span class="hologram-text text-blade-orange text-xs font-bold">EXTREME (9.1/10)</span>
                                         </div>
                                         <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                            <div class="bg-gradient-to-r from-blade-yellow to-blade-orange h-2 rounded-full" style="width: 91%"></div>
+                                            <div class="bg-gradient-to-r from-blade-yellow to-blade-orange h-2 rounded-full w-[91%]"></div>
                                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                         </div>
                                     </div>
@@ -2437,7 +1703,7 @@
                                 <span class="hologram-text text-cyan-glow text-sm font-bold" id="cpuUsage">23.4%</span>
                             </div>
                             <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000" style="width: 23.4%" id="cpuBar"></div>
+                                <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000 w-[23.4%]" id="cpuBar"></div>
                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
                             </div>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -2454,7 +1720,7 @@
                                 <span class="hologram-text text-blade-amber text-sm font-bold" id="memUsage">1.2GB</span>
                             </div>
                             <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full transition-all duration-1000" style="width: 45%" id="memBar"></div>
+                                <div class="bg-gradient-to-r from-blade-amber to-blade-yellow h-2 rounded-full transition-all duration-1000 w-[45%]" id="memBar"></div>
                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
                             </div>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -2471,7 +1737,7 @@
                                 <span class="hologram-text text-cyan-glow text-sm font-bold" id="networkLatency">12ms</span>
                             </div>
                             <div class="w-full bg-void-black rounded-full h-2 relative overflow-hidden">
-                                <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000" style="width: 85%" id="latencyBar"></div>
+                                <div class="bg-gradient-to-r from-cyan-glow to-blade-cyan h-2 rounded-full transition-all duration-1000 w-[85%]" id="latencyBar"></div>
                                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
                             </div>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
@@ -2566,7 +1832,21 @@
                 <h3 class="text-lg font-semibold amber-glow hologram-text mb-4 tracking-wider">
                     CONFIGURATION
                 </h3>
-                
+                <!-- API Connection -->
+                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4">
+                    <h4 class="hologram-text text-blade-amber font-bold mb-3">API CONNECTION</h4>
+                    <div class="space-y-3">
+                        <div class="tooltip-trigger relative">
+                            <label class="hologram-text text-blade-amber/80 text-sm block mb-2">API BASE URL</label>
+                            <input type="text" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" id="apiBaseInput" />
+                        </div>
+                        <div class="tooltip-trigger relative">
+                            <label class="hologram-text text-blade-amber/80 text-sm block mb-2">API KEY</label>
+                            <input type="text" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" id="apiKeyInput" />
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Trading Settings -->
                 <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4">
                     <h4 class="hologram-text text-blade-amber font-bold mb-3">TRADING PARAMETERS</h4>
@@ -2810,28 +2090,13 @@
                     content.classList.add('hidden');
                 });
                 document.getElementById(targetTab + 'Tab').classList.remove('hidden');
-            });
-        });
-
-        // Position row click handlers
-        const positionRows = document.querySelectorAll('.position-row');
-        let selectedPosition = null;
-        
-        positionRows.forEach(row => {
-            row.addEventListener('click', async function() {
-                // Remove previous selection
-                if (selectedPosition) {
-                    selectedPosition.classList.remove('selected');
+                if (targetTab === 'history') {
+                    loadHistory();
                 }
-
-                // Add selection to clicked row
-                this.classList.add('selected');
-                selectedPosition = this;
-
-                // Show position details modal
-                await showPositionDetails(this.getAttribute('data-token'));
             });
         });
+
+        let selectedPosition = null;
 
         const positionModal = document.getElementById('positionModal');
         document.getElementById('closeModal').addEventListener('click', () => {
@@ -2860,7 +2125,9 @@
             settingsPanel.classList.add('settings-panel-open');
             try {
                 const s = await SolSeekerAPI.getState();
-                console.log('state', s);
+                if (s && s.settings) {
+                    applySettings(s.settings);
+                }
             } catch (err) {
                 console.error('failed to load state', err);
             }
@@ -2894,29 +2161,14 @@
         });
         
         // Resource monitoring simulation
-        function updateResourceMetrics() {
-            // Simulate CPU usage fluctuation
-            const cpuUsage = (20 + Math.random() * 10).toFixed(1);
-            document.getElementById('cpuUsage').textContent = cpuUsage + '%';
-            document.getElementById('cpuBar').style.width = cpuUsage + '%';
-            
-            // Simulate memory usage
-            const memUsage = (1.1 + Math.random() * 0.3).toFixed(1);
-            document.getElementById('memUsage').textContent = memUsage + 'GB';
-            
-            // Simulate network latency
-            const latency = Math.floor(10 + Math.random() * 8);
-            document.getElementById('networkLatency').textContent = latency + 'ms';
-            
-            // Update header latency too
-            const headerLatency = document.querySelector('.flex.items-center.space-x-2 .text-blade-amber');
-            if (headerLatency) {
-                headerLatency.textContent = latency + 'ms';
+        async function updateResourceMetrics() {
+            const status = await SolSeekerAPI.getStatus();
+            if (status) {
+                dashboardState.status = status;
+                updateSystemHealth();
             }
         }
-        
-        // Update resource metrics every 3 seconds
-        setInterval(updateResourceMetrics, 3000);
+
         
         // Debug console functionality
         const debugConsole = document.getElementById('debugConsole');
@@ -2954,44 +2206,36 @@
         
         // Trading feed integration with API
         let feedPaused = false;
-        let feedData = [];
-        
-        async function updateTradingFeed() {
-            if (feedPaused) return;
-            
-            try {
-                // Fetch recent orders/trades from API
-                const orders = await SolSeekerAPI.getOrders();
-                if (orders && orders.length > 0) {
-                    // Process new orders into feed format
-                    orders.slice(-10).forEach(order => {
-                        addFeedEntry({
-                            timestamp: new Date(order.timestamp),
-                            type: order.side.toUpperCase(),
-                            message: `${order.symbol} @ $${order.price}`,
-                            strategy: order.strategy || 'MANUAL',
-                            confidence: order.confidence || null,
-                            color: order.side === 'buy' ? 'blade-cyan' : 'blade-amber'
-                        });
-                    });
-                }
-                
-                // Fetch AI insights from posterior
-                if (dashboardState.posterior && dashboardState.posterior.latest_signal) {
-                    const signal = dashboardState.posterior.latest_signal;
+
+        function updateTradingFeed() {
+            wsClient.connect('/orders/ws', ({ token, quantity, qty, side, price, timestamp, posterior, strategy, status }) => {
+                if (feedPaused) return;
+
+                const q = quantity ?? qty;
+                addFeedEntry({
+                    timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
+                    type: side.toUpperCase(),
+                    message: `${token} x${q} @ $${price}`,
+                    strategy: strategy || 'API',
+                    confidence: posterior?.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
+                    color: side === 'buy' ? 'blade-cyan' : 'blade-amber'
+                });
+
+                if (posterior) {
                     addFeedEntry({
-                        timestamp: new Date(),
+                        timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
                         type: 'NEURAL',
-                        message: `${signal.action} signal - ${signal.symbol}`,
+                        message: `${posterior.action} - ${token}`,
                         strategy: 'AI',
-                        confidence: `${(signal.confidence * 100).toFixed(0)}%`,
+                        confidence: posterior.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
                         color: 'blade-cyan'
                     });
                 }
-                
-            } catch (error) {
-                console.error('Error updating trading feed:', error);
-            }
+
+                if (status === 'closed') {
+                    appendHistoryEntry({ token, quantity: q, side, price, timestamp, status });
+                }
+            });
         }
         
         // Add entry to trading feed
@@ -3019,6 +2263,46 @@
             // Keep only last 20 entries
             while (feedContainer.children.length > 20) {
                 feedContainer.removeChild(feedContainer.lastChild);
+            }
+        }
+
+        // Render a single closed trade entry
+        function renderHistoryEntry(order) {
+            const pnl = order.pnl ?? 0;
+            const entry = document.createElement('div');
+            entry.className = 'bg-void-black/50 p-4 rounded border';
+            entry.classList.add(pnl >= 0 ? 'border-blade-cyan/30' : 'border-blade-orange/30');
+            const color = pnl >= 0 ? 'text-cyan-glow' : 'text-blade-orange';
+            const time = order.timestamp ? new Date(order.timestamp * 1000).toLocaleTimeString() : '';
+            entry.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <div class="hologram-text text-white font-bold">${order.symbol || order.token || ''} CLOSED</div>
+                        <div class="hologram-text text-xs text-blade-amber/60">${time} • ${order.strategy || ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl} SOL</div>
+                    </div>
+                </div>`;
+            return entry;
+        }
+
+        function appendHistoryEntry(order) {
+            const list = document.getElementById('historyList');
+            if (!list) return;
+            const entry = renderHistoryEntry(order);
+            list.insertBefore(entry, list.firstChild);
+        }
+
+        async function loadHistory() {
+            try {
+                const orders = await SolSeekerAPI.get('/orders?status=closed');
+                const list = document.getElementById('historyList');
+                if (!orders || !Array.isArray(orders) || !list) return;
+                list.innerHTML = '';
+                orders.filter(o => !o.status || o.status === 'closed').forEach(o => appendHistoryEntry(o));
+            } catch (err) {
+                console.error('Error loading history:', err);
             }
         }
         
@@ -3086,21 +2370,6 @@
         // Add new log entry every 2-5 seconds
         setInterval(addLogEntry, 2000 + Math.random() * 3000);
         
-        // Save settings functionality
-        document.getElementById('saveSettings').addEventListener('click', function() {
-            // Simulate saving settings
-            this.textContent = 'SAVING...';
-            this.disabled = true;
-            
-            setTimeout(() => {
-                this.textContent = 'SAVED ✓';
-                setTimeout(() => {
-                    this.textContent = 'SAVE SETTINGS';
-                    this.disabled = false;
-                }, 1000);
-            }, 1000);
-        });
-        
         // Reset settings functionality
         document.getElementById('resetSettings').addEventListener('click', function() {
             if (confirm('Reset all settings to default values? This action cannot be undone.')) {
@@ -3127,6 +2396,36 @@
                 }, 2000);
             }
         });
+        
+        function applySettings(settings) {
+            if (!settings) return;
+            if (typeof settings.max_drawdown === 'number') {
+                const md = Math.round(settings.max_drawdown * 100);
+                document.getElementById('maxDrawdown').value = md;
+                document.getElementById('drawdownValue').textContent = md + '%';
+            }
+            if (typeof settings.max_position_size === 'number') {
+                const mp = settings.max_position_size;
+                document.getElementById('maxPosition').value = mp;
+                document.getElementById('positionValue').textContent = mp;
+            }
+            if (typeof settings.max_concurrent_trades === 'number') {
+                const mt = settings.max_concurrent_trades;
+                document.getElementById('maxTrades').value = mt;
+                document.getElementById('tradesValue').textContent = mt;
+            }
+            if (settings.strategies) {
+                document.getElementById('sniperToggle').checked = !!settings.strategies.listing_sniper;
+                document.getElementById('arbToggle').checked = !!settings.strategies.arbitrage;
+                document.getElementById('mmToggle').checked = !!settings.strategies.market_making;
+            }
+            if (settings.rpc_provider) {
+                document.getElementById('rpcSelect').value = settings.rpc_provider;
+            }
+            if (typeof settings.auto_failover === 'boolean') {
+                document.getElementById('failoverToggle').checked = settings.auto_failover;
+            }
+        }
 
         // Settings panel API integration
         document.getElementById('saveSettings').addEventListener('click', async function() {
@@ -3150,8 +2449,11 @@
                 
                 // Send to API
                 const response = await SolSeekerAPI.post('/state', { settings });
-                
+
                 if (response) {
+                    if (response.settings) {
+                        applySettings(response.settings);
+                    }
                     this.textContent = 'SAVED ✓';
                     setTimeout(() => {
                         this.textContent = 'SAVE SETTINGS';
@@ -3195,19 +2497,19 @@
         });
         
         // Order placement functionality (for future use)
-        async function placeOrder(orderData) {
+        async function placeOrder({ token, qty, side, limit }) {
             try {
-                const response = await SolSeekerAPI.placeOrder(orderData);
+                const response = await SolSeekerAPI.placeOrder({ token, qty, side, limit });
                 if (response) {
                     console.log('Order placed successfully:', response);
                     // Update UI with new order
                     addFeedEntry({
-                        timestamp: new Date(),
-                        type: orderData.side.toUpperCase(),
-                        message: `${orderData.symbol} @ $${orderData.price}`,
+                        timestamp: new Date(response.timestamp ? response.timestamp * 1000 : Date.now()),
+                        type: response.side.toUpperCase(),
+                        message: `${response.quantity} ${response.token} @ $${response.price}`,
                         strategy: 'MANUAL',
                         confidence: null,
-                        color: orderData.side === 'buy' ? 'blade-cyan' : 'blade-amber'
+                        color: response.side === 'buy' ? 'blade-cyan' : 'blade-amber'
                     });
                 }
                 return response;
@@ -3220,13 +2522,13 @@
         // Complete Sol-Seeker API Client
         class SolSeekerAPI {
             constructor() {
-                this.baseURL = window.API_BASE || window.location.origin;
-                this.apiKey = window.API_KEY || localStorage.getItem('sol_seeker_api_key') || '';
+                this.baseURL = localStorage.getItem('sol_seeker_api_base') || window.location.origin;
+                this.apiKey = localStorage.getItem('sol_seeker_api_key') || '';
                 this.isConnected = false;
                 this.retryCount = 0;
                 this.maxRetries = 3;
             }
-            
+
             // Generic request method with error handling
             async request(endpoint, options = {}) {
                 const url = `${this.baseURL}${endpoint}`;
@@ -3235,26 +2537,31 @@
                     ...(this.apiKey && { 'X-API-Key': this.apiKey }),
                     ...options.headers
                 };
-                
+
                 try {
                     const response = await fetch(url, {
                         ...options,
                         headers
                     });
-                    
+
+                    if (response.status === 401) {
+                        this.promptForApiKey();
+                        return null;
+                    }
+
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-                    
+
                     const data = await response.json();
                     this.isConnected = true;
                     this.retryCount = 0;
                     return data;
-                    
+
                 } catch (error) {
                     console.error(`API request failed for ${endpoint}:`, error);
                     this.isConnected = false;
-                    
+
                     // Retry logic for critical endpoints
                     if (this.retryCount < this.maxRetries && this.isCriticalEndpoint(endpoint)) {
                         this.retryCount++;
@@ -3262,11 +2569,11 @@
                         await new Promise(resolve => setTimeout(resolve, 1000 * this.retryCount));
                         return this.request(endpoint, options);
                     }
-                    
+
                     return null;
                 }
             }
-            
+
             // Check if endpoint is critical for dashboard operation
             isCriticalEndpoint(endpoint) {
                 const critical = ['/health', '/status', '/dashboard', '/positions'];
@@ -3359,26 +2666,57 @@
                 return this.get('/tv');
             }
             
-            // WebSocket endpoints (for future implementation)
+            // WebSocket endpoints
             getWebSocketURL(endpoint) {
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                return `${wsProtocol}//${window.location.host}${endpoint}`;
+                const keyParam = this.apiKey ? `?key=${encodeURIComponent(this.apiKey)}` : '';
+                return `${wsProtocol}//${window.location.host}${endpoint}${keyParam}`;
             }
-            
+
+            // API configuration
+            setApiBase(url) {
+                this.baseURL = url;
+                localStorage.setItem('sol_seeker_api_base', url);
+            }
+
             // API key management
             setApiKey(key) {
                 this.apiKey = key;
                 localStorage.setItem('sol_seeker_api_key', key);
             }
-            
+
             clearApiKey() {
                 this.apiKey = '';
                 localStorage.removeItem('sol_seeker_api_key');
             }
+
+            promptForApiKey() {
+                const key = window.prompt('API key required. Please enter your API key:');
+                if (key) {
+                    this.setApiKey(key);
+                    window.dispatchEvent(new CustomEvent('apiKey', { detail: key }));
+                }
+            }
         }
-        
+
         // Initialize API client
         const SolSeekerAPI = new SolSeekerAPI();
+
+        // Initialize API connection inputs
+        const apiBaseInput = document.getElementById('apiBaseInput');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiBaseInput) {
+            apiBaseInput.value = SolSeekerAPI.baseURL;
+            apiBaseInput.addEventListener('change', (e) => {
+                SolSeekerAPI.setApiBase(e.target.value);
+            });
+        }
+        if (apiKeyInput) {
+            apiKeyInput.value = SolSeekerAPI.apiKey;
+            apiKeyInput.addEventListener('change', (e) => {
+                SolSeekerAPI.setApiKey(e.target.value);
+            });
+        }
         
         // Dashboard state management
         const dashboardState = {
@@ -3423,7 +2761,7 @@
                 
                 // Update UI components
                 updatePortfolioMetrics();
-                updatePositionsDisplay();
+                await updatePositionsDisplay(positions);
                 updateSystemHealth();
                 updateRegimeAnalysis();
                 updateConnectionStatus(SolSeekerAPI.isConnected);
@@ -3437,59 +2775,83 @@
         
         // Update portfolio metrics from API data
         function updatePortfolioMetrics() {
-            if (!dashboardState.dashboard) return;
-            
-            const data = dashboardState.dashboard;
-            
-            // Update portfolio value
-            if (data.total_value) {
-                document.getElementById('portfolioValue').textContent = 
-                    `$${data.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            }
-            
-            // Update portfolio change
-            if (data.daily_pnl) {
-                const changeElement = document.getElementById('portfolioChange');
-                const isPositive = data.daily_pnl >= 0;
-                const changePercent = data.daily_pnl_percent || 0;
-                
-                changeElement.textContent = 
-                    `${isPositive ? '+' : ''}$${Math.abs(data.daily_pnl).toLocaleString('en-US', { minimumFractionDigits: 2 })} (${isPositive ? '+' : ''}${changePercent.toFixed(2)}%)`;
-                changeElement.className = `text-sm hologram-text ${isPositive ? 'text-cyan-glow' : 'text-blade-orange'} mt-1`;
-            }
-            
-            // Update realized P&L
-            if (data.realized_pnl) {
-                const pnlElement = document.getElementById('realizedPnL');
-                const isPositive = data.realized_pnl >= 0;
-                pnlElement.textContent = 
-                    `${isPositive ? '+' : ''}$${Math.abs(data.realized_pnl).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-                pnlElement.className = `text-3xl font-bold ${isPositive ? 'cyan-glow' : 'text-blade-orange'} data-flicker`;
-            }
+            if (!dashboardState.dashboard || !dashboardState.dashboard.risk) return;
+
+            const risk = dashboardState.dashboard.risk;
+            const equity = risk.equity || 0;
+            const unrealized = risk.unrealized || 0;
+            const realized = risk.realized || 0;
+
+            document.getElementById('portfolioValue').textContent =
+                `$${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const changeElement = document.getElementById('portfolioChange');
+            const totalChange = unrealized + realized;
+            const baseEquity = equity - totalChange;
+            const changePercent = baseEquity !== 0 ? (totalChange / baseEquity) * 100 : 0;
+            const isPositive = totalChange >= 0;
+            changeElement.textContent =
+                `${isPositive ? '+' : ''}$${Math.abs(totalChange).toLocaleString('en-US', { minimumFractionDigits: 2 })} (${isPositive ? '+' : ''}${changePercent.toFixed(2)}%)`;
+            changeElement.className = `text-sm hologram-text ${isPositive ? 'text-cyan-glow' : 'text-blade-orange'} mt-1`;
+
+            const pnlElement = document.getElementById('realizedPnL');
+            const isRealizedPositive = realized >= 0;
+            pnlElement.textContent =
+                `${isRealizedPositive ? '+' : ''}$${Math.abs(realized).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            pnlElement.className = `text-3xl font-bold ${isRealizedPositive ? 'cyan-glow' : 'text-blade-orange'} data-flicker`;
         }
-        
+
         // Update positions display from API data
-        function updatePositionsDisplay() {
-            if (!dashboardState.positions) return;
-            
-            const positions = dashboardState.positions;
-            
-            // Update position count in metrics
-            const activePositions = positions.filter(p => p.quantity > 0).length;
-            const longPositions = positions.filter(p => p.quantity > 0 && p.side === 'long').length;
-            const shortPositions = positions.filter(p => p.quantity > 0 && p.side === 'short').length;
-            
-            // Update the positions metric card
-            const positionsCard = document.querySelector('.metric-card:nth-child(3)');
-            if (positionsCard) {
-                positionsCard.querySelector('.text-3xl').textContent = `${activePositions} ACTIVE`;
-                positionsCard.querySelector('.text-sm.hologram-text.text-cyan-glow\\/80').textContent = 
-                    `${longPositions} LONG • ${shortPositions} SHORT`;
+        async function updatePositionsDisplay(posMap) {
+            let map = posMap;
+            if (!map) {
+                map = await SolSeekerAPI.getPositions();
             }
-            
-            // Update individual position rows (this would require more complex DOM manipulation)
-            // For now, we'll log the data for debugging
-            console.log('Live positions data:', positions);
+            if (!map) return;
+            dashboardState.positions = map;
+
+            const entries = Object.entries(map);
+            const qty = (p) => p.quantity ?? p.qty ?? 0;
+            const activePositions = entries.filter(([, p]) => qty(p) !== 0).length;
+            const longPositions = entries.filter(([, p]) => qty(p) > 0).length;
+            const shortPositions = entries.filter(([, p]) => qty(p) < 0).length;
+
+            document.getElementById('openPositionsTotal').textContent = activePositions.toString();
+            document.getElementById('openPositionsActive').textContent = `${activePositions} ACTIVE`;
+            document.getElementById('openPositionsBreakdown').textContent = `${longPositions} LONG • ${shortPositions} SHORT`;
+
+            const list = document.getElementById('positionsList');
+            if (list) {
+                list.innerHTML = '';
+                entries.forEach(([token, p]) => {
+                    const q = qty(p);
+                    const pnl = p.unrealized ?? p.pnl ?? 0;
+                    const color = pnl >= 0 ? 'text-cyan-glow' : 'text-blade-orange';
+                    const row = document.createElement('div');
+                    row.className = 'position-row bg-void-black/50 p-3 rounded border border-blade-amber/30 hover:border-blade-amber/60';
+                    row.setAttribute('data-token', token);
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="token-icon">${token[0] || '?'}</div>
+                                <div>
+                                    <div class="hologram-text text-white font-bold">$${token}</div>
+                                    <div class="hologram-text text-xs text-blade-amber/60">${q}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl}</div>
+                            </div>
+                        </div>`;
+                    row.addEventListener('click', async function() {
+                        if (selectedPosition) selectedPosition.classList.remove('selected');
+                        this.classList.add('selected');
+                        selectedPosition = this;
+                        await showPositionDetails(token);
+                    });
+                    list.appendChild(row);
+                });
+            }
         }
         
         // Update system health from API data
@@ -3594,8 +2956,15 @@
         async function updateChartData(symbol = 'SOL') {
             try {
                 const chartData = await SolSeekerAPI.getChart(symbol);
-                if (chartData && chartData.prices) {
+                const container = document.querySelector('#equityChart .chart-container');
+                if (!container || !chartData) return;
+
+                if (chartData.prices) {
+                    // Draw curve if price data is available
                     updateEquityCurve(chartData.prices);
+                } else if (chartData.url) {
+                    // Fall back to embedding the TradingView chart URL
+                    container.innerHTML = `<iframe src="${chartData.url}" class="w-full h-full" frameborder="0"></iframe>`;
                 }
             } catch (error) {
                 console.error('Error updating chart data:', error);
@@ -3666,8 +3035,11 @@
                         }
                     };
                     
-                    ws.onclose = () => {
+                    ws.onclose = (event) => {
                         console.log(`WebSocket disconnected: ${endpoint}`);
+                        if (event.code === 1008) {
+                            SolSeekerAPI.promptForApiKey();
+                        }
                         this.handleReconnect(endpoint, onMessage, onError);
                     };
                     
@@ -3728,22 +3100,8 @@
             
             // Position updates
             wsClient.connect('/positions/ws', (data) => {
-                console.log('Real-time position update:', data);
-                // Update position displays in real-time
-            });
-            
-            // Order updates
-            wsClient.connect('/orders/ws', (data) => {
-                if (data.order) {
-                    addFeedEntry({
-                        timestamp: new Date(data.timestamp),
-                        type: data.order.side.toUpperCase(),
-                        message: `${data.order.symbol} @ $${data.order.price}`,
-                        strategy: data.order.strategy || 'API',
-                        confidence: data.order.confidence ? `${(data.order.confidence * 100).toFixed(0)}%` : null,
-                        color: data.order.side === 'buy' ? 'blade-cyan' : 'blade-amber'
-                    });
-                }
+                dashboardState.positions = data;
+                updatePositionsDisplay(data);
             });
             
             // Features/AI updates
@@ -3769,16 +3127,28 @@
             if (health) {
                 console.log('API connection established:', health);
                 updateConnectionStatus(true);
-                
+
+                try {
+                    const state = await SolSeekerAPI.getState();
+                    if (state && state.settings) {
+                        applySettings(state.settings);
+                    }
+                } catch (err) {
+                    console.error('Failed to load state:', err);
+                }
+
                 // Initialize WebSocket connections for real-time updates
                 initializeWebSockets();
-                
+
+                // Subscribe to trading feed
+                updateTradingFeed();
+
                 // Initial data fetch
                 await updateDashboardData();
-                
+
                 // Set up periodic updates (less frequent since we have WebSockets)
                 setInterval(updateDashboardData, 10000); // Update every 10 seconds
-                
+
             } else {
                 console.warn('API connection failed - running in demo mode');
                 updateConnectionStatus(false);
@@ -3789,7 +3159,6 @@
             }
             
             // Always update UI elements that don't depend on API
-            setInterval(updateTradingFeed, 3000);
             setInterval(updateResourceMetrics, 3000);
             
             console.log('Dashboard initialization complete');
@@ -3812,135 +3181,90 @@
         });
         
         // Position details modal
-        function showPositionDetails(token) {
+        async function showPositionDetails(token) {
             const modal = document.getElementById('positionModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalContent = document.getElementById('modalContent');
-            
-            // Sample position data
-            const positionData = {
-                'NOVA': {
-                    symbol: '$NOVA',
-                    name: 'Nova Protocol',
-                    quantity: '2,500 tokens',
-                    entryPrice: '$0.00032',
-                    currentPrice: '$0.00042',
-                    pnl: '+0.24 SOL (+30.0%)',
-                    strategy: 'Listing Sniper',
-                    wallet: 'Wallet A (Sniper)',
-                    entryTime: '2024-01-15 14:15:32 UTC',
-                    regimeProbability: 'Trend: 72%, Mean-Revert: 18%, Chop: 10%',
-                    riskScore: 'LOW (2.1/10)',
-                    stopLoss: '$0.00025 (-22%)',
-                    takeProfit: '$0.00055 (+72%)',
-                    liquidityScore: 'HEALTHY (8.4/10)',
-                    contractVerified: 'YES',
-                    holderCount: '1,247 holders',
-                    rugRisk: 'MINIMAL (0.8/10)'
-                },
-                'FLUX': {
-                    symbol: '$FLUX',
-                    name: 'Flux Network',
-                    quantity: '1,800 tokens',
-                    entryPrice: '$0.00067',
-                    currentPrice: '$0.00077',
-                    pnl: '+0.18 SOL (+15.0%)',
-                    strategy: 'Listing Sniper',
-                    wallet: 'Wallet A (Sniper)',
-                    entryTime: '2024-01-15 13:42:18 UTC',
-                    regimeProbability: 'Trend: 65%, Mean-Revert: 25%, Chop: 10%',
-                    riskScore: 'LOW (2.8/10)',
-                    stopLoss: '$0.00052 (-22%)',
-                    takeProfit: '$0.00095 (+42%)',
-                    liquidityScore: 'GOOD (7.2/10)',
-                    contractVerified: 'YES',
-                    holderCount: '892 holders',
-                    rugRisk: 'LOW (1.2/10)'
-                },
-                'SOL': {
-                    symbol: 'SOL/USDC',
-                    name: 'Solana',
-                    quantity: '15.2 SOL (2.5X Leverage)',
-                    entryPrice: '$139.20',
-                    currentPrice: '$142.85',
-                    pnl: '+0.89 SOL (+12.4%)',
-                    strategy: 'Arbitrage',
-                    wallet: 'Wallet B (Arbitrage)',
-                    entryTime: '2024-01-15 12:28:45 UTC',
-                    regimeProbability: 'Trend: 68%, Mean-Revert: 22%, Chop: 10%',
-                    riskScore: 'MODERATE (4.2/10)',
-                    stopLoss: '$135.50 (-2.7%)',
-                    takeProfit: '$148.00 (+6.3%)',
-                    liquidityScore: 'EXCELLENT (9.8/10)',
-                    contractVerified: 'N/A (Native Token)',
-                    holderCount: 'N/A',
-                    rugRisk: 'NONE (0.0/10)'
-                }
+
+            const positions = await SolSeekerAPI.getPositions();
+            const pos = positions && positions[token];
+
+            if (!pos) {
+                modalTitle.textContent = 'POSITION NOT FOUND';
+                modalContent.innerHTML = `<p class="hologram-text text-blade-orange text-center">No position data available for ${token}</p>`;
+                modal.classList.remove('hidden');
+                return;
+            }
+
+            const formatPrice = (v) => v != null ? `$${v}` : 'N/A';
+            const pnlValue = pos.pnl ?? pos.unrealized;
+            const pnlText = pnlValue != null ? `${pnlValue >= 0 ? '+' : ''}${pnlValue}` : 'N/A';
+            const pnlClass = pnlValue != null && pnlValue < 0 ? 'text-blade-orange' : 'text-cyan-glow';
+
+            const data = {
+                symbol: pos.symbol || `$${token}`,
+                name: pos.name || token,
+                quantity: pos.quantity ?? pos.qty ?? 'N/A',
+                entryPrice: formatPrice(pos.entryPrice ?? pos.cost),
+                currentPrice: formatPrice(pos.currentPrice ?? pos.price),
+                pnl: pnlText,
+                pnlClass,
+                strategy: pos.strategy || 'N/A',
+                wallet: pos.wallet || 'N/A',
+                entryTime: pos.entryTime || pos.entry_time || 'N/A'
             };
-            
-            const data = positionData[token] || positionData['NOVA'];
-            
+
             modalTitle.textContent = `${data.symbol} POSITION DETAILS`;
-            
+
             modalContent.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30">
-                            <h4 class="hologram-text text-blade-amber font-bold mb-3">POSITION INFO</h4>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">TOKEN:</span>
-                                    <span class="hologram-text text-white">${data.name}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">QUANTITY:</span>
-                                    <span class="hologram-text text-white">${data.quantity}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">ENTRY PRICE:</span>
-                                    <span class="hologram-text text-white">${data.entryPrice}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">CURRENT PRICE:</span>
-                                    <span class="hologram-text text-white">${data.currentPrice}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">UNREALIZED P&L:</span>
-                                    <span class="hologram-text ${data.pnl.includes('+') ? 'text-cyan-glow' : 'text-blade-orange'}">${data.pnl}</span>
-                                </div>
+                <div class="space-y-4">
+                    <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30">
+                        <h4 class="hologram-text text-blade-amber font-bold mb-3">POSITION INFO</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">TOKEN:</span>
+                                <span class="hologram-text text-white">${data.name}</span>
                             </div>
-                        </div>
-                        
-                        <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30">
-                            <h4 class="hologram-text text-cyan-glow font-bold mb-3">STRATEGY & TIMING</h4>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">STRATEGY:</span>
-                                    <span class="hologram-text text-cyan-glow">${data.strategy}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">WALLET:</span>
-                                    <span class="hologram-text text-white">${data.wallet}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">ENTRY TIME:</span>
-                                    <span class="hologram-text text-white">${data.entryTime}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">STOP LOSS:</span>
-                                    <span class="hologram-text text-blade-orange">${data.stopLoss}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="hologram-text text-blade-amber/80">TAKE PROFIT:</span>
-                                    <span class="hologram-text text-cyan-glow">${data.takeProfit}</span>
-                                </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">QUANTITY:</span>
+                                <span class="hologram-text text-white">${data.quantity}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">ENTRY PRICE:</span>
+                                <span class="hologram-text text-white">${data.entryPrice}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">CURRENT PRICE:</span>
+                                <span class="hologram-text text-white">${data.currentPrice}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">UNREALIZED P&L:</span>
+                                <span class="hologram-text ${data.pnlClass}">${data.pnl}</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/30">
-                            <h4 class="hologram-text text-blade-yellow font-bold mb-3">MARKET REGIME AT ENTRY</h4>
-                            <div class="space-y-2 text-sm">
-                                <div class="hologram
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96b9c1716105983f',t:'MTc1NDYwMDk3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+
+                    <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30">
+                        <h4 class="hologram-text text-cyan-glow font-bold mb-3">STRATEGY & TIMING</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">STRATEGY:</span>
+                                <span class="hologram-text text-cyan-glow">${data.strategy}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">WALLET:</span>
+                                <span class="hologram-text text-white">${data.wallet}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="hologram-text text-blade-amber/80">ENTRY TIME:</span>
+                                <span class="hologram-text text-white">${data.entryTime}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            modal.classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>

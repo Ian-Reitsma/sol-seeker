@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 import asyncio
+import time
 
 from google.protobuf.json_format import MessageToDict
 
@@ -23,6 +24,8 @@ class Order:
     fee: float
     side: Side
     id: int
+    timestamp: int
+    status: str = "closed"
 
 
 @dataclass
@@ -53,6 +56,8 @@ class TradeEngine:
                 fee=execution.fee,
                 side=side,
                 id=self.next_id,
+                timestamp=int(time.time()),
+                status="closed",
             )
             self.next_id += 1
             self.orders.append(order)

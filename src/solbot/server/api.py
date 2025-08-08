@@ -27,7 +27,7 @@ import asyncio
 import time
 import logging
 import contextlib
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +62,14 @@ class OrderResponse(BaseModel):
     price: float
     slippage: float
     fee: float
+    timestamp: int
+    status: str
+
+
+class StateUpdate(BaseModel):
+    running: Optional[bool] = None
+    emergency_stop: Optional[bool] = None
+    settings: Optional[dict] = None
 
 
 class FeatureInfo(BaseModel):
@@ -179,6 +187,7 @@ def create_app(
     pos_lock = asyncio.Lock()
     order_subs: list[asyncio.Queue[dict]] = []
     poller_task: asyncio.Task | None = None
+    runtime_state = {"running": True, "emergency_stop": False, "settings": {}}
 
     def subscribe_orders() -> asyncio.Queue[dict]:
         q: asyncio.Queue[dict] = asyncio.Queue()
@@ -223,10 +232,23 @@ def create_app(
     @app.get("/state")
     def state() -> dict:
         return {
+            "running": runtime_state["running"],
+            "emergency_stop": runtime_state["emergency_stop"],
+            "settings": runtime_state["settings"],
             "license": license_info(),
             "status": bootstrap.status(),
             "timestamp": int(time.time()),
         }
+
+    @app.post("/state")
+    def update_state(req: StateUpdate) -> dict:
+        if req.running is not None:
+            runtime_state["running"] = req.running
+        if req.emergency_stop is not None:
+            runtime_state["emergency_stop"] = req.emergency_stop
+        if req.settings is not None:
+            runtime_state["settings"] = req.settings
+        return state()
 
     @app.get("/", response_model=ServiceMap)
     async def root() -> ServiceMap:
@@ -338,6 +360,8 @@ def create_app(
                 "price": o.price,
                 "slippage": o.slippage,
                 "fee": o.fee,
+                "timestamp": o.timestamp,
+                "status": o.status,
             }
             for o in trade.list_orders()
         ] if bootstrap.is_ready() else []
@@ -365,7 +389,7 @@ def create_app(
         return trade.list_positions()
 
     @app.get("/orders")
-    async def orders(key: None = Depends(check_key)) -> list[dict]:
+    async def orders(status: str | None = Query(None), key: None = Depends(check_key)) -> list[dict]:
         if not bootstrap.is_ready():
             raise HTTPException(status_code=503, detail="state: BOOTSTRAPPING")
         return [
@@ -377,8 +401,10 @@ def create_app(
                 "price": o.price,
                 "slippage": o.slippage,
                 "fee": o.fee,
+                "timestamp": o.timestamp,
+                "status": o.status,
             }
-            for o in trade.list_orders()
+            for o in trade.list_orders() if status is None or o.status == status
         ]
 
     @app.post("/orders", response_model=OrderResponse)
@@ -387,6 +413,10 @@ def create_app(
             raise HTTPException(status_code=503, detail="state: BOOTSTRAPPING")
         if req.token not in [a["symbol"] for a in assets.list_assets()]:
             raise HTTPException(status_code=400, detail="unsupported asset")
+        if runtime_state["emergency_stop"]:
+            raise HTTPException(status_code=400, detail="emergency stop active")
+        if not runtime_state["running"]:
+            raise HTTPException(status_code=400, detail="trading paused")
         start = time.perf_counter_ns()
         order = await trade.place_order(req.token, req.qty, req.side, req.limit)
         latency_hist.observe(time.perf_counter_ns() - start)
@@ -398,6 +428,8 @@ def create_app(
             "price": order.price,
             "slippage": order.slippage,
             "fee": order.fee,
+            "timestamp": order.timestamp,
+            "status": order.status,
         }
         for ws in list(connections):
             try:

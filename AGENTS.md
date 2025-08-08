@@ -384,3 +384,62 @@
   - Settings panel must read current config from `/state` and persist updates via `POST /state`.
 - Connect live metrics and the trading feed through WebSocket endpoints (`/dashboard/ws`, `/positions/ws`, `/orders/ws`).
 - Ensure tabs, modals, and other dynamic elements operate and handle errors gracefully.
+## OpenAI Assistant - Order Feed Timestamps
+
+**Date:** 2025-08-07
+
+### Summary
+- Added timestamps to backend `OrderResponse` objects and order storage.
+- Updated dashboard feed to display token, quantity, price using `/orders` data and websocket updates.
+- Aligned order placement with `OrderRequest` by sending `{ token, qty, side, limit }`.
+- Reinforced that all dashboard controls must hit backend endpoints.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Dynamic Positions and Order Status
+
+**Date:** 2025-08-07
+
+### Summary
+- Replaced static positions tab with a live list driven by `/positions` and refreshed via `/positions/ws`.
+- Added `status` field and optional `status` query parameter to `/orders`, enabling the history view to show closed trades.
+- Wired resource metrics and settings panel to backend state so every dashboard control reflects server data.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Dashboard CSS Extraction
+
+**Date:** 2025-08-07
+
+### Summary
+- Removed remaining inline styles from `dashboard.html`, converting SVG stops to attributes and progress widths to Tailwind classes.
+- Ensured all fonts, theme colors, and component styling live in the dedicated `dashboard.css` file, keeping HTML purely structural.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Chart Embed and Position Metrics
+
+**Date:** 2025-08-07
+
+### Summary
+- Embedded TradingView charts when `/chart/{symbol}` returns a URL while retaining support for price arrays.
+- Derived portfolio metrics from risk equity, unrealized, and realized values and generated regime insights from posterior probabilities.
+- Computed open-position counts by fetching `/positions` and listening on `/positions/ws`, and replaced the Trade History tab with a live list fed by `/orders?status=closed` and `/orders/ws`.
+
+### Next Steps
+- None.
+
+## OpenAI Assistant - Position Modal and Authenticated WebSockets
+
+**Date:** 2025-08-07
+
+### Summary
+- Replaced static position details with live `/positions` lookups in the modal and graceful errors when tokens are missing.
+- Subscribed the trading feed to `/orders/ws` for real-time order and posterior updates, eliminating polling and appending closed trades to history.
+- Introduced dashboard settings for API base URL and key, storing them in local storage and automatically injecting them into REST and WebSocket requests.
+
+### Next Steps
+- None.
