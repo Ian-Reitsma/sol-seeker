@@ -103,14 +103,13 @@ Front-end clients interact with the server via JSON resources and WebSocket feed
 * `GET /chart/{symbol}` – price history points or a TradingView URL for embedding charts
 * `GET /manifest` – machine-readable listing of REST and WebSocket routes with version and timestamp
 * `GET /tv` – simple TradingView iframe for manual inspection
-* `WS /ws` – streams new orders *(requires `X-API-Key` header)*
+* `WS /ws` – streams newly executed orders and closures in real time *(requires `X-API-Key` header; legacy alias: `/orders/ws`)*
 * `WS /features/ws` – streams objects with `event` metadata and associated `features` array
 * `WS /posterior/ws` – streams posterior probability updates alongside event metadata
 * `WS /positions/ws` – streams position snapshots after each order *(requires `X-API-Key` header)*
 * `WS /dashboard/ws` – streams combined dashboard updates with features, posterior, positions, orders, risk metrics, and timestamp whenever new events arrive *(requires `X-API-Key` header)*
-* `WS /orders/ws` – streams newly executed orders and closures in real time *(requires `X-API-Key` header)*
 
-The dashboard derives open-position metrics and position‑detail modals by fetching `/positions` and listening on `/positions/ws`, while the trading feed and History tab stream new executions and closures from `/orders/ws` and load past trades via `/orders?status=closed`.
+The dashboard derives open-position metrics and position‑detail modals by fetching `/positions` and listening on `/positions/ws`, while the trading feed and History tab stream new executions and closures from `/ws` and load past trades via `/orders?status=closed`.
 Users may configure the API base URL and API key in the settings panel; these values are stored in local storage and appended to all REST and WebSocket requests.
 
 Example usage:

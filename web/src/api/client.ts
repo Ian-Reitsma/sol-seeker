@@ -156,7 +156,7 @@ export function positionsWs(apiKey: string): WebSocket {
 }
 
 export function ordersWs(apiKey: string): WebSocket {
-  return createWs('/orders/ws', apiKey);
+  return createWs('/ws', apiKey);
 }
 
 export { API_BASE };

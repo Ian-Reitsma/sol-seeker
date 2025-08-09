@@ -75,7 +75,7 @@ describe('api client', () => {
     const mockWs = {} as any;
     (global as any).WebSocket = jest.fn().mockReturnValue(mockWs);
     const ws = ordersWs('secret');
-    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/orders/ws?key=secret');
+    expect((global as any).WebSocket).toHaveBeenCalledWith('ws://api.test/ws?key=secret');
     expect(ws).toBe(mockWs);
   });
 });
