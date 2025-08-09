@@ -33,7 +33,8 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depe
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
@@ -199,6 +200,9 @@ def create_app(
         "order_latency_ns", "Order placement latency", buckets=(1e6, 5e6, 1e7, 5e7, 1e8)
     )
 
+    static_dir = Path(__file__).resolve().parents[3] / "web" / "public"
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
     connections: list[WebSocket] = []
     conn_lock = asyncio.Lock()
     pos_connections: list[WebSocket] = []
@@ -268,8 +272,12 @@ def create_app(
             runtime_state["settings"] = req.settings
         return state()
 
-    @app.get("/", response_model=ServiceMap)
-    async def root() -> ServiceMap:
+    @app.get("/", include_in_schema=False)
+    async def root() -> RedirectResponse:
+        return RedirectResponse("/static/dashboard.html")
+
+    @app.get("/api", response_model=ServiceMap)
+    async def api_index() -> ServiceMap:
         """Return resource index and embed template for TradingView."""
         endpoints = EndpointMap(
             health=app.url_path_for("health"),

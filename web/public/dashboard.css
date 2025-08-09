@@ -7,10 +7,10 @@
         
         .hologram-panel {
             background: rgba(17, 17, 17, 0.9);
-            border: 1px solid #ff8c00;
-            box-shadow: 
-                0 0 20px rgba(255, 140, 0, 0.3),
-                inset 0 0 20px rgba(255, 140, 0, 0.05);
+            border: 1px solid rgba(255, 140, 0, 0.4);
+            box-shadow:
+                0 0 10px rgba(255, 140, 0, 0.2),
+                inset 0 0 10px rgba(255, 140, 0, 0.03);
             backdrop-filter: blur(10px);
             position: relative;
         }
@@ -26,7 +26,8 @@
             background-size: 400% 400%;
             z-index: -1;
             border-radius: inherit;
-            animation: borderFlow 8s ease-in-out infinite;
+            opacity: 0.4;
+            animation: borderFlow 12s ease-in-out infinite;
         }
         
         @keyframes borderFlow {
@@ -35,19 +36,13 @@
         }
         
         .amber-glow {
-            color: #ff8c00;
-            text-shadow: 
-                0 0 5px #ff8c00,
-                0 0 10px #ff8c00,
-                0 0 15px #ff8c00;
+            color: #ffb74d;
+            text-shadow: 0 0 6px rgba(255, 140, 0, 0.5);
         }
-        
+
         .cyan-glow {
-            color: #00e5ff;
-            text-shadow: 
-                0 0 5px #00e5ff,
-                0 0 10px #00e5ff,
-                0 0 15px #00e5ff;
+            color: #80f2ff;
+            text-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
         }
         
         .data-flicker {
