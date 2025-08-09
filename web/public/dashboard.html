@@ -2106,7 +2106,7 @@
         tradingToggle.addEventListener('click', async function() {
             const next = !tradingActive;
             try {
-                await SolSeekerAPI.setState({ running: next });
+                await apiClient.setState({ running: next });
                 tradingActive = next;
                 updateTradingButton();
             } catch (err) {
@@ -2168,7 +2168,7 @@
         settingsToggle.addEventListener('click', async function() {
             settingsPanel.classList.add('settings-panel-open');
             try {
-                const s = await SolSeekerAPI.getState();
+                const s = await apiClient.getState();
                 if (s && s.settings) {
                     applySettings(s.settings);
                 }
@@ -2234,7 +2234,7 @@
                 const indicator = document.getElementById('saveIndicator');
                 if (indicator) indicator.classList.remove('hidden');
                 try {
-                    await SolSeekerAPI.post('/state', { settings: collectSettings() });
+                    await apiClient.post('/state', { settings: collectSettings() });
                 } catch (err) {
                     console.error('auto save settings failed', err);
                     showToast('Failed to save settings');
@@ -2271,7 +2271,7 @@
 
         // Resource monitoring simulation
         async function updateResourceMetrics() {
-            const status = await SolSeekerAPI.getStatus();
+            const status = await apiClient.getStatus();
             if (status) {
                 dashboardState.status = status;
                 updateSystemHealth();
@@ -2405,7 +2405,7 @@
 
         async function loadHistory() {
             try {
-                const orders = await SolSeekerAPI.get('/orders?status=closed');
+                const orders = await apiClient.get('/orders?status=closed');
                 const list = document.getElementById('historyList');
                 if (!orders || !Array.isArray(orders) || !list) return;
                 list.innerHTML = '';
@@ -2543,7 +2543,7 @@
 
             try {
                 const settings = collectSettings();
-                const response = await SolSeekerAPI.post('/state', { settings });
+                const response = await apiClient.post('/state', { settings });
 
                 if (response) {
                     if (response.settings) {
@@ -2571,7 +2571,7 @@
                 const fee = parseFloat(document.getElementById('btFee').value) || 0;
                 const slippage = parseFloat(document.getElementById('btSlippage').value) || 0;
                 const initial_cash = parseFloat(document.getElementById('btCash').value) || 0;
-                const res = await SolSeekerAPI.runBacktest({ source, fee, slippage, initial_cash });
+                const res = await apiClient.runBacktest({ source, fee, slippage, initial_cash });
                 if (res) {
                     document.getElementById('backtestPnL').textContent = `$${res.pnl.toFixed(2)}`;
                     document.getElementById('backtestStats').textContent = `DD ${(res.drawdown * 100).toFixed(2)}% • SHARPE ${res.sharpe.toFixed(2)}`;
@@ -2588,7 +2588,7 @@
         document.querySelector('.emergency-stop').addEventListener('click', async function() {
             if (confirm('EMERGENCY STOP: This will immediately close all positions and halt trading. Continue?')) {
                 try {
-                    const response = await SolSeekerAPI.setState({
+                    const response = await apiClient.setState({
                         running: false,
                         emergency_stop: true
                     });
@@ -2614,7 +2614,7 @@
         // Order placement functionality (for future use)
         async function placeOrder({ token, qty, side, limit }) {
             try {
-                const response = await SolSeekerAPI.placeOrder({ token, qty, side, limit });
+                const response = await apiClient.placeOrder({ token, qty, side, limit });
                 if (response) {
                     console.log('Order placed successfully:', response);
                     // Update UI with new order
@@ -2819,21 +2819,22 @@
         }
 
         // Initialize API client
-        const SolSeekerAPI = new SolSeekerAPI();
+        const apiClient = new SolSeekerAPI();
+        window.SolSeekerAPI = apiClient;
 
         // Initialize API connection inputs
         const apiBaseInput = document.getElementById('apiBaseInput');
         const apiKeyInput = document.getElementById('apiKeyInput');
         if (apiBaseInput) {
-            apiBaseInput.value = SolSeekerAPI.baseURL;
+            apiBaseInput.value = apiClient.baseURL;
             apiBaseInput.addEventListener('change', (e) => {
-                SolSeekerAPI.setApiBase(e.target.value);
+                apiClient.setApiBase(e.target.value);
             });
         }
         if (apiKeyInput) {
-            apiKeyInput.value = SolSeekerAPI.apiKey;
+            apiKeyInput.value = apiClient.apiKey;
             apiKeyInput.addEventListener('change', (e) => {
-                SolSeekerAPI.setApiKey(e.target.value);
+                apiClient.setApiKey(e.target.value);
             });
         }
         
@@ -2857,14 +2858,15 @@
             
             try {
                 // Fetch core dashboard data
-                const [health, status, dashboard, positions, orders, features, posterior] = await Promise.all([
-                    SolSeekerAPI.getHealth(),
-                    SolSeekerAPI.getStatus(),
-                    SolSeekerAPI.getDashboard(),
-                    SolSeekerAPI.getPositions(),
-                    SolSeekerAPI.getOrders(),
-                    SolSeekerAPI.getFeatures(),
-                    SolSeekerAPI.getPosterior()
+                const [health, status, dashboard, positions, orders, features, posterior, state] = await Promise.all([
+                    apiClient.getHealth(),
+                    apiClient.getStatus(),
+                    apiClient.getDashboard(),
+                    apiClient.getPositions(),
+                    apiClient.getOrders(),
+                    apiClient.getFeatures(),
+                    apiClient.getPosterior(),
+                    apiClient.getState()
                 ]);
                 
                 // Update state
@@ -2876,19 +2878,20 @@
                 dashboardState.features = features;
                 dashboardState.posterior = posterior;
                 dashboardState.lastUpdate = new Date();
-                dashboardState.isDemo = !SolSeekerAPI.isConnected;
+                dashboardState.state = state;
+                dashboardState.isDemo = state && state.mode === 'demo';
                 
                 // Update UI components
                 updatePortfolioMetrics();
                 await updatePositionsDisplay(positions);
                 updateSystemHealth();
                 updateRegimeAnalysis();
-                updateConnectionStatus(SolSeekerAPI.isConnected);
+                updateLicenseMode(dashboardState.isDemo);
                 
             } catch (error) {
                 console.error('Error updating dashboard data:', error);
                 dashboardState.isDemo = true;
-                updateConnectionStatus(false);
+                updateLicenseMode(true);
             }
         }
         
@@ -2924,7 +2927,7 @@
         async function updatePositionsDisplay(posMap) {
             let map = posMap;
             if (!map) {
-                map = await SolSeekerAPI.getPositions();
+                map = await apiClient.getPositions();
             }
             if (!map) return;
             dashboardState.positions = map;
@@ -3059,30 +3062,30 @@
             }
         }
         
-        // Update connection status indicators
-        function updateConnectionStatus(isConnected) {
+        // Update license mode indicators
+        function updateLicenseMode(isDemo) {
             const statusElements = document.querySelectorAll('.status-online, .status-demo');
-            const demoModeElement = document.querySelector('.status-demo');
-            
-            if (isConnected) {
-                // Update to live mode
-                statusElements.forEach(el => {
-                    el.className = el.className.replace('status-demo', 'status-online');
-                });
-                
-                if (demoModeElement) {
-                    demoModeElement.textContent = 'LIVE MODE';
-                    demoModeElement.className = demoModeElement.className.replace('status-demo', 'status-online');
-                }
-            } else {
+            const modeElement = document.querySelector('.status-online, .status-demo');
+
+            if (isDemo) {
                 // Update to demo mode
                 statusElements.forEach(el => {
                     el.className = el.className.replace('status-online', 'status-demo');
                 });
-                
-                if (demoModeElement) {
-                    demoModeElement.textContent = 'DEMO MODE';
-                    demoModeElement.className = demoModeElement.className.replace('status-online', 'status-demo');
+
+                if (modeElement) {
+                    modeElement.textContent = 'DEMO MODE';
+                    modeElement.className = modeElement.className.replace('status-online', 'status-demo');
+                }
+            } else {
+                // Update to live mode
+                statusElements.forEach(el => {
+                    el.className = el.className.replace('status-demo', 'status-online');
+                });
+
+                if (modeElement) {
+                    modeElement.textContent = 'LIVE MODE';
+                    modeElement.className = modeElement.className.replace('status-demo', 'status-online');
                 }
             }
         }
@@ -3090,7 +3093,7 @@
         // Chart data integration
         async function updateChartData(symbol = 'SOL') {
             try {
-                const chartData = await SolSeekerAPI.getChart(symbol);
+                const chartData = await apiClient.getChart(symbol);
                 const container = document.querySelector('#equityChart .chart-container');
                 if (!container || !chartData) return;
 
@@ -3151,7 +3154,7 @@
             }
 
             connect(endpoint, onMessage, onError = null) {
-                const wsUrl = SolSeekerAPI.getWebSocketURL(endpoint);
+                const wsUrl = apiClient.getWebSocketURL(endpoint);
 
                 try {
                     const ws = new WebSocket(wsUrl);
@@ -3173,7 +3176,7 @@
                     ws.onclose = (event) => {
                         console.log(`WebSocket disconnected: ${endpoint}`);
                         if (event.code === 1008) {
-                            SolSeekerAPI.promptForApiKey();
+                            apiClient.promptForApiKey();
                         }
                         this.handleReconnect(endpoint, onMessage, onError);
                     };
@@ -3268,18 +3271,21 @@
             console.log('Initializing Sol-Seeker Dashboard...');
             
             // Check API availability first
-            const health = await SolSeekerAPI.getHealth();
+            const health = await apiClient.getHealth();
             if (health) {
                 console.log('API connection established:', health);
-                updateConnectionStatus(true);
 
                 try {
-                    const state = await SolSeekerAPI.getState();
+                    const state = await apiClient.getState();
                     if (state && state.settings) {
                         applySettings(state.settings);
                     }
+                    dashboardState.isDemo = state && state.mode === 'demo';
+                    updateLicenseMode(dashboardState.isDemo);
                 } catch (err) {
                     console.error('Failed to load state:', err);
+                    dashboardState.isDemo = true;
+                    updateLicenseMode(true);
                 }
 
                 // Initialize WebSocket connections for real-time updates
@@ -3296,9 +3302,9 @@
 
             } else {
                 console.warn('API connection failed - running in demo mode');
-                updateConnectionStatus(false);
+                updateLicenseMode(true);
                 dashboardState.isDemo = true;
-                
+
                 // In demo mode, use simulated updates
                 pollingIntervals.push(setInterval(updateDashboardData, 5000));
             }
@@ -3332,7 +3338,7 @@
             const modalTitle = document.getElementById('modalTitle');
             const modalContent = document.getElementById('modalContent');
 
-            const positions = await SolSeekerAPI.getPositions();
+            const positions = await apiClient.getPositions();
             const pos = positions && positions[token];
 
             if (!pos) {
