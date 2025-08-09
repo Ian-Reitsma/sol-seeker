@@ -1,7 +1,28 @@
 import type { paths } from './schema';
-import API_BASE_URL from '../api';
 
-const API_BASE = API_BASE_URL;
+let API_BASE: string = (process.env.VITE_API_URL as string | undefined) || '';
+if (typeof window !== 'undefined') {
+  API_BASE = localStorage.getItem('sol_seeker_api_base') || API_BASE;
+  if (!API_BASE) {
+    const { protocol, hostname, port } = window.location;
+    API_BASE = port === '5173'
+      ? `${protocol}//${hostname}:8000`
+      : `${protocol}//${hostname}${port ? `:${port}` : ''}`;
+    localStorage.setItem('sol_seeker_api_base', API_BASE);
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        if (!res.ok) throw new Error('health check failed');
+      } catch {
+        const input = window.prompt('Enter API base URL', API_BASE);
+        if (input) {
+          API_BASE = input;
+          localStorage.setItem('sol_seeker_api_base', API_BASE);
+        }
+      }
+    })();
+  }
+}
 
 function promptApiKey(): void {
   const key = window.prompt('API key required. Please enter your API key:');
@@ -137,3 +158,6 @@ export function positionsWs(apiKey: string): WebSocket {
 export function ordersWs(apiKey: string): WebSocket {
   return createWs('/orders/ws', apiKey);
 }
+
+export { API_BASE };
+export default API_BASE;
