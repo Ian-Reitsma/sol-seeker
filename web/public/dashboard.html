@@ -145,10 +145,10 @@
                         </svg>
                     </div>
                     <div class="text-3xl font-bold amber-glow data-flicker" id="portfolioValue">
-                        $125,847.32
+                        $0.00
                     </div>
                     <div class="text-sm hologram-text text-cyan-glow mt-1" id="portfolioChange">
-                        +$2,847.12 (+2.31%)
+                        +$0.00 (+0.00%)
                     </div>
                 </div>
 
@@ -161,10 +161,10 @@
                         </svg>
                     </div>
                     <div class="text-3xl font-bold cyan-glow data-flicker" id="realizedPnL">
-                        +$4,231.85
+                        $0.00
                     </div>
-                    <div class="text-sm hologram-text text-blade-amber/80 mt-1">
-                        ↗ +12.4% TODAY
+                    <div class="text-sm hologram-text text-blade-amber/80 mt-1" id="realizedPnLChange">
+                        ↗ +0.0% TODAY
                     </div>
                 </div>
 
@@ -426,11 +426,11 @@
                             <g id="tradeMarkers"></g>
                         </svg>
                         <div class="absolute top-4 left-4">
-                            <div class="hologram-text text-3xl cyan-glow data-flicker">$125,847.32</div>
+                            <div class="hologram-text text-3xl cyan-glow data-flicker" id="equityCurrent">$0.00</div>
                             <div class="hologram-text text-sm text-blade-amber/80">CURRENT EQUITY</div>
                         </div>
                         <div class="absolute top-4 right-4 text-right">
-                            <div class="hologram-text text-lg amber-glow">-5.2%</div>
+                            <div class="hologram-text text-lg amber-glow" id="maxDrawdown">0%</div>
                             <div class="hologram-text text-sm text-blade-amber/80">MAX DRAWDOWN</div>
                         </div>
                     </div>
@@ -571,8 +571,8 @@
                                 </g>
                             </svg>
                             <div class="absolute top-4 left-4">
-                                <div class="hologram-text text-2xl amber-glow data-flicker">$142.85</div>
-                                <div class="hologram-text text-sm cyan-glow">+$3.42 (+2.45%)</div>
+                                <div class="hologram-text text-2xl amber-glow data-flicker" id="assetPrice">$0.00</div>
+                                <div class="hologram-text text-sm cyan-glow" id="assetChange">+0.00 (+0.00%)</div>
                             </div>
                         </div>
                         
@@ -580,19 +580,19 @@
                         <div class="space-y-4">
                             <div class="bg-void-black/50 p-4 rounded border border-blade-amber/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">24H VOLUME</div>
-                                <div class="hologram-text text-lg amber-glow">$2.4M</div>
+                                <div class="hologram-text text-lg amber-glow" id="volume24h">N/A</div>
                             </div>
                             <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">VOLATILITY</div>
-                                <div class="hologram-text text-lg cyan-glow">HIGH</div>
+                                <div class="hologram-text text-lg cyan-glow" id="volatility">N/A</div>
                             </div>
                             <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">LIQUIDITY</div>
-                                <div class="hologram-text text-lg text-blade-yellow">$847K</div>
+                                <div class="hologram-text text-lg text-blade-yellow" id="liquidity">N/A</div>
                             </div>
                             <div class="bg-void-black/50 p-4 rounded border border-blade-orange/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">SPREAD</div>
-                                <div class="hologram-text text-lg text-blade-orange">0.12%</div>
+                                <div class="hologram-text text-lg text-blade-orange" id="spread">N/A</div>
                             </div>
                         </div>
                     </div>
@@ -792,66 +792,7 @@
                         </div>
                         
                         <div class="space-y-3">
-                            <!-- Whale Alert 1 -->
-                            <div class="bg-void-black/50 p-3 rounded border border-blade-cyan/30 hover:border-blade-cyan/60 transition-all tooltip-trigger relative">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="relative">
-                                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#00e5ff"/>
-                                            </svg>
-                                            <div class="absolute -top-1 -right-1 w-3 h-3 bg-cyan-glow rounded-full animate-ping"></div>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-cyan-glow font-bold text-sm">WHALE SPOTTED</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">2 minutes ago</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-white font-bold text-sm">847 SOL</div>
-                                        <div class="hologram-text text-cyan-glow text-xs">BUY $NOVA</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    Wallet: 7xK9...m3pL • Confidence: 94% • Following: AUTO
-                                </div>
-                                <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
-                                    Whale Alert: Large buy detected<br/>
-                                    Amount: 847 SOL → $NOVA<br/>
-                                    Wallet History: 89% success rate<br/>
-                                    Auto-follow: ENABLED (0.5% allocation)
-                                </div>
-                            </div>
-
-                            <!-- Whale Alert 2 -->
-                            <div class="bg-void-black/50 p-3 rounded border border-blade-orange/30 hover:border-blade-orange/60 transition-all tooltip-trigger relative">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="relative">
-                                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#ff6b35"/>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="hologram-text text-blade-orange font-bold text-sm">INSIDER MOVE</div>
-                                            <div class="hologram-text text-xs text-blade-amber/60">5 minutes ago</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="hologram-text text-white font-bold text-sm">1,240 SOL</div>
-                                        <div class="hologram-text text-blade-orange text-xs">SELL $RISK</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs hologram-text text-blade-amber/60">
-                                    Wallet: 3m8L...pQx • Confidence: 87% • Following: MANUAL
-                                </div>
-                                <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded left-0">
-                                    Insider Alert: Potential exit signal<br/>
-                                    Amount: 1,240 SOL from $RISK<br/>
-                                    Wallet Type: Team/Insider suspected<br/>
-                                    Action: Consider position review
-                                </div>
-                            </div>
+                            <div id="whaleAlerts" class="space-y-3"></div>
 
                             <!-- Smart Money Flow -->
                             <div class="bg-void-black/50 p-3 rounded border border-blade-yellow/30">
@@ -1241,65 +1182,8 @@
                             </button>
                         </div>
                         <div class="feed-scroll space-y-2" id="tradingFeed">
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-cyan">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-cyan text-xs">14:23:15</span>
-                                        <span class="hologram-text text-cyan-glow ml-3 font-bold">SNIPER</span>
-                                        <span class="hologram-text text-white ml-2">New token detected: $NOVA</span>
-                                    </div>
-                                    <span class="hologram-text text-cyan-glow/60 text-xs">87%</span>
-                                </div>
-                            </div>
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-amber">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-amber text-xs">14:22:48</span>
-                                        <span class="hologram-text text-blade-amber ml-3 font-bold">BUY</span>
-                                        <span class="hologram-text text-white ml-2">SOL/USDC @ $142.85</span>
-                                    </div>
-                                    <span class="hologram-text text-blade-amber/60 text-xs">+2.1%</span>
-                                </div>
-                            </div>
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-yellow">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-yellow text-xs">14:21:32</span>
-                                        <span class="hologram-text text-blade-orange ml-3 font-bold">RISK</span>
-                                        <span class="hologram-text text-white ml-2">Position size reduced</span>
-                                    </div>
-                                    <span class="hologram-text text-blade-yellow/60 text-xs">SAFE</span>
-                                </div>
-                            </div>
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-orange">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-orange text-xs">14:20:15</span>
-                                        <span class="hologram-text text-blade-orange ml-3 font-bold">ARBIT</span>
-                                        <span class="hologram-text text-white ml-2">Spread opportunity: 0.34%</span>
-                                    </div>
-                                    <span class="hologram-text text-blade-orange/60 text-xs">EXEC</span>
-                                </div>
-                            </div>
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-cyan">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-cyan text-xs">14:19:42</span>
-                                        <span class="hologram-text text-cyan-glow ml-3 font-bold">NEURAL</span>
-                                        <span class="hologram-text text-white ml-2">Regime shift: TREND → CHOP</span>
-                                    </div>
-                                    <span class="hologram-text text-blade-cyan/60 text-xs">68%</span>
-                                </div>
-                            </div>
-                            <div class="bg-void-black/50 p-3 rounded border-l-2 border-blade-amber">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <span class="hologram-text text-blade-amber text-xs">14:18:29</span>
-                                        <span class="hologram-text text-blade-amber ml-3 font-bold">SELL</span>
-                                        <span class="hologram-text text-white ml-2">RAY/SOL @ $2.34</span>
-                                    </div>
-                                    <span class="hologram-text text-blade-amber/60 text-xs">-1.3%</span>
-                                </div>
+                            <div id="feedPlaceholder" class="hologram-text text-blade-amber/60 text-sm">
+                                No trading activity yet.
                             </div>
                         </div>
                     </div>
@@ -2157,6 +2041,25 @@
             });
         });
 
+        // Chart tab functionality
+        const chartTabs = document.querySelectorAll('.chart-tab');
+        const chartPanels = document.querySelectorAll('.chart-panel');
+
+        chartTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const target = this.getAttribute('data-chart') + 'Chart';
+
+                // Update button states
+                chartTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show/hide panels
+                chartPanels.forEach(panel => panel.classList.add('hidden'));
+                const activePanel = document.getElementById(target);
+                if (activePanel) activePanel.classList.remove('hidden');
+            });
+        });
+
         let selectedPosition = null;
         const positionRows = new Map();
 
@@ -2335,7 +2238,7 @@
         let feedPaused = false;
 
         function updateTradingFeed() {
-            wsClient.connect('/orders/ws', ({ token, quantity, qty, side, price, timestamp, posterior, strategy, status }) => {
+            wsClient.connect('/ws', ({ token, quantity, qty, side, price, timestamp, posterior, strategy, status }) => {
                 if (feedPaused) return;
 
                 const q = quantity ?? qty;
@@ -2369,10 +2272,16 @@
         function addFeedEntry(entry) {
             const feedContainer = document.getElementById('tradingFeed');
             const timestamp = entry.timestamp.toLocaleTimeString();
-            
+
+            // Remove placeholder if present
+            const placeholder = document.getElementById('feedPlaceholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+
             const feedElement = document.createElement('div');
             feedElement.className = `bg-void-black/50 p-3 rounded border-l-2 border-${entry.color}`;
-            
+
             feedElement.innerHTML = `
                 <div class="flex justify-between items-center">
                     <div>
@@ -2390,6 +2299,44 @@
             // Keep only last 20 entries
             while (feedContainer.children.length > 20) {
                 feedContainer.removeChild(feedContainer.lastChild);
+            }
+        }
+
+        // Subscribe to whale alerts and render them
+        function subscribeWhaleAlerts() {
+            wsClient.connect('/whales/ws', addWhaleAlert);
+        }
+
+        function addWhaleAlert(alert) {
+            const container = document.getElementById('whaleAlerts');
+            if (!container) return;
+
+            const qty = alert.quantity ?? alert.qty ?? alert.amount;
+            const color = (alert.side || '').toLowerCase() === 'sell' ? 'blade-orange' : 'blade-cyan';
+            const time = alert.timestamp ? new Date(alert.timestamp * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+            const el = document.createElement('div');
+            el.className = `bg-void-black/50 p-3 rounded border border-${color}/30 hover:border-${color}/60 transition-all`;
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <div class="hologram-text text-${color} font-bold text-sm">${(alert.side || '').toUpperCase()}</div>
+                        <div class="hologram-text text-xs text-blade-amber/60">${time}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="hologram-text text-white font-bold text-sm">${qty} SOL</div>
+                        <div class="hologram-text text-${color} text-xs">${(alert.side || '').toUpperCase()} $${alert.token || ''}</div>
+                    </div>
+                </div>
+                <div class="text-xs hologram-text text-blade-amber/60">
+                    Wallet: ${alert.wallet || 'unknown'}
+                </div>
+            `;
+
+            container.insertBefore(el, container.firstChild);
+
+            while (container.children.length > 20) {
+                container.removeChild(container.lastChild);
             }
         }
 
@@ -2820,8 +2767,7 @@
             getWebSocketURL(endpoint) {
                 const url = new URL(this.baseURL);
                 const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-                const keyParam = this.apiKey ? `?key=${encodeURIComponent(this.apiKey)}` : '';
-                return `${wsProtocol}//${url.host}${endpoint}${keyParam}`;
+                return `${wsProtocol}//${url.host}${endpoint}?key=${encodeURIComponent(this.apiKey || '')}`;
             }
 
             // API configuration
@@ -2847,6 +2793,20 @@
                     this.setApiKey(key);
                     window.dispatchEvent(new CustomEvent('apiKey', { detail: key }));
                 }
+            }
+
+            ensureApiKey() {
+                if (this.apiKey) {
+                    return Promise.resolve(this.apiKey);
+                }
+                return new Promise((resolve) => {
+                    const handler = (e) => {
+                        window.removeEventListener('apiKey', handler);
+                        resolve(e.detail);
+                    };
+                    window.addEventListener('apiKey', handler);
+                    this.promptForApiKey();
+                });
             }
         }
 
@@ -2918,6 +2878,7 @@
                 await updatePositionsDisplay(positions);
                 updateSystemHealth();
                 updateRegimeAnalysis();
+                updateMarketStats();
                 updateLicenseMode(dashboardState.isDemo);
                 
             } catch (error) {
@@ -2953,6 +2914,15 @@
             pnlElement.textContent =
                 `${isRealizedPositive ? '+' : ''}$${Math.abs(realized).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
             pnlElement.className = `text-3xl font-bold ${isRealizedPositive ? 'cyan-glow' : 'text-blade-orange'} data-flicker`;
+
+            const pnlChangeEl = document.getElementById('realizedPnLChange');
+            if (pnlChangeEl) {
+                const realizedPercent = baseEquity !== 0 ? (realized / baseEquity) * 100 : 0;
+                pnlChangeEl.textContent =
+                    `${isRealizedPositive ? '↗' : '↘'} ${isRealizedPositive ? '+' : ''}${realizedPercent.toFixed(2)}% TODAY`;
+            }
+
+            updateEquityLabels();
         }
 
         // Update positions display from API data
@@ -3140,7 +3110,24 @@
                 console.error('Error updating chart data:', error);
             }
         }
-        
+
+        // Update equity and drawdown labels from risk metrics
+        function updateEquityLabels() {
+            if (!dashboardState.dashboard || !dashboardState.dashboard.risk) return;
+            const { equity = 0, drawdown = 0 } = dashboardState.dashboard.risk;
+
+            const equityEl = document.getElementById('equityCurrent');
+            if (equityEl) {
+                equityEl.textContent = `$${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const drawdownEl = document.getElementById('maxDrawdown');
+            if (drawdownEl) {
+                const dd = drawdown * 100;
+                drawdownEl.textContent = `${dd > 0 ? '-' : ''}${dd.toFixed(2)}%`;
+            }
+        }
+
         // Update equity curve with real data
         function updateEquityCurve(priceData) {
             const svg = document.getElementById('equitySvg');
@@ -3174,6 +3161,45 @@
             if (equityFill) {
                 const fillPath = pathData + ` L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
                 equityFill.setAttribute('d', fillPath);
+            }
+
+            updateEquityLabels();
+        }
+
+        // Update market stats if backend provides them
+        function updateMarketStats() {
+            const market = dashboardState.dashboard && dashboardState.dashboard.market;
+            if (!market) return;
+
+            const priceEl = document.getElementById('assetPrice');
+            if (priceEl && market.price !== undefined) {
+                priceEl.textContent = `$${market.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const changeEl = document.getElementById('assetChange');
+            if (changeEl && market.change !== undefined) {
+                const pct = market.change;
+                changeEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+            }
+
+            const volumeEl = document.getElementById('volume24h');
+            if (volumeEl && market.volume24h !== undefined) {
+                volumeEl.textContent = `$${market.volume24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const volatilityEl = document.getElementById('volatility');
+            if (volatilityEl && market.volatility !== undefined) {
+                volatilityEl.textContent = market.volatility;
+            }
+
+            const liquidityEl = document.getElementById('liquidity');
+            if (liquidityEl && market.liquidity !== undefined) {
+                liquidityEl.textContent = `$${market.liquidity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const spreadEl = document.getElementById('spread');
+            if (spreadEl && market.spread !== undefined) {
+                spreadEl.textContent = `${market.spread}%`;
             }
         }
         
@@ -3295,6 +3321,9 @@
                     updateRegimeAnalysis();
                 }
             });
+
+            // Whale alerts
+            subscribeWhaleAlerts();
         }
         
         // Initialize dashboard
@@ -3306,6 +3335,7 @@
             const health = await apiClient.getHealth();
             if (health) {
                 console.log('API connection established:', health);
+                await apiClient.ensureApiKey();
 
                 try {
                     const state = await apiClient.getState();

@@ -508,6 +508,10 @@ def create_app(
                 if ws in connections:
                     connections.remove(ws)
 
+    @app.websocket("/orders/ws")
+    async def orders_ws(ws_conn: WebSocket):
+        await ws(ws_conn)
+
     @app.websocket("/features/ws")
     async def features_ws(ws: WebSocket):
         if features is None:
