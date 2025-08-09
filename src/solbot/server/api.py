@@ -13,6 +13,7 @@ Endpoints:
 * ``GET /positions`` – open positions (API key required)
 * ``GET /orders`` – order history (API key required)
 * ``POST /orders`` – place an order (API key required)
+* ``POST /backtest`` – run strategy backtest
 * ``GET /chart/{symbol}`` – convenience redirect to TradingView
 * ``GET /version`` – running commit and schema hash
 * ``/ws`` – websocket stream of new orders
@@ -27,6 +28,7 @@ import asyncio
 import time
 import logging
 import contextlib
+import tempfile
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
@@ -42,9 +44,11 @@ from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
 from ..types import Side
 from ..persistence.assets import AssetService
+from ..persistence.dal import DAL
 from ..bootstrap import BootstrapCoordinator
 from ..schema import SCHEMA_HASH
 from ..service import start_network_poller
+from backtest import BacktestConfig, BacktestConnector, run_backtest
 
 
 class OrderRequest(BaseModel):
@@ -70,6 +74,19 @@ class StateUpdate(BaseModel):
     running: Optional[bool] = None
     emergency_stop: Optional[bool] = None
     settings: Optional[dict] = None
+
+
+class BacktestRequest(BaseModel):
+    source: str
+    fee: float = 0.0
+    slippage: float = 0.0
+    initial_cash: float = 0.0
+
+
+class BacktestResponse(BaseModel):
+    pnl: float
+    drawdown: float
+    sharpe: float
 
 
 class FeatureInfo(BaseModel):
@@ -125,6 +142,7 @@ class EndpointMap(BaseModel):
     posterior: str
     positions: str
     orders: str
+    backtest: str
     chart: str
     version: str
     docs: str
@@ -262,6 +280,7 @@ def create_app(
             posterior=app.url_path_for("posterior_endpoint"),
             positions=app.url_path_for("positions"),
             orders=app.url_path_for("orders"),
+            backtest=app.url_path_for("backtest"),
             chart=app.url_path_for("chart", symbol="<sym>"),
             version=app.url_path_for("version"),
             docs=app.url_path_for("swagger_ui_html"),
@@ -343,6 +362,22 @@ def create_app(
             chop=out.chop,
             timestamp=int(time.time()),
         )
+
+    @app.post("/backtest", response_model=BacktestResponse, name="backtest")
+    async def backtest(req: BacktestRequest) -> BacktestResponse:
+        with tempfile.TemporaryDirectory() as tmp:
+            dal = DAL(os.path.join(tmp, "bt.db"))
+            bt_risk = RiskManager()
+            connector = BacktestConnector()
+            engine_bt = TradeEngine(risk=bt_risk, connector=connector, dal=dal)
+            cfg = BacktestConfig(
+                source=req.source,
+                fee_rate=req.fee,
+                slippage_rate=req.slippage,
+                initial_cash=req.initial_cash,
+            )
+            res = await run_backtest(engine_bt, cfg)
+        return BacktestResponse(pnl=res.pnl, drawdown=res.drawdown, sharpe=res.sharpe)
 
     @app.get("/dashboard")
     async def dashboard() -> dict:

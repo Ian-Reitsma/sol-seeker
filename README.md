@@ -23,6 +23,20 @@ sol-bot/
 * **Solana** – manages RPC and WebSocket connections. `EventStream` subscribes to program logs and yields parsed events.
 * **Rustcore** – placeholder for performance-critical parsing routines compiled from Rust.
 
+## Recent Updates
+
+The current iteration introduces a configurable backtesting pipeline and major dashboard improvements:
+
+- **Backtesting API:** A new `/backtest` endpoint spins up a temporary `TradeEngine` and executes historical simulations against CSV data. The request accepts fee, slippage, and starting capital parameters, returning PnL, drawdown, and Sharpe metrics.
+- **Dashboard Enhancements:** Settings now auto-save with a transient “Saving…” indicator, disabled controls, and toast notifications on failure. WebSocket reconnect logic tracks attempts per endpoint with exponential backoff, and polling/websocket connections pause when the tab is hidden. The positions list diffs DOM nodes to minimise reflows.
+
+### Next Steps for Contributors
+
+1. **Test Coverage:** Add unit tests for the new `/backtest` route and front‑end helpers. Ensure the web client has a working Jest setup so `npm test` passes.
+2. **Backtest UX:** Persist recent backtest configurations and surface runtime errors to the UI. Consider streaming progress for long simulations.
+3. **Resilience:** Harden auto‑save and reconnection routines with retry limits and user feedback when the server remains unreachable.
+4. **Performance:** Profile the DOM diffing and WebSocket reconnection paths under heavy load and document any bottlenecks.
+
 ## Quickstart
 
 1. Create and activate a Python virtual environment:

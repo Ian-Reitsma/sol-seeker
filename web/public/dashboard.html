@@ -46,7 +46,8 @@
 <body class="text-white font-display min-h-screen relative">
     <!-- Atmospheric Background -->
     <div class="atmospheric-glow"></div>
-    
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
     <!-- Fixed Header -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-glass-black border-b border-blade-amber/30 backdrop-filter backdrop-blur-lg">
         <div class="max-w-full px-8 py-4 flex items-center justify-between">
@@ -172,6 +173,19 @@
                     </div>
                     <div class="text-sm hologram-text text-blade-amber/80 mt-1">
                         UPTIME: 99.97%
+                    </div>
+                </div>
+
+                <!-- Backtest Results -->
+                <div class="metric-card p-6 rounded scan-lines">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm hologram-text text-blade-amber/80">BACKTEST P&L</span>
+                    </div>
+                    <div class="text-3xl font-bold amber-glow data-flicker" id="backtestPnL">
+                        --
+                    </div>
+                    <div class="text-sm hologram-text text-blade-amber/80 mt-1" id="backtestStats">
+                        DD -- • SHARPE --
                     </div>
                 </div>
             </div>
@@ -1983,8 +1997,35 @@
                         </div>
                     </div>
                 </div>
+                <!-- Backtest Simulation -->
+                <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30 mb-4">
+                    <h4 class="hologram-text text-cyan-glow font-bold mb-3">BACKTEST</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="hologram-text text-blade-amber/80 text-sm block mb-2">DATA SOURCE</label>
+                            <input type="text" id="btSource" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" placeholder="path/to/data.csv">
+                        </div>
+                        <div class="flex space-x-3">
+                            <div class="flex-1">
+                                <label class="hologram-text text-blade-amber/80 text-sm block mb-2">FEE %</label>
+                                <input type="number" id="btFee" step="0.001" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" value="0">
+                            </div>
+                            <div class="flex-1">
+                                <label class="hologram-text text-blade-amber/80 text-sm block mb-2">SLIPPAGE %</label>
+                                <input type="number" id="btSlippage" step="0.001" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" value="0">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="hologram-text text-blade-amber/80 text-sm block mb-2">INITIAL CASH</label>
+                            <input type="number" id="btCash" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" value="0">
+                        </div>
+                        <button class="w-full bg-blade-cyan/20 text-cyan-glow border border-blade-cyan/50 px-4 py-2 rounded hologram-text text-sm hover:bg-blade-cyan/30 transition-all" id="runBacktest">
+                            RUN BACKTEST
+                        </button>
+                    </div>
+                </div>
             </div>
-            
+
             <!-- Debug Console Section -->
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-4">
@@ -2022,6 +2063,7 @@
                     RESET TO DEFAULT
                 </button>
             </div>
+            <div id="saveIndicator" class="mt-2 text-blade-amber text-xs hologram-text hidden">Saving...</div>
         </div>
     </div>
 
@@ -2041,13 +2083,14 @@
     </div>
 
     <script>
+        const pollingIntervals = [];
         // System time update
         function updateTime() {
             const now = new Date();
             const timeString = now.toUTCString().split(' ')[4];
             document.getElementById('systemTime').textContent = timeString + ' UTC';
         }
-        setInterval(updateTime, 1000);
+        pollingIntervals.push(setInterval(updateTime, 1000));
         updateTime();
 
         // Trading toggle functionality
@@ -2097,6 +2140,7 @@
         });
 
         let selectedPosition = null;
+        const positionRows = new Map();
 
         const positionModal = document.getElementById('positionModal');
         document.getElementById('closeModal').addEventListener('click', () => {
@@ -2146,6 +2190,26 @@
 
         // Slider functionality and auto-saving of settings
         let settingsTimer;
+        let isSavingSettings = false;
+        const settingControls = ['maxDrawdown', 'maxPosition', 'maxTrades', 'sniperToggle', 'arbToggle', 'mmToggle', 'failoverToggle', 'rpcSelect', 'saveSettings', 'resetSettings'];
+
+        function setSettingsDisabled(disabled) {
+            settingControls.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = disabled;
+            });
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'bg-blade-orange/90 text-white px-4 py-2 rounded shadow-lg';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
         function collectSettings() {
             return {
                 max_drawdown: parseFloat(document.getElementById('maxDrawdown').value) / 100,
@@ -2164,10 +2228,20 @@
         function queueSettingsSave() {
             clearTimeout(settingsTimer);
             settingsTimer = setTimeout(async () => {
+                if (isSavingSettings) return;
+                isSavingSettings = true;
+                setSettingsDisabled(true);
+                const indicator = document.getElementById('saveIndicator');
+                if (indicator) indicator.classList.remove('hidden');
                 try {
                     await SolSeekerAPI.post('/state', { settings: collectSettings() });
                 } catch (err) {
                     console.error('auto save settings failed', err);
+                    showToast('Failed to save settings');
+                } finally {
+                    if (indicator) indicator.classList.add('hidden');
+                    setSettingsDisabled(false);
+                    isSavingSettings = false;
                 }
             }, 500);
         }
@@ -2403,7 +2477,7 @@
         }
         
         // Add new log entry every 2-5 seconds
-        setInterval(addLogEntry, 2000 + Math.random() * 3000);
+        pollingIntervals.push(setInterval(addLogEntry, 2000 + Math.random() * 3000));
         
         // Reset settings functionality
         document.getElementById('resetSettings').addEventListener('click', function() {
@@ -2489,7 +2563,27 @@
                 this.disabled = false;
             }
         });
-        
+        document.getElementById('runBacktest').addEventListener('click', async function() {
+            this.textContent = 'RUNNING...';
+            this.disabled = true;
+            try {
+                const source = document.getElementById('btSource').value;
+                const fee = parseFloat(document.getElementById('btFee').value) || 0;
+                const slippage = parseFloat(document.getElementById('btSlippage').value) || 0;
+                const initial_cash = parseFloat(document.getElementById('btCash').value) || 0;
+                const res = await SolSeekerAPI.runBacktest({ source, fee, slippage, initial_cash });
+                if (res) {
+                    document.getElementById('backtestPnL').textContent = `$${res.pnl.toFixed(2)}`;
+                    document.getElementById('backtestStats').textContent = `DD ${(res.drawdown * 100).toFixed(2)}% • SHARPE ${res.sharpe.toFixed(2)}`;
+                }
+            } catch (err) {
+                console.error('Backtest failed:', err);
+            } finally {
+                this.textContent = 'RUN BACKTEST';
+                this.disabled = false;
+            }
+        });
+
         // Emergency stop functionality
         document.querySelector('.emergency-stop').addEventListener('click', async function() {
             if (confirm('EMERGENCY STOP: This will immediately close all positions and halt trading. Continue?')) {
@@ -2645,6 +2739,10 @@
             
             async placeOrder(orderData) {
                 return this.post('/orders', orderData);
+            }
+
+            async runBacktest(config) {
+                return this.post('/backtest', config);
             }
             
             async getAssets() {
@@ -2843,14 +2941,25 @@
 
             const list = document.getElementById('positionsList');
             if (list) {
-                list.innerHTML = '';
+                const fragment = document.createDocumentFragment();
+                const seen = new Set();
                 entries.forEach(([token, p]) => {
                     const q = qty(p);
                     const pnl = p.unrealized ?? p.pnl ?? 0;
                     const color = pnl >= 0 ? 'text-cyan-glow' : 'text-blade-orange';
-                    const row = document.createElement('div');
-                    row.className = 'position-row bg-void-black/50 p-3 rounded border border-blade-amber/30 hover:border-blade-amber/60';
-                    row.setAttribute('data-token', token);
+                    let row = positionRows.get(token);
+                    if (!row) {
+                        row = document.createElement('div');
+                        row.className = 'position-row bg-void-black/50 p-3 rounded border border-blade-amber/30 hover:border-blade-amber/60';
+                        row.setAttribute('data-token', token);
+                        row.addEventListener('click', async function() {
+                            if (selectedPosition) selectedPosition.classList.remove('selected');
+                            this.classList.add('selected');
+                            selectedPosition = this;
+                            await showPositionDetails(token);
+                        });
+                        positionRows.set(token, row);
+                    }
                     row.innerHTML = `
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-3">
@@ -2864,14 +2973,19 @@
                                 <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl}</div>
                             </div>
                         </div>`;
-                    row.addEventListener('click', async function() {
-                        if (selectedPosition) selectedPosition.classList.remove('selected');
-                        this.classList.add('selected');
-                        selectedPosition = this;
-                        await showPositionDetails(token);
-                    });
-                    list.appendChild(row);
+                    fragment.appendChild(row);
+                    seen.add(token);
                 });
+                for (const [token, row] of Array.from(positionRows.entries())) {
+                    if (!seen.has(token)) {
+                        if (selectedPosition === row) {
+                            selectedPosition = null;
+                        }
+                        row.remove();
+                        positionRows.delete(token);
+                    }
+                }
+                list.appendChild(fragment);
             }
         }
         
@@ -3032,21 +3146,21 @@
         class SolSeekerWebSocket {
             constructor() {
                 this.connections = new Map();
-                this.reconnectAttempts = 0;
+                this.reconnectAttempts = new Map();
                 this.maxReconnectAttempts = 5;
             }
-            
+
             connect(endpoint, onMessage, onError = null) {
                 const wsUrl = SolSeekerAPI.getWebSocketURL(endpoint);
-                
+
                 try {
                     const ws = new WebSocket(wsUrl);
-                    
+
                     ws.onopen = () => {
                         console.log(`WebSocket connected: ${endpoint}`);
-                        this.reconnectAttempts = 0;
+                        this.reconnectAttempts.set(endpoint, 0);
                     };
-                    
+
                     ws.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
@@ -3055,7 +3169,7 @@
                             console.error('Error parsing WebSocket message:', error);
                         }
                     };
-                    
+
                     ws.onclose = (event) => {
                         console.log(`WebSocket disconnected: ${endpoint}`);
                         if (event.code === 1008) {
@@ -3063,52 +3177,61 @@
                         }
                         this.handleReconnect(endpoint, onMessage, onError);
                     };
-                    
+
                     ws.onerror = (error) => {
                         console.error(`WebSocket error on ${endpoint}:`, error);
                         if (onError) onError(error);
                     };
-                    
+
                     this.connections.set(endpoint, ws);
-                    
+
                 } catch (error) {
                     console.error(`Failed to create WebSocket for ${endpoint}:`, error);
                     if (onError) onError(error);
                 }
             }
-            
+
             handleReconnect(endpoint, onMessage, onError) {
-                if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                    this.reconnectAttempts++;
-                    const delay = Math.pow(2, this.reconnectAttempts) * 1000; // Exponential backoff
-                    
-                    console.log(`Attempting to reconnect to ${endpoint} in ${delay}ms (attempt ${this.reconnectAttempts})`);
-                    
+                const attempts = this.reconnectAttempts.get(endpoint) || 0;
+                if (attempts < this.maxReconnectAttempts) {
+                    const nextAttempt = attempts + 1;
+                    this.reconnectAttempts.set(endpoint, nextAttempt);
+                    const delay = Math.pow(2, nextAttempt) * 1000; // Exponential backoff
+
+                    console.log(`Attempting to reconnect to ${endpoint} in ${delay}ms (attempt ${nextAttempt})`);
+
                     setTimeout(() => {
                         this.connect(endpoint, onMessage, onError);
                     }, delay);
                 }
             }
-            
+
             disconnect(endpoint) {
                 const ws = this.connections.get(endpoint);
                 if (ws) {
                     ws.close();
                     this.connections.delete(endpoint);
+                    this.reconnectAttempts.delete(endpoint);
                 }
             }
-            
+
             disconnectAll() {
-                this.connections.forEach((ws, endpoint) => {
+                this.connections.forEach((ws) => {
                     ws.close();
                 });
                 this.connections.clear();
+                this.reconnectAttempts.clear();
             }
         }
         
         // Initialize WebSocket connections
         const wsClient = new SolSeekerWebSocket();
-        
+
+        function clearPollingIntervals() {
+            pollingIntervals.forEach(clearInterval);
+            pollingIntervals.length = 0;
+        }
+
         // Connect to real-time feeds
         function initializeWebSockets() {
             // Dashboard updates
@@ -3141,6 +3264,7 @@
         
         // Initialize dashboard
         async function initializeDashboard() {
+            clearPollingIntervals();
             console.log('Initializing Sol-Seeker Dashboard...');
             
             // Check API availability first
@@ -3168,7 +3292,7 @@
                 await updateDashboardData();
 
                 // Set up periodic updates (less frequent since we have WebSockets)
-                setInterval(updateDashboardData, 10000); // Update every 10 seconds
+                pollingIntervals.push(setInterval(updateDashboardData, 10000)); // Update every 10 seconds
 
             } else {
                 console.warn('API connection failed - running in demo mode');
@@ -3176,11 +3300,11 @@
                 dashboardState.isDemo = true;
                 
                 // In demo mode, use simulated updates
-                setInterval(updateDashboardData, 5000);
+                pollingIntervals.push(setInterval(updateDashboardData, 5000));
             }
-            
+
             // Always update UI elements that don't depend on API
-            setInterval(updateResourceMetrics, 3000);
+            pollingIntervals.push(setInterval(updateResourceMetrics, 3000));
             
             console.log('Dashboard initialization complete');
         }
@@ -3194,10 +3318,11 @@
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 console.log('Dashboard paused (tab hidden)');
+                clearPollingIntervals();
+                wsClient.disconnectAll();
             } else {
                 console.log('Dashboard resumed (tab visible)');
-                // Immediate update when tab becomes visible
-                updateDashboardData();
+                initializeDashboard();
             }
         });
         

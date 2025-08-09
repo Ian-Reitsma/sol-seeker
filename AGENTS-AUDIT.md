@@ -2,6 +2,23 @@
 
 This file defines the immediate and near-term directives for the next development agent. The items are ordered by criticality and expected impact. Implement each item completely before moving to the next.
 
+## Recent Accomplishment – Backtest Endpoint and Dashboard Enhancements (2025-08-07)
+
+### Summary
+- Added a configurable backtesting pipeline (`BacktestConfig`, `run_backtest`) and exposed a `/backtest` API route.
+- Wired the dashboard with a backtest form, metrics card, auto-saving settings with toast errors, endpoint-specific WebSocket reconnects, and DOM-diffed position rendering.
+
+### Next Agent Objectives
+1. **Testing Infrastructure**
+   - Implement unit and integration tests for `run_backtest`, `/backtest`, and front-end helpers. Set up Jest so `npm test` executes.
+   - Add error-path tests for autosave and WebSocket reconnection logic.
+2. **Backtest UX & Persistence**
+   - Persist API credentials and backtest parameters in local storage with validation and clear error messages.
+   - Stream backtest progress and support cancellation for long jobs; handle and surface backend errors.
+3. **Resilience & Performance**
+   - Enforce reconnect attempt limits with user notifications when an endpoint remains unreachable.
+   - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
+
 ## 1. Core Data Ingestion and Feature Pipeline
 1. Replace the placeholder slot-only stream with real on-chain event subscriptions.
    - Update `src/solbot/solana/data.py` to subscribe via WebSocket to program logs or account changes for DEX swaps, liquidity adds/removes, and token mint events.
