@@ -29,6 +29,9 @@ export interface OrderResponse {
 
 export type OrdersResponse = OrderResponse[];
 
+export type BacktestRequest = paths['/backtest']['post']['requestBody']['content']['application/json'];
+export type BacktestResponse = paths['/backtest']['post']['responses']['200']['content']['application/json'];
+
 export interface RiskMetrics {
   equity: number;
   unrealized: number;
@@ -94,6 +97,17 @@ export async function placeOrder(apiKey: string, order: OrderRequest): Promise<O
     body: JSON.stringify(order)
   });
   return handleResponse<OrderResponse>(res);
+}
+
+export async function runBacktest(config: BacktestRequest): Promise<BacktestResponse> {
+  const res = await fetch(`${API_BASE}/backtest`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(config)
+  });
+  return handleResponse<BacktestResponse>(res);
 }
 
 function httpToWs(url: string): string {

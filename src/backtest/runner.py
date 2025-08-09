@@ -28,6 +28,16 @@ class BacktestResult:
     sharpe: float
 
 
+@dataclass
+class BacktestConfig:
+    """Configuration options for running a backtest."""
+
+    source: str
+    fee_rate: float = 0.0
+    slippage_rate: float = 0.0
+    initial_cash: float = 0.0
+
+
 class FeeModel:
     """Percentage-based trading fee."""
 
@@ -150,3 +160,27 @@ class BacktestRunner:
             sharpe = 0.0
 
         return BacktestResult(pnl=pnl, drawdown=max_dd, sharpe=sharpe)
+
+
+async def run_backtest(
+    engine: TradeEngine,
+    cfg: BacktestConfig,
+    strategy: Optional[Callable[[TradeBar], Optional[Tuple[Side, float]]]] = None,
+) -> BacktestResult:
+    """Convenience helper that loads data and executes a backtest."""
+
+    data = load_csv(cfg.source)
+    runner = BacktestRunner(
+        engine,
+        fee_model=FeeModel(cfg.fee_rate),
+        slippage_model=SlippageModel(cfg.slippage_rate),
+        initial_cash=cfg.initial_cash,
+    )
+
+    if strategy is None:
+        def noop(_: TradeBar) -> Optional[Tuple[Side, float]]:
+            return None
+
+        strategy = noop
+
+    return await runner.run(data, strategy)

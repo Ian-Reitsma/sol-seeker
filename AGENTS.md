@@ -443,3 +443,20 @@
 
 ### Next Steps
 - None.
+
+## OpenAI Assistant - Backtest Endpoint and Dashboard Enhancements
+
+**Date:** 2025-08-07
+
+### Summary
+- Introduced `BacktestConfig` and a `run_backtest` helper to execute historical simulations.
+- Exposed a `/backtest` API endpoint and wired a dashboard form to post parameters and display PnL, drawdown, and Sharpe metrics.
+- Added a toast container, disabled settings during auto-save with a “Saving…” indicator, and surfaced errors on failure.
+- Reworked WebSocket handling with per-endpoint reconnect counters and paused polling/sockets when the tab is hidden.
+- Optimised position rendering by diffing against cached rows to minimise DOM reflows.
+
+### Next Steps
+- Add unit tests for `run_backtest` and the `/backtest` route, including failure cases and large CSV inputs.
+- Configure Jest and write web tests covering auto-save behaviour, toast notifications, and backtest form submission.
+- Persist recent backtest settings and API credentials in local storage with validation and error messaging.
+- Stream backtest progress and allow cancellation for long-running simulations.
