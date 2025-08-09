@@ -59,7 +59,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/": {
+    "/api": {
         parameters: {
             query?: never;
             header?: never;
@@ -67,10 +67,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Root
+         * API Index
          * @description Return resource index and embed template for TradingView.
          */
-        get: operations["root__get"];
+        get: operations["api_api_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -647,7 +647,7 @@ export interface operations {
             };
         };
     };
-    root__get: {
+    api_api_get: {
         parameters: {
             query?: never;
             header?: never;

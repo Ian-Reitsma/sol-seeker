@@ -97,11 +97,11 @@
         }
       }
     },
-    "/": {
+    "/api": {
       "get": {
-        "summary": "Root",
+        "summary": "API Index",
         "description": "Return resource index and embed template for TradingView.",
-        "operationId": "root__get",
+        "operationId": "api_api_get",
         "responses": {
           "200": {
             "description": "Successful Response",

@@ -71,7 +71,10 @@ def test_api_order_flow():
     with TestClient(app) as client:
         assert lm.called
 
-        resp = client.get("/")
+        resp = client.get("/", allow_redirects=False)
+        assert resp.status_code in (302, 307)
+        assert resp.headers["location"] == "/static/dashboard.html"
+        resp = client.get("/api")
         assert resp.status_code == 200
         root_data = resp.json()
         assert (
