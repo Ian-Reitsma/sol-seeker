@@ -30,15 +30,33 @@
     </script>
     
     <script>
-    // Basic connection check to API with configurable base and API key
-    const API_BASE = localStorage.getItem('sol_seeker_api_base') || window.location.origin;
-    const API_KEY = localStorage.getItem('sol_seeker_api_key') || '';
-    window.API_BASE = API_BASE;
-    window.API_KEY = API_KEY;
-    fetch(`${API_BASE}/health`, { headers: API_KEY ? { 'X-API-Key': API_KEY } : {} })
-        .then(r => r.json())
-        .then(h => console.log('API health', h))
-        .catch(err => console.error('API health check failed', err));
+        // Resolve API base and key with fallback to backend port
+        let apiBase = localStorage.getItem('sol_seeker_api_base');
+        const { protocol, hostname, port } = window.location;
+        if (!apiBase) {
+            apiBase = port === '5173'
+                ? `${protocol}//${hostname}:8000`
+                : `${protocol}//${hostname}${port ? ':' + port : ''}`;
+            localStorage.setItem('sol_seeker_api_base', apiBase);
+        }
+        const apiKey = localStorage.getItem('sol_seeker_api_key') || '';
+        window.API_BASE = apiBase;
+        window.API_KEY = apiKey;
+        fetch(`${apiBase}/health`, { headers: apiKey ? { 'X-API-Key': apiKey } : {} })
+            .then(res => {
+                if (!res.ok) throw new Error('health check failed');
+            })
+            .catch(() => {
+                const input = window.prompt('Enter API base URL', apiBase);
+                if (input) {
+                    apiBase = input;
+                    localStorage.setItem('sol_seeker_api_base', apiBase);
+                    window.API_BASE = apiBase;
+                    if (window.SolSeekerAPI) {
+                        window.SolSeekerAPI.setApiBase(apiBase);
+                    }
+                }
+            });
     </script>
     
         <link rel="stylesheet" href="dashboard.css">
@@ -2637,11 +2655,24 @@
         // Complete Sol-Seeker API Client
         class SolSeekerAPI {
             constructor() {
-                this.baseURL = localStorage.getItem('sol_seeker_api_base') || window.location.origin;
-                this.apiKey = localStorage.getItem('sol_seeker_api_key') || '';
+                this.baseURL = window.API_BASE || localStorage.getItem('sol_seeker_api_base') || window.location.origin;
+                this.apiKey = window.API_KEY || localStorage.getItem('sol_seeker_api_key') || '';
                 this.isConnected = false;
                 this.retryCount = 0;
                 this.maxRetries = 3;
+                this.checkHealth();
+            }
+
+            async checkHealth() {
+                try {
+                    const res = await fetch(`${this.baseURL}/health`);
+                    if (!res.ok) throw new Error('health check failed');
+                } catch {
+                    const input = window.prompt('Enter API base URL', this.baseURL);
+                    if (input) {
+                        this.setApiBase(input);
+                    }
+                }
             }
 
             // Generic request method with error handling
@@ -2787,9 +2818,10 @@
             
             // WebSocket endpoints
             getWebSocketURL(endpoint) {
-                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const url = new URL(this.baseURL);
+                const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
                 const keyParam = this.apiKey ? `?key=${encodeURIComponent(this.apiKey)}` : '';
-                return `${wsProtocol}//${window.location.host}${endpoint}${keyParam}`;
+                return `${wsProtocol}//${url.host}${endpoint}${keyParam}`;
             }
 
             // API configuration
