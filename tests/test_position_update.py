@@ -39,6 +39,7 @@ def build_client() -> TestClient:
     tmp = tempfile.NamedTemporaryFile(delete=False)
     cfg = BotConfig(
         rpc_ws="wss://api.mainnet-beta.solana.com/",
+        rpc_http="https://api.mainnet-beta.solana.com",
         log_level="INFO",
         wallet="111",
         db_path=tmp.name,

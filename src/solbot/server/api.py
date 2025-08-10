@@ -240,8 +240,7 @@ def create_app(
             await bootstrap.run(assets, trade.connector.oracle)
         nonlocal poller_task
         if features is not None and metrics_interval > 0:
-            rpc_http = cfg.rpc_ws.replace("wss", "https").replace("ws", "http")
-            poller_task = start_network_poller(features, rpc_http, metrics_interval)
+            poller_task = start_network_poller(features, cfg.rpc_http, metrics_interval)
 
     @app.get("/license")
     def license_info() -> dict:
@@ -491,8 +490,7 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws(ws: WebSocket):
-        # Validate the API key before accepting the connection so unauthorized
-        # clients disconnect immediately without leaving the TestClient waiting
+        await ws.accept()
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
@@ -500,9 +498,9 @@ def create_app(
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
+                await ws.send_json({"error": "unauthorized"})
                 await ws.close(code=1008)
                 return
-        await ws.accept()
         async with conn_lock:
             connections.append(ws)
         try:
@@ -556,8 +554,7 @@ def create_app(
 
     @app.websocket("/positions/ws")
     async def positions_ws(ws: WebSocket):
-        # Reject unauthorized clients before the websocket handshake completes to
-        # avoid leaving test sessions waiting for close frames.
+        await ws.accept()
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
@@ -565,9 +562,9 @@ def create_app(
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
+                await ws.send_json({"error": "unauthorized"})
                 await ws.close(code=1008)
                 return
-        await ws.accept()
         async with pos_lock:
             pos_connections.append(ws)
         try:
@@ -629,11 +626,10 @@ def create_app(
 
     @app.websocket("/dashboard/ws")
     async def dashboard_ws(ws: WebSocket):
+        await ws.accept()
         if features is None or posterior is None:
             await ws.close()
             return
-        # Perform API key validation prior to accepting so unauthorized clients
-        # are closed immediately without sending data.
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
@@ -641,9 +637,9 @@ def create_app(
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
+                await ws.send_json({"error": "unauthorized"})
                 await ws.close(code=1008)
                 return
-        await ws.accept()
         feat_q = features.subscribe()
         order_q = subscribe_orders()
         try:

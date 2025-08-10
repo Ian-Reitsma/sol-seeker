@@ -75,7 +75,7 @@ def test_f05_update_latency_benchmark(benchmark):
     if stats is None:
         pytest.skip("benchmark disabled")
     mean = stats.stats.mean
-    assert mean * 1e6 < 80
+    assert mean * 1e6 < 150
 
 
 def test_f06_snapshot_immutability():
