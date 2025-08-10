@@ -3,8 +3,14 @@ from __future__ import annotations
 import asyncio
 from typing import List
 
+
 class BootstrapCoordinator:
     def __init__(self) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         self.ready = asyncio.Event()
         self.progress = 0
 
