@@ -2242,6 +2242,10 @@
                 if (feedPaused) return;
 
                 const q = quantity ?? qty;
+                if (!side) {
+                    console.warn('ws order missing side', { token, quantity: q, price, status });
+                    return;
+                }
                 addFeedEntry({
                     timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
                     type: side.toUpperCase(),
@@ -2301,45 +2305,6 @@
                 feedContainer.removeChild(feedContainer.lastChild);
             }
         }
-
-        // Subscribe to whale alerts and render them
-        function subscribeWhaleAlerts() {
-            wsClient.connect('/whales/ws', addWhaleAlert);
-        }
-
-        function addWhaleAlert(alert) {
-            const container = document.getElementById('whaleAlerts');
-            if (!container) return;
-
-            const qty = alert.quantity ?? alert.qty ?? alert.amount;
-            const color = (alert.side || '').toLowerCase() === 'sell' ? 'blade-orange' : 'blade-cyan';
-            const time = alert.timestamp ? new Date(alert.timestamp * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
-
-            const el = document.createElement('div');
-            el.className = `bg-void-black/50 p-3 rounded border border-${color}/30 hover:border-${color}/60 transition-all`;
-            el.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <div>
-                        <div class="hologram-text text-${color} font-bold text-sm">${(alert.side || '').toUpperCase()}</div>
-                        <div class="hologram-text text-xs text-blade-amber/60">${time}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="hologram-text text-white font-bold text-sm">${qty} SOL</div>
-                        <div class="hologram-text text-${color} text-xs">${(alert.side || '').toUpperCase()} $${alert.token || ''}</div>
-                    </div>
-                </div>
-                <div class="text-xs hologram-text text-blade-amber/60">
-                    Wallet: ${alert.wallet || 'unknown'}
-                </div>
-            `;
-
-            container.insertBefore(el, container.firstChild);
-
-            while (container.children.length > 20) {
-                container.removeChild(container.lastChild);
-            }
-        }
-
         // Render a single closed trade entry
         function renderHistoryEntry(order) {
             const pnl = order.pnl ?? 0;
@@ -3322,8 +3287,6 @@
                 }
             });
 
-            // Whale alerts
-            subscribeWhaleAlerts();
         }
         
         // Initialize dashboard
