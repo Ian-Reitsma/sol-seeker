@@ -19,6 +19,162 @@ This file defines the immediate and near-term directives for the next developmen
    - Enforce reconnect attempt limits with user notifications when an endpoint remains unreachable.
    - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
 
+## Dashboard-API Connectivity Gaps
+The static HTML dashboard in `web/public/dashboard.html` still presents demo data. Every element below must either consume a real
+endpoint or be removed. Wire items **in place** rather than creating new components so future agents can diff easily. Always
+inject the stored API key and `sol_seeker_api_base` when issuing requests. After implementing each sub‑task, verify with the
+browser network panel or `curl` that the request returns 2xx and the DOM updates accordingly.
+
+### 1. Core Controls & Status
+
+1. **Trading toggle – `#tradingToggle` (lines ~100 & ~1989)**
+   - **Endpoint:** `POST /state` with `{ running: boolean }`.
+   - **UI:** Text and style swap between `▶ START` and `⏸ PAUSE`.
+   - **Verification:** After POST, `GET /state` and confirm `running` matches. Update tooltip to show last transition time.
+
+2. **Emergency stop – `.emergency-stop` (lines ~115 & ~2519)**
+   - **Endpoint:** `POST /state` with `{ running: false, emergency_stop: true }`.
+   - **UI:** Button flashes red, then shows `✓ STOPPED` for 3 s. Trading toggle reset to `▶ START`.
+   - **Verification:** `GET /positions` must return `{}`; new `/state` reads `running=false`.
+
+3. **RPC latency indicator – add `id="rpcLatency"` to latency span (line ~89)**
+   - **Endpoint:** `GET /health` every 5 s; use `health.rpc_latency_ms`.
+   - **UI:** Replace hard-coded `12ms`; tooltip shows last sample timestamp.
+   - **Verification:** Introduce console log on each poll; inspect network to ensure requests stop on tab visibility change.
+
+4. **WebSocket heartbeat – add `id="wsStatus"` (line ~96)**
+   - **Endpoint:** `/dashboard/ws` heartbeat messages already contain `timestamp`.
+   - **UI:** When no message for >10 s, show red dot and “DISCONNECTED”; on reconnect, restore cyan dot.
+   - **Verification:** Throttle network to offline in DevTools and confirm indicator flips after timeout.
+
+5. **System status & uptime – `#systemStatus`, `#systemUptime` (lines ~129–139)**
+   - **Endpoint:** `GET /status` on load and every 30 s.
+   - **UI:** Replace static “OK” and “99.97%” with `status.state` and `status.uptime_pct`.
+   - **Verification:** Manually alter backend to return non‑OK and ensure card turns amber with tooltip `status.detail`.
+
+### 2. Portfolio Metrics
+
+1. **Portfolio value / change – `#portfolioValue`, `#portfolioChange` (lines ~142–154)**
+   - **Endpoint:** `GET /dashboard` and `/dashboard/ws` (fields `risk.equity` & `risk.realized`).
+   - **UI:** Show `risk.equity` as dollars, compute day change using previous snapshot.
+   - **Verification:** Run `curl /dashboard` twice with altered risk values and ensure live websocket updates reflect changes.
+
+2. **Realized P&L – `#realizedPnL`, `#realizedPnLChange` (lines ~160–171)**
+   - **Endpoint:** Same `/dashboard` payload (`risk.realized` & `risk.sharpe`).
+   - **UI:** `realizedPnL` shows cumulative realized; `realizedPnLChange` displays intraday delta and arrows.
+   - **Verification:** Execute a mock order via `POST /orders` and confirm realized P&L updates in <1 s through websocket.
+
+3. **Open positions – `#openPositionsTotal`, `#openPositionsActive`, `#openPositionsBreakdown` (lines ~173–187)**
+   - **Endpoint:** `GET /positions` on load; subscribe to `/positions/ws` for changes.
+   - **UI:** Total count, “N ACTIVE”, and `L LONG • S SHORT` breakdown derived from websocket payload.
+   - **Verification:** Open and close demo positions; watch counts adjust and DOM diffing avoid full re-render.
+
+4. **Backtest P&L card – `#backtestPnL`, `#backtestStats` (lines ~202–211 & script ~2470)**
+   - **Endpoint:** `POST /backtest` via form; results returned as `{ pnl, drawdown, sharpe }`.
+   - **UI:** Display metrics and persist last config to `localStorage.backtest_last`.
+   - **Verification:** Run backtest with known seed; confirm numbers match API JSON.
+
+5. **Equity curve / P&L breakdown charts (lines ~304–357)**
+   - **Endpoint:** `GET /chart/portfolio?tf=1H|4H|1D` or historical `/equity` route if available.
+   - **UI:** Render chart via TradingView iframe when URL returned; fallback to `<canvas>` series from price array.
+   - **Verification:** Cross-check first point in chart with `risk.equity` at matching timestamp.
+
+### 3. Risk & Security Panels
+
+Each card (rug pull, liquidity, contract verification, holder distribution, trading patterns, and portfolio risk metrics) lives
+around lines ~220–330 and currently holds placeholder text.
+
+1. **Risk metrics – `#maxDrawdown`, `#positionSize`, `#leverageRatio`, `#exposure`**
+   - **Endpoint:** `GET /dashboard` `risk.drawdown`, `risk.position_size`, `risk.leverage`, `risk.exposure`.
+   - **UI:** Replace hard-coded `-5.2%`, `OPTIMAL`, `2.1X`, `78%`.
+   - **Verification:** Tweak backend risk manager values and ensure cards update via websocket.
+
+2. **Security checks – `#rugPull`, `#liquidity`, `#contractVerified`, `#holderDistribution`, `#tradingPatterns`**
+   - **Endpoint:** `GET /risk/security` (to be implemented) returning boolean flags with detail strings.
+   - **UI:** Show ✓/⚠/✗ icons based on flag and tooltip with `detail`.
+   - **Fallback:** If endpoint not available, hide entire section to avoid misleading “SAFE” labels.
+
+### 4. Analytics & Strategy Modules
+
+Widgets from “Whale Tracker” through “MEV Shield & Alpha Signals” appear between lines ~360–640 and are fully static.
+
+1. **Whale tracker / smart money flow / copy trading**
+   - **Endpoint:** Design `/whales` providing `{ following, success_rate, copied_today, profit }` and `/smart-money-flow` for net inflow.
+   - **UI:** Map fields to `#following`, `#successRate`, etc. Provide loading spinners until data arrives.
+   - **Verification:** Call endpoints with mock data; ensure numbers disappear when API returns 503.
+
+2. **Neural strategy matrix & arbitrage modules**
+   - **Endpoint:** `/strategies` delivering per-strategy `{ trades, pnl, confidence, targets, success }`.
+   - **UI:** Build rows dynamically; hide card if array empty.
+   - **Verification:** Add console assertion that strategies length matches row count rendered.
+
+3. **Market maker / risk guardian / MEV shield / alpha signals / flash‑loan opportunities**
+   - **Endpoint:** `/liquidity`, `/risk/guardian`, `/mev`, `/alpha`, `/flashloan` (to be defined).
+   - **UI:** Replace text blocks with values from endpoints; include timestamp to show data freshness.
+   - **Verification:** For each, simulate server downtime and ensure card displays “DATA UNAVAILABLE” rather than stale demo text.
+
+### 5. Social & News Feeds
+
+Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pulse”, “Trending Now”, and “Breaking News” occupy lines
+~650–890 and reference `$NOVA` hard-codes.
+
+1. **Trending tokens / sentiment**
+   - **Endpoint:** `/sentiment/trending` returning array `{ symbol, mentions, change_pct, sentiment }`.
+   - **UI:** Populate list; remove `$NOVA` defaults.
+   - **Verification:** Ensure entries reorder when API results change; highlight negative sentiment in red.
+
+2. **Influencer alerts**
+   - **Endpoint:** `/sentiment/influencers` giving `{ handle, message, followers, stance }`.
+   - **UI:** Render avatars/handles dynamically; clicking opens source link.
+   - **Verification:** Confirm no duplicates and stale rows purge after 1 h.
+
+3. **Breaking news & community pulse**
+   - **Endpoint:** `/news` for headline feed and `/sentiment/pulse` for fear/greed metrics.
+   - **UI:** Replace static bullet list; store last seen article ID to avoid repeats.
+   - **Verification:** Compare timestamps with backend to ensure chronology.
+
+### 6. Backtesting & Optimisation Lab
+
+1. **Run Test form – `#btRun` click handler (lines ~2340–2470)**
+   - **Endpoint:** `POST /backtest` streaming progress via `/backtest/ws/{id}`.
+   - **UI:** Disable form while running; show progress bar; on completion update results table and Monte Carlo chart.
+   - **Verification:** Interrupt a long run to ensure cancellation logic closes WS and re-enables form.
+
+2. **Parameter persistence**
+   - **Storage:** `localStorage.backtest_params` with JSON `{ period, capital, strategy_weights }`.
+   - **Verification:** Reload page and confirm fields repopulate; validate numeric ranges before POST.
+
+### 7. System Health & Settings
+
+1. **Resource usage – `#cpuUsage`, `#memUsage`, `#netLatency` (lines ~1600–1665)**
+   - **Endpoint:** `GET /metrics` exposing `{ cpu, memory, net_latency }`.
+   - **UI:** Progress bars and labels use returned percentages.
+   - **Verification:** Introduce artificial load on backend and watch bars rise; ensure poll stops on hidden tab.
+
+2. **Module status – `#moduleDataFeed`, `#moduleInference`, `#moduleRisk`, `#moduleExecution` (lines ~1666–1755)**
+   - **Endpoint:** `/status` fields `data_feed`, `inference_engine`, `risk_manager`, `trade_execution`.
+   - **UI:** Green “OK”/amber “WARN”/red “DOWN”; tooltip with `status.detail`.
+   - **Verification:** Toggle backend components and ensure cards update within 5 s.
+
+3. **Configuration panel – inputs `#maxDrawdown`, `#maxPosition`, `#maxTrades`, `#sniperToggle`, `#arbToggle`, `#mmToggle`, `#failoverToggle`, `#rpcSelect` (lines ~1850–2140)**
+   - **Endpoint:** `GET /state` on open; `POST /state` on save.
+   - **UI:** Disable controls during `saveSettings` async call and show “Saving…” text.
+   - **Verification:** After POST, re‑fetch `/state` and assert returned config matches form values.
+
+4. **API base & key – inputs `#apiBaseInput`, `#apiKeyInput`**
+   - **Storage:** `localStorage.sol_seeker_api_base` & `localStorage.sol_seeker_api_key`.
+   - **Verification:** Clearing storage should force modal prompt; confirm requests include `Authorization: Bearer` header.
+
+### 8. Debug Console
+
+1. **Log feed – `#debugConsole` (lines ~1920 & script ~2370)**
+   - **Endpoint:** `/logs/ws` streaming `{ level, timestamp, message }`.
+   - **UI:** Append formatted lines; allow level filter via dropdown; “CLEAR” button purges DOM.
+   - **Verification:** Trigger log events via backend; ensure console scrolls and truncates after 500 lines.
+
+> After all modules are wired, run through the dashboard with network throttling and backend restarts to confirm graceful error
+handling (spinners, toasts, reconnect loops) for every widget.
+
 ## 1. Core Data Ingestion and Feature Pipeline
 1. Replace the placeholder slot-only stream with real on-chain event subscriptions.
    - Update `src/solbot/solana/data.py` to subscribe via WebSocket to program logs or account changes for DEX swaps, liquidity adds/removes, and token mint events.

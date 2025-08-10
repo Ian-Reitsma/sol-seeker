@@ -460,3 +460,35 @@
 - Configure Jest and write web tests covering auto-save behaviour, toast notifications, and backtest form submission.
 - Persist recent backtest settings and API credentials in local storage with validation and error messaging.
 - Stream backtest progress and allow cancellation for long-running simulations.
+
+## OpenAI Assistant - Dashboard Connectivity Audit
+
+**Date:** 2025-08-07
+
+### Summary
+- Identified hard-coded `$NOVA` placeholders and other static sections in `web/public/dashboard.html`.
+- Found the React client lacks backtest and settings pages; many dashboard modules remain disconnected from backend APIs.
+
+### Next Steps
+- See `AGENTS-AUDIT.md` for detailed integration tasks.
+
+## OpenAI Assistant - Frontend Wiring Plan
+
+**Date:** 2025-08-07
+
+### Summary
+- Expanded `AGENTS-AUDIT.md` with a comprehensive list of dashboard panels that remain static and require backend integration.
+- Highlighted core controls, portfolio metrics, risk/security sections, analytics modules, social/news feeds, backtesting forms, system settings, and the debug console.
+
+### Next Steps
+- Implement or remove each dashboard section per the updated audit so every visible element either consumes a real API/WebSocket or is hidden.
+
+## OpenAI Assistant - Dashboard Wiring Deep Dive
+
+**Date:** 2025-08-07
+
+### Summary
+- Rewrote `AGENTS-AUDIT.md` with line-level selectors, required endpoints, UI behaviours, and explicit verification steps for every dashboard panel.
+
+### Next Steps
+- Execute the audit instructions sequentially, confirming each widget hits the backend and degrades gracefully on failure.
