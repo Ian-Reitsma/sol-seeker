@@ -97,6 +97,19 @@ class LogStreamer:
                         except asyncio.QueueFull:
                             drop_metric.inc()
                             logging.warning("log queue full; dropping log")
+                            # Queue is at capacity; update metrics and check for
+                            # sustained backpressure before yielding.
+                            depth_metric.set(1.0)
+                            if above_since is None:
+                                above_since = loop.time()
+                            elif loop.time() - above_since > 1.0:
+                                logging.error("log queue depth >75%%; stopping stream")
+                                stop_event.set()
+                                return
+                            # Yield to the event loop so other tasks can run.
+                            # Without this the producer can spin aggressively when
+                            # the queue is full, starving consumers and tests.
+                            await asyncio.sleep(0)
                             continue
                         depth = queue.qsize() / self._queue_size
                         depth_metric.set(depth)
@@ -127,7 +140,10 @@ class LogStreamer:
         finally:
             stop_event.set()
             task.cancel()
-            with contextlib.suppress(Exception):
+            # Cancel the producer task and wait for it to exit. In Python 3.11+
+            # asyncio.CancelledError is no longer a subclass of Exception, so
+            # we explicitly suppress it alongside other exceptions.
+            with contextlib.suppress(Exception, asyncio.CancelledError):
                 await task
             # Drain any remaining logs to avoid stale metrics on restart
             while not queue.empty():
