@@ -11,8 +11,13 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="sol-bot configuration")
     parser.add_argument(
         "--rpc-ws",
-        default=os.getenv("RPC_WS", "wss://api.mainnet-beta.solana.com/"),
+        default=os.getenv("RPC_WS", "wss://api.devnet.solana.com/"),
         help="Solana websocket endpoint",
+    )
+    parser.add_argument(
+        "--rpc-http",
+        default=os.getenv("RPC_HTTP"),
+        help="Solana HTTP endpoint",
     )
     parser.add_argument(
         "--log-level",
@@ -34,12 +39,16 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Run bootstrap process then exit",
     )
-    return parser.parse_args(args)
+    ns = parser.parse_args(args)
+    if ns.rpc_http is None:
+        ns.rpc_http = ns.rpc_ws.replace("wss", "https").replace("ws", "http")
+    return ns
 
 
 @dataclass
 class BotConfig:
     rpc_ws: str
+    rpc_http: str
     log_level: str
     wallet: str
     db_path: str
@@ -49,6 +58,7 @@ class BotConfig:
     def from_args(cls, args: argparse.Namespace) -> "BotConfig":
         return cls(
             rpc_ws=args.rpc_ws,
+            rpc_http=args.rpc_http,
             log_level=args.log_level,
             wallet=args.wallet,
             db_path=args.db_path,

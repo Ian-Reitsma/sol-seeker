@@ -21,7 +21,7 @@ from solbot.utils.syschecks import check_ntp, disk_iops_test
 def main() -> None:
     args = parse_args()
     cfg = BotConfig.from_args(args)
-    lm = LicenseManager(rpc_http=cfg.rpc_ws.replace("wss://", "https://"))
+    lm = LicenseManager(rpc_http=cfg.rpc_http)
     check_ntp()
     disk_iops_test(cfg.db_path + ".tmp")
     dal = DAL(cfg.db_path)

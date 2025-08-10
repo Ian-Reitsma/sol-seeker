@@ -37,7 +37,14 @@ def test_api_order_flow():
     for collector in list(REGISTRY._collector_to_names.keys()):
         REGISTRY.unregister(collector)
     tmp = tempfile.NamedTemporaryFile(delete=False)
-    cfg = BotConfig(rpc_ws="ws://localhost:8900", log_level="INFO", wallet="111", db_path=tmp.name, bootstrap=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
     lm = DummyLM()
     dal = DAL(cfg.db_path)
     class DummyOracle(PriceOracle):
@@ -112,11 +119,12 @@ def test_api_order_flow():
         assert "timestamp" in root_data
         assert root_data["schema"] == SCHEMA_HASH
 
-        # Starlette's TestClient doesn't surface immediate server disconnects,
-        # so simply ensure unauthorized endpoints close without blocking.
-        client.websocket_connect("/ws").close()
-        client.websocket_connect("/positions/ws").close()
-        client.websocket_connect("/dashboard/ws").close()
+        with client.websocket_connect("/ws") as ws:
+            assert ws.receive_json() == {"error": "unauthorized"}
+        with client.websocket_connect("/positions/ws") as ws:
+            assert ws.receive_json() == {"error": "unauthorized"}
+        with client.websocket_connect("/dashboard/ws") as ws:
+            assert ws.receive_json() == {"error": "unauthorized"}
 
         resp = client.get("/license")
         assert resp.status_code == 200

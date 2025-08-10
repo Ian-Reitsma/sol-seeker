@@ -79,11 +79,32 @@ The entrypoint automatically adds ``src`` to ``PYTHONPATH`` so no extra setup is
 required. The server launches a FastAPI app on `http://127.0.0.1:8000` exposing
 JSON endpoints for dashboards and paper trading. Orders and positions are
 persisted to the SQLite database specified by `--db-path` so the UI remains
-available offline. If ``YOUR_WALLET`` matches the ``LICENSE_AUTHORITY``
+    available offline. If ``YOUR_WALLET`` matches the ``LICENSE_AUTHORITY``
 environment variable, the server starts without requiring a license token. Demo
 wallets still start but emit a warning that trading is disabled. The `/status`
 endpoint reports bootstrap progress and `/version` returns the running git
-commit and schema hash.
+    commit and schema hash.
+
+### RPC Configuration
+
+By default the bot connects to Solana's public **Devnet** endpoints:
+
+* WebSocket: `wss://api.devnet.solana.com/`
+* HTTP: `https://api.devnet.solana.com`
+
+These values can be overridden with the `--rpc-ws` and `--rpc-http` flags or the
+`RPC_WS` and `RPC_HTTP` environment variables. For example, to target Testnet:
+
+```bash
+python -m src.server --wallet YOUR_WALLET \
+    --rpc-ws wss://api.testnet.solana.com \
+    --rpc-http https://api.testnet.solana.com
+```
+
+Public Mainnet gateways (`https://api.mainnet-beta.solana.com`) enforce strict
+rate limits and may return **HTTP 403** when an IP is blocked or **429** when
+the request rate is exceeded. For production workloads use a dedicated or
+private RPC provider, or run your own validator.
 
 ### Dashboard API
 

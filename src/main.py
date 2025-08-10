@@ -27,7 +27,7 @@ def main() -> None:
     cfg = BotConfig.from_args(args)
     logging.basicConfig(level=getattr(logging, cfg.log_level.upper(), logging.INFO))
 
-    lm = LicenseManager(rpc_http=cfg.rpc_ws.replace("wss://", "https://"))
+    lm = LicenseManager(rpc_http=cfg.rpc_http)
     if not cfg.wallet:
         print("--wallet is required")
         return

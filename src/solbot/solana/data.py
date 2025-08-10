@@ -48,7 +48,7 @@ class LogStreamer:
 
     def __init__(
         self,
-        rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/",
+        rpc_ws_url: str = "wss://api.devnet.solana.com/",
         program_ids: Optional[Sequence[str]] = None,
         queue_size: int = 10000,
     ) -> None:
@@ -187,7 +187,7 @@ class EventStream:
 
     def __init__(
         self,
-        rpc_ws_url: str = "wss://api.mainnet-beta.solana.com/",
+        rpc_ws_url: str = "wss://api.devnet.solana.com/",
         program_ids: Optional[Sequence[str]] = None,
         logs: Optional[Sequence[str]] = None,
     ) -> None:
