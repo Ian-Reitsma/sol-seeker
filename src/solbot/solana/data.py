@@ -57,7 +57,9 @@ class LogStreamer:
         self._queue_size = queue_size
 
     async def _connect(self) -> AsyncIterator[str]:
-        async with websockets.connect(self.rpc_ws_url) as ws:
+        # Disable environment proxies which can return HTTP 403 for WebSocket
+        # connections (see websockets>=15 default proxy behavior).
+        async with websockets.connect(self.rpc_ws_url, proxy=None) as ws:
             for i, pid in enumerate(self.program_ids, start=1):
                 msg = {
                     "jsonrpc": "2.0",

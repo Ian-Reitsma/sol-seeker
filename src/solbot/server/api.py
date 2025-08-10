@@ -491,12 +491,17 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws(ws: WebSocket):
-        try:
-            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
-            check_key(key)
-        except HTTPException:
-            await ws.close(code=1008)
-            return
+        # Validate the API key before accepting the connection so unauthorized
+        # clients disconnect immediately without leaving the TestClient waiting
+        key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+        expected_hash = os.getenv("API_KEY_HASH")
+        if expected_hash:
+            import hashlib, hmac
+            if not key or not hmac.compare_digest(
+                hashlib.sha256(key.encode()).hexdigest(), expected_hash
+            ):
+                await ws.close(code=1008)
+                return
         await ws.accept()
         async with conn_lock:
             connections.append(ws)
@@ -551,12 +556,17 @@ def create_app(
 
     @app.websocket("/positions/ws")
     async def positions_ws(ws: WebSocket):
-        try:
-            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
-            check_key(key)
-        except HTTPException:
-            await ws.close(code=1008)
-            return
+        # Reject unauthorized clients before the websocket handshake completes to
+        # avoid leaving test sessions waiting for close frames.
+        key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+        expected_hash = os.getenv("API_KEY_HASH")
+        if expected_hash:
+            import hashlib, hmac
+            if not key or not hmac.compare_digest(
+                hashlib.sha256(key.encode()).hexdigest(), expected_hash
+            ):
+                await ws.close(code=1008)
+                return
         await ws.accept()
         async with pos_lock:
             pos_connections.append(ws)
@@ -622,12 +632,17 @@ def create_app(
         if features is None or posterior is None:
             await ws.close()
             return
-        try:
-            key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
-            check_key(key)
-        except HTTPException:
-            await ws.close(code=1008)
-            return
+        # Perform API key validation prior to accepting so unauthorized clients
+        # are closed immediately without sending data.
+        key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
+        expected_hash = os.getenv("API_KEY_HASH")
+        if expected_hash:
+            import hashlib, hmac
+            if not key or not hmac.compare_digest(
+                hashlib.sha256(key.encode()).hexdigest(), expected_hash
+            ):
+                await ws.close(code=1008)
+                return
         await ws.accept()
         feat_q = features.subscribe()
         order_q = subscribe_orders()
