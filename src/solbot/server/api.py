@@ -33,7 +33,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depe
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -274,6 +274,10 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
         return RedirectResponse("/static/dashboard.html")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> FileResponse:
+        return FileResponse(static_dir / "favicon.ico")
 
     @app.get("/api", response_model=ServiceMap)
     async def api_index() -> ServiceMap:
