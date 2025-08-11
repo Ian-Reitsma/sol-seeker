@@ -41,6 +41,11 @@ from prometheus_client import Histogram
 from typing import Optional
 from pathlib import Path
 
+try:  # psutil is optional
+    import psutil  # type: ignore
+except Exception:  # pragma: no cover - fallback when psutil not installed
+    psutil = None  # type: ignore
+
 from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
 from ..types import Side
@@ -122,6 +127,17 @@ class PosteriorSnapshot(BaseModel):
     timestamp: int
 
 
+class NetworkStats(BaseModel):
+    tps: float | None = None
+    fee: float | None = None
+
+
+class Metrics(BaseModel):
+    cpu: float | None = None
+    memory: float | None = None
+    network: NetworkStats | None = None
+
+
 class RouteInfo(BaseModel):
     path: str
     methods: list[str]
@@ -132,6 +148,12 @@ class Manifest(BaseModel):
     rest: list[RouteInfo]
     websocket: list[str]
     timestamp: int
+
+
+class Catalyst(BaseModel):
+    event: str
+    timestamp: int
+    severity: str
 
 
 class EndpointMap(BaseModel):
@@ -161,12 +183,19 @@ class EndpointMap(BaseModel):
     tv: str
     license: str
     state: str
+    catalysts: str
+
+
+class LicenseInfo(BaseModel):
+    wallet: str
+    mode: str
+    issued_at: int
 
 
 class ServiceMap(BaseModel):
     tradingview: str
     endpoints: EndpointMap
-    license: dict
+    license: LicenseInfo
     timestamp: int
     schema_hash: str = Field(..., alias="schema")
 
@@ -196,7 +225,9 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    Instrumentator().instrument(app).expose(app)
+    Instrumentator().instrument(app).expose(
+        app, endpoint="/metrics/prometheus", include_in_schema=False
+    )
     latency_hist = Histogram(
         "order_latency_ns", "Order placement latency", buckets=(1e6, 5e6, 1e7, 5e7, 1e8)
     )
@@ -258,13 +289,13 @@ def create_app(
         if features is not None and metrics_interval > 0:
             poller_task = start_network_poller(features, cfg.rpc_http, metrics_interval)
 
-    @app.get("/license")
-    def license_info() -> dict:
-        return {
-            "wallet": cfg.wallet or "",
-            "mode": lm.license_mode(cfg.wallet) if cfg.wallet else "none",
-            "timestamp": int(time.time()),
-        }
+    @app.get("/license", response_model=LicenseInfo)
+    def license_info() -> LicenseInfo:
+        return LicenseInfo(
+            wallet=cfg.wallet or "",
+            mode=lm.license_mode(cfg.wallet) if cfg.wallet else "none",
+            issued_at=int(time.time()),
+        )
 
     @app.get("/state")
     def state() -> dict:
@@ -314,6 +345,7 @@ def create_app(
             redoc=app.url_path_for("redoc_html"),
             openapi=app.url_path_for("openapi"),
             metrics=app.url_path_for("metrics"),
+            catalysts=app.url_path_for("catalysts_endpoint"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
               posterior_ws=app.url_path_for("posterior_ws"),
@@ -339,11 +371,12 @@ def create_app(
         return {"status": "ok"}
 
     @app.get("/tv", response_class=HTMLResponse)
-    async def tradingview_page() -> str:
+    async def tradingview_page(symbol: str = "SOL") -> str:
         """Return simple TradingView iframe for manual inspection."""
+        pair = f"{symbol.upper()}USDT"
         return (
             "<html><body>"
-            "<iframe src='https://www.tradingview.com/widgetembed/?symbol=SOLUSDT'"
+            f"<iframe src='https://www.tradingview.com/widgetembed/?symbol={pair}'"
             " width='100%' height='600'></iframe>"
             "<p><a href='" + app.url_path_for("features_endpoint") + "'>features</a> | "
             "<a href='" + app.url_path_for("posterior_endpoint") + "'>posterior</a></p>"
@@ -354,9 +387,44 @@ def create_app(
     async def status() -> dict:
         return bootstrap.status()
 
-    @app.get("/assets")
-    async def assets_endpoint() -> list[dict]:
-        return assets.list_assets()
+    @app.get("/metrics", response_model=Metrics)
+    async def metrics() -> Metrics:
+        cpu = mem = None
+        net = None
+        if psutil is not None:
+            try:
+                cpu = psutil.cpu_percent(interval=None)
+                mem = psutil.virtual_memory().percent
+            except Exception:
+                cpu = mem = None
+        if cpu is None:
+            try:
+                load = os.getloadavg()[0]
+                cores = os.cpu_count() or 1
+                cpu = load / cores * 100.0
+            except Exception:
+                cpu = None
+        if features is not None:
+            try:
+                vec = features.snapshot()
+                if len(vec) > 7:
+                    net = NetworkStats(tps=float(vec[6]), fee=float(vec[7]))
+            except Exception:
+                pass
+        return Metrics(cpu=cpu, memory=mem, network=net)
+
+    @app.get("/assets", response_model=list[str])
+    async def assets_endpoint() -> list[str]:
+        return [a["symbol"] for a in assets.list_assets()]
+
+    @app.get("/catalysts", response_model=list[Catalyst])
+    async def catalysts_endpoint() -> list[Catalyst]:
+        now = int(time.time())
+        return [
+            Catalyst(event="$NOVA Token Burn", timestamp=now + 2 * 3600 + 15 * 60, severity="high"),
+            Catalyst(event="Jupiter V2 Launch", timestamp=now + 6 * 3600 + 42 * 60, severity="medium"),
+            Catalyst(event="Solana Breakpoint", timestamp=now + 2 * 24 * 3600 + 14 * 3600, severity="low"),
+        ]
 
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:

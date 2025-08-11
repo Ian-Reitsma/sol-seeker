@@ -501,9 +501,10 @@
                             ACTIVE MARKET DATA
                         </h3>
                         <div class="flex space-x-2">
-                            <button class="px-3 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50">SOL/USDC</button>
-                            <button class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">RAY/SOL</button>
-                            <button class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">ORCA/USDC</button>
+                            <button class="market-symbol px-3 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50">SOL/USDC</button>
+                            <button class="market-symbol px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">RAY/SOL</button>
+                            <button class="market-symbol px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">ORCA/USDC</button>
+                            <button class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="openTradingView">TRADINGVIEW</button>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -948,29 +949,7 @@
                             <!-- Upcoming Catalysts -->
                             <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/30">
                                 <div class="hologram-text text-blade-yellow font-bold mb-3">UPCOMING CATALYSTS</div>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between items-center text-xs">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-2 h-2 bg-blade-orange rounded-full animate-pulse"></div>
-                                            <span class="hologram-text text-white">$NOVA Token Burn</span>
-                                        </div>
-                                        <span class="hologram-text text-blade-orange">2H 15M</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-xs">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-2 h-2 bg-cyan-glow rounded-full"></div>
-                                            <span class="hologram-text text-white">Jupiter V2 Launch</span>
-                                        </div>
-                                        <span class="hologram-text text-cyan-glow">6H 42M</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-xs">
-                                        <div class="flex items-center space-x-2">
-                                            <div class="w-2 h-2 bg-blade-amber rounded-full"></div>
-                                            <span class="hologram-text text-white">Solana Breakpoint</span>
-                                        </div>
-                                        <span class="hologram-text text-blade-amber">2D 14H</span>
-                                    </div>
-                                </div>
+                                <div id="catalystList" class="space-y-2 text-xs"></div>
                             </div>
 
                             <!-- Flash Loan Opportunities -->
@@ -1475,6 +1454,20 @@
                 <h3 class="text-lg font-semibold text-white hologram-text mb-4 tracking-wider">
                     CONFIGURATION
                 </h3>
+                <!-- License Diagnostics -->
+                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4 hidden" id="licensePanel">
+                    <h4 class="hologram-text text-blade-amber font-bold mb-3">LICENSE</h4>
+                    <div class="space-y-1 text-xs hologram-text">
+                        <div>MODE: <span id="licenseModeDetail">-</span></div>
+                        <div>OWNER: <span id="licenseOwner">-</span></div>
+                        <div>ISSUED: <span id="licenseIssued">-</span></div>
+                    </div>
+                </div>
+                <!-- Supported Assets -->
+                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4" id="assetPanel">
+                    <h4 class="hologram-text text-blade-amber font-bold mb-3">SUPPORTED ASSETS</h4>
+                    <select id="assetSelect" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm"></select>
+                </div>
                 <!-- API Connection -->
                 <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4">
                     <h4 class="hologram-text text-blade-amber font-bold mb-3">API CONNECTION</h4>
@@ -1656,6 +1649,25 @@
                     </div>
                 </div>
             </div>
+            <!-- Feature Schema -->
+            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30 mb-4" id="featureSchemaPanel">
+                <h4 class="hologram-text text-white font-bold mb-3">AI FEATURE SCHEMA</h4>
+                <div id="featureSchema" class="max-h-40 overflow-y-auto text-xs hologram-text text-white space-y-1"></div>
+            </div>
+
+            <!-- Feature Snapshot -->
+            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30 mb-4" id="featureSnapshotPanel">
+                <h4 class="hologram-text text-white font-bold mb-3">CURRENT FEATURE SNAPSHOT</h4>
+                <div id="featureSnapshot" class="max-h-40 overflow-y-auto text-xs hologram-text text-white space-y-1"></div>
+            </div>
+
+            <!-- AI Feature Monitor -->
+            <div class="hologram-panel p-6 rounded scan-lines mt-8" id="featureStreamPanel">
+                <h3 class="text-lg font-semibold text-white hologram-text tracking-wider mb-4">
+                    AI FEATURE MONITOR
+                </h3>
+                <div id="featureStream" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs hologram-text text-white"></div>
+            </div>
 
             <!-- Debug Console Section -->
             <div class="mb-8">
@@ -1672,6 +1684,9 @@
                             <option>ERROR</option>
                         </select>
                         <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="clearLogs">CLEAR</button>
+
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="apiExplorerBtn">API MAP</button>
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="aboutBtn">ABOUT</button>
                     </div>
                 </div>
 
@@ -1703,6 +1718,28 @@
             <div id="modalContent">
                 <!-- Dynamic content will be inserted here -->
             </div>
+        </div>
+    </div>
+
+    <!-- API Explorer Modal -->
+    <div class="position-details-modal" id="apiExplorerModal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white hologram-text tracking-wider">API MAP</h3>
+                <button class="text-blade-amber hover:text-white text-2xl" id="closeApiModal">&times;</button>
+            </div>
+            <pre id="apiExplorerContent" class="text-xs hologram-text text-white max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="position-details-modal" id="aboutModal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white hologram-text tracking-wider">ABOUT</h3>
+                <button class="text-blade-amber hover:text-white text-2xl" id="closeAboutModal">&times;</button>
+            </div>
+            <div id="aboutContent" class="text-xs hologram-text text-white max-h-96 overflow-y-auto space-y-1"></div>
         </div>
     </div>
 
@@ -1901,6 +1938,25 @@
             });
         });
 
+        const marketButtons = document.querySelectorAll('.market-symbol');
+        const openTradingView = document.getElementById('openTradingView');
+        marketButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                marketButtons.forEach(b => {
+                    b.classList.remove('active', 'bg-blade-amber/20', 'text-blade-amber');
+                    b.classList.add('bg-void-black/50', 'text-blade-amber/60');
+                });
+                btn.classList.add('active', 'bg-blade-amber/20', 'text-blade-amber');
+                btn.classList.remove('bg-void-black/50', 'text-blade-amber/60');
+            });
+        });
+        openTradingView?.addEventListener('click', () => {
+            const active = document.querySelector('.market-symbol.active') || document.querySelector('.market-symbol');
+            if (!active) return;
+            const [base] = active.textContent.trim().split('/');
+            window.open(`${apiClient.baseURL}/tv?symbol=${base}`, '_blank');
+        });
+
         let selectedPosition = null;
         const positionRows = new Map();
 
@@ -2035,6 +2091,14 @@
         const debugConsole = document.getElementById('debugConsole');
         const logFilter = document.getElementById('logFilter');
         const clearLogs = document.getElementById('clearLogs');
+        const apiExplorerBtn = document.getElementById('apiExplorerBtn');
+        const apiExplorerModal = document.getElementById('apiExplorerModal');
+        const apiExplorerContent = document.getElementById('apiExplorerContent');
+        const closeApiModal = document.getElementById('closeApiModal');
+        const aboutBtn = document.getElementById('aboutBtn');
+        const aboutModal = document.getElementById('aboutModal');
+        const aboutContent = document.getElementById('aboutContent');
+        const closeAboutModal = document.getElementById('closeAboutModal');
         const logBuffer = [];
         const MAX_LOGS = 500;
 
@@ -2072,44 +2136,45 @@
             logBuffer.length = 0;
             renderLogs();
         });
+
+        apiExplorerBtn?.addEventListener('click', async () => {
+            try {
+                const map = await apiClient.getServiceMap();
+                apiExplorerContent.textContent = JSON.stringify(map, null, 2);
+            } catch (err) {
+                apiExplorerContent.textContent = 'Failed to load service map';
+            }
+            apiExplorerModal.classList.add('show');
+        });
+        closeApiModal?.addEventListener('click', () => apiExplorerModal.classList.remove('show'));
+        apiExplorerModal?.addEventListener('click', e => {
+            if (e.target === apiExplorerModal) apiExplorerModal.classList.remove('show');
+        });
+
+        aboutBtn?.addEventListener('click', async () => {
+            aboutContent.textContent = 'Loading...';
+            try {
+                const [version, manifest] = await Promise.all([
+                    apiClient.getVersion(),
+                    apiClient.getManifest()
+                ]);
+                aboutContent.innerHTML =
+                    `<div>Commit: ${version.git}</div>` +
+                    `<div>Schema: ${version.schema}</div>` +
+                    `<div>REST endpoints: ${manifest.rest.length}</div>` +
+                    `<div>WebSockets: ${manifest.websocket.length}</div>`;
+            } catch (err) {
+                aboutContent.textContent = 'Failed to load build metadata';
+            }
+            aboutModal.classList.add('show');
+        });
+        closeAboutModal?.addEventListener('click', () => aboutModal.classList.remove('show'));
+        aboutModal?.addEventListener('click', e => {
+            if (e.target === aboutModal) aboutModal.classList.remove('show');
+        });
         
         // Trading feed integration with API
         let feedPaused = false;
-
-        function updateTradingFeed() {
-            wsClient.connect('/ws', ({ token, quantity, qty, side, price, timestamp, posterior, strategy, status }) => {
-                if (feedPaused) return;
-
-                const q = quantity ?? qty;
-                if (!side) {
-                    console.warn('ws order missing side', { token, quantity: q, price, status });
-                    return;
-                }
-                addFeedEntry({
-                    timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
-                    type: side.toUpperCase(),
-                    message: `${token} x${q} @ $${price}`,
-                    strategy: strategy || 'API',
-                    confidence: posterior?.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
-                    color: side === 'buy' ? 'blade-cyan' : 'blade-amber'
-                });
-
-                if (posterior) {
-                    addFeedEntry({
-                        timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
-                        type: 'NEURAL',
-                        message: `${posterior.action} - ${token}`,
-                        strategy: 'AI',
-                        confidence: posterior.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
-                        color: 'blade-cyan'
-                    });
-                }
-
-                if (status === 'closed') {
-                    appendHistoryEntry({ token, quantity: q, side, price, timestamp, status });
-                }
-            });
-        }
         
         // Add entry to trading feed
         function addFeedEntry(entry) {
@@ -2554,7 +2619,11 @@
             async getRiskSecurity() {
                 return this.get('/risk/security');
             }
-            
+
+            async getCatalysts() {
+                return this.get('/catalysts');
+            }
+
             async getMetrics() {
                 return this.get('/metrics');
             }
@@ -2565,6 +2634,10 @@
             
             async getManifest() {
                 return this.get('/manifest');
+            }
+
+            async getServiceMap() {
+                return this.get('/api');
             }
             
             async getLicense() {
@@ -2652,7 +2725,9 @@
             features: null,
             posterior: null,
             assets: null,
+            featureSchema: null,
             metrics: null,
+            license: null,
             lastUpdate: null,
             isDemo: false
         };
@@ -2663,26 +2738,45 @@
             
             try {
                 // Fetch core dashboard data
-                const [dashboard, positions, orders, features, posterior, state, security] = await Promise.all([
+                const [dashboard, positions, orders, featureSnap, posterior, state, security, license, catalysts] = await Promise.all([
                     apiClient.getDashboard(),
                     apiClient.getPositions(),
                     apiClient.getOrders(),
                     apiClient.getFeatures(),
                     apiClient.getPosterior(),
                     apiClient.getState(),
-                    apiClient.getRiskSecurity().catch(() => null)
+                    apiClient.getRiskSecurity().catch(() => null),
+                    apiClient.getLicense().catch(() => null),
+                    apiClient.getCatalysts().catch(() => null)
                 ]);
 
                 // Update state
                 dashboardState.dashboard = dashboard;
                 dashboardState.positions = positions;
                 dashboardState.orders = orders;
-                dashboardState.features = features;
+                dashboardState.features = featureSnap?.features;
+                const featureTs = featureSnap?.timestamp;
+                if (Array.isArray(dashboardState.features)) {
+                    updateFeatureStream(dashboardState.features);
+                    renderFeatureSnapshot(dashboardState.features, featureTs);
+                }
                 dashboardState.posterior = posterior;
                 dashboardState.lastUpdate = new Date();
                 dashboardState.state = state;
                 dashboardState.security = security;
-                dashboardState.isDemo = state && state.mode === 'demo';
+                dashboardState.license = license;
+                dashboardState.catalysts = catalysts;
+                const mode = license?.mode || state?.mode;
+                dashboardState.isDemo = mode === 'demo';
+
+                if (!dashboardState.assets) {
+                    dashboardState.assets = await apiClient.getAssets().catch(() => null);
+                    if (dashboardState.assets) populateAssetSelect(dashboardState.assets);
+                }
+                if (!dashboardState.featureSchema) {
+                    dashboardState.featureSchema = await apiClient.getFeaturesSchema().catch(() => null);
+                    if (dashboardState.featureSchema) renderFeatureSchema(dashboardState.featureSchema);
+                }
 
                 // Update UI components
                 updatePortfolioMetrics();
@@ -2692,6 +2786,8 @@
                 updateSystemHealth();
                 updateRegimeAnalysis();
                 updateMarketStats();
+                updateLicensePanel();
+                updateCatalystList(catalysts);
                 updateLicenseMode(dashboardState.isDemo);
                 
             } catch (error) {
@@ -2962,9 +3058,9 @@
         }
 
         // Update market stats if backend provides them
-          function updateMarketStats() {
-              const market = dashboardState.dashboard && dashboardState.dashboard.market;
-              if (!market) return;
+        function updateMarketStats() {
+            const market = dashboardState.dashboard && dashboardState.dashboard.market;
+            if (!market) return;
 
             const priceEl = document.getElementById('assetPrice');
             if (priceEl && market.price !== undefined) {
@@ -2993,15 +3089,146 @@
             }
 
             const spreadEl = document.getElementById('spread');
-              if (spreadEl && market.spread !== undefined) {
-                  spreadEl.textContent = `${market.spread}%`;
-              }
-          }
+            if (spreadEl && market.spread !== undefined) {
+                spreadEl.textContent = `${market.spread}%`;
+            }
+        }
 
-          async function loadAnalytics() {
-              if (document.hidden) return;
-              try {
-                  const [whales, flow, copyList, strategies, arb] = await Promise.all([
+        function updateLicensePanel() {
+            const panel = document.getElementById('licensePanel');
+            if (!panel) return;
+            const lic = dashboardState.license;
+            if (!lic) {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+            const modeEl = document.getElementById('licenseModeDetail');
+            const ownerEl = document.getElementById('licenseOwner');
+            const issuedEl = document.getElementById('licenseIssued');
+            if (modeEl) modeEl.textContent = lic.mode || '-';
+            if (ownerEl) ownerEl.textContent = lic.owner || lic.wallet || '-';
+            if (issuedEl) {
+                issuedEl.textContent = lic.issued_at ? new Date(lic.issued_at * 1000).toLocaleString() : '-';
+            }
+        }
+
+        function populateAssetSelect(assets) {
+            const sel = document.getElementById('assetSelect');
+            if (!sel || !Array.isArray(assets)) return;
+            sel.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            assets.forEach(tok => {
+                const opt = document.createElement('option');
+                opt.value = tok;
+                opt.textContent = tok;
+                frag.appendChild(opt);
+            });
+            sel.appendChild(frag);
+        }
+
+        function renderFeatureSchema(schema) {
+            const container = document.getElementById('featureSchema');
+            if (!container || !schema || !Array.isArray(schema.features)) return;
+            container.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            schema.features.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between';
+                row.innerHTML = `<span>${f.index}: ${f.name}</span><span class="text-blade-amber/60">${f.category || ''}</span>`;
+                frag.appendChild(row);
+            });
+            container.appendChild(frag);
+        }
+
+        function renderFeatureSnapshot(features, timestamp) {
+            const container = document.getElementById('featureSnapshot');
+            if (!container || !Array.isArray(features)) return;
+            container.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            const schema = dashboardState.featureSchema?.features || [];
+            features.forEach((val, i) => {
+                const name = schema[i]?.name || `Feature ${i}`;
+                const row = document.createElement('div');
+                row.className = 'flex justify-between';
+                row.innerHTML = `<span>${name}</span><span class="text-blade-amber/60">${val}</span>`;
+                frag.appendChild(row);
+            });
+            container.appendChild(frag);
+            const tsDiv = document.createElement('div');
+            tsDiv.className = 'text-blade-amber/60 mt-2';
+            const ts = timestamp ? new Date(timestamp * 1000) : new Date();
+            tsDiv.textContent = `Snapshot at ${ts.toLocaleTimeString()}`;
+            container.appendChild(tsDiv);
+        }
+
+        function updateCatalystList(list) {
+            const container = document.getElementById('catalystList');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!Array.isArray(list) || list.length === 0) {
+                container.innerHTML = '<div class="hologram-text text-white">None</div>';
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            const colorMap = {
+                high: ['bg-blade-orange', 'text-blade-orange'],
+                medium: ['bg-cyan-glow', 'text-cyan-glow'],
+                low: ['bg-blade-amber', 'text-blade-amber']
+            };
+            list.forEach(item => {
+                const [bg, text] = colorMap[item.severity] || colorMap.low;
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center';
+                const left = document.createElement('div');
+                left.className = 'flex items-center space-x-2';
+                const dot = document.createElement('div');
+                dot.className = `w-2 h-2 rounded-full ${bg}${item.severity === 'high' ? ' animate-pulse' : ''}`;
+                left.appendChild(dot);
+                const name = document.createElement('span');
+                name.className = 'hologram-text text-white';
+                name.textContent = item.event;
+                left.appendChild(name);
+                row.appendChild(left);
+                const time = document.createElement('span');
+                time.className = `hologram-text ${text}`;
+                time.textContent = formatTimeDiff(item.timestamp);
+                row.appendChild(time);
+                frag.appendChild(row);
+            });
+            container.appendChild(frag);
+        }
+
+        function formatTimeDiff(ts) {
+            const diff = ts * 1000 - Date.now();
+            if (diff <= 0) return 'soon';
+            const mins = Math.floor(diff / 60000);
+            const days = Math.floor(mins / 1440);
+            const hours = Math.floor((mins % 1440) / 60);
+            const minutes = mins % 60;
+            const parts = [];
+            if (days) parts.push(`${days}D`);
+            if (hours) parts.push(`${hours}H`);
+            parts.push(`${minutes}M`);
+            return parts.join(' ');
+        }
+
+        function updateFeatureStream(features) {
+            const container = document.getElementById('featureStream');
+            if (!container || !Array.isArray(features)) return;
+            container.innerHTML = '';
+            features.slice(0, 16).forEach((val, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between';
+                div.innerHTML = `<span>${idx}</span><span>${Number(val).toFixed(4)}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        async function loadAnalytics() {
+            if (document.hidden) return;
+            try {
+                const [whales, flow, copyList, strategies, arb] = await Promise.all([
                       apiClient.get('/whales').catch(() => null),
                       apiClient.get('/smart-money-flow').catch(() => null),
                       apiClient.get('/copy-trading').catch(() => null),
@@ -3339,6 +3566,41 @@
             pollingIntervals.length = 0;
         }
 
+        function updateTradingFeed() {
+            wsClient.connect('/orders/ws', ({ token, quantity, qty, side, price, timestamp, posterior, strategy, status }) => {
+                if (feedPaused) return;
+
+                const q = quantity ?? qty;
+                if (!side) {
+                    console.warn('ws order missing side', { token, quantity: q, price, status });
+                    return;
+                }
+                addFeedEntry({
+                    timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
+                    type: side.toUpperCase(),
+                    message: `${token} x${q} @ $${price}`,
+                    strategy: strategy || 'API',
+                    confidence: posterior?.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
+                    color: side === 'buy' ? 'blade-cyan' : 'blade-amber'
+                });
+
+                if (posterior) {
+                    addFeedEntry({
+                        timestamp: new Date(timestamp ? timestamp * 1000 : Date.now()),
+                        type: 'NEURAL',
+                        message: `${posterior.action} - ${token}`,
+                        strategy: 'AI',
+                        confidence: posterior.confidence ? `${(posterior.confidence * 100).toFixed(0)}%` : null,
+                        color: 'blade-cyan'
+                    });
+                }
+
+                if (status === 'closed') {
+                    appendHistoryEntry({ token, quantity: q, side, price, timestamp, status });
+                }
+            });
+        }
+
         // Connect to real-time feeds
         function initializeWebSockets() {
             // Dashboard updates
@@ -3365,8 +3627,12 @@
             
             // Features/AI updates
             wsClient.connect('/features/ws', (data) => {
-                console.log('Real-time features update:', data);
-                // Update AI model displays
+                if (Array.isArray(data.features)) {
+                    dashboardState.features = data.features;
+                    updateFeatureStream(data.features);
+                    const ts = data.event?.timestamp;
+                    renderFeatureSnapshot(data.features, ts);
+                }
             });
             
             // Posterior/regime updates
@@ -3380,6 +3646,9 @@
             wsClient.connect('/logs/ws', (data) => {
                 appendLog(data);
             });
+
+            // Order events feed
+            updateTradingFeed();
 
         }
         
@@ -3409,9 +3678,6 @@
 
                 // Initialize WebSocket connections for real-time updates
                 initializeWebSockets();
-
-                // Subscribe to trading feed
-                updateTradingFeed();
 
                 // Initial data fetch
                   await updateDashboardData();
