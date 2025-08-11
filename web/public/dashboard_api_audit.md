@@ -62,6 +62,11 @@ lack UI triggers until they are exposed.
   - `SolSeekerAPI.getLicense()` is stubbed at dashboard line 2570 yet never invoked【F:web/public/dashboard.html†L2570-L2571】.
   - Add a "License" panel in settings that calls `apiClient.getLicense()` during `updateDashboardData()` and surfaces fields
     like `mode` and `expires`.
+* **Agent Notes (2025-08-07)**:
+  - Created a hidden `<div id="licensePanel">` in the settings section that becomes visible when license data is present.
+  - `updateDashboardData()` now invokes `apiClient.getLicense()` and caches the response in `dashboardState.license` alongside other core data.
+  - Implemented `updateLicensePanel()` to populate mode, owner, and a human‑readable `issued_at`; the panel automatically hides when the endpoint returns null.
+  - **Status**: Completed for existing fields. Further optimization could include displaying an expiration date once `/license` exposes `expires_at`.
 
 ### 1.2 `/api` – Service Map & Discovery
 * **Management Summary**: Lacking endpoint discovery forces manual documentation upkeep.
@@ -69,6 +74,10 @@ lack UI triggers until they are exposed.
   - Route implemented at lines 298‑333 and returns `ServiceMap` containing all REST/WS paths and schema hash【F:src/solbot/server/api.py†L298-L333】.
   - No dashboard element references this index; consider an "API Explorer" modal accessible from the debug console.
   - Response schema: `{tradingview: url, endpoints: {...}, license: {...}, timestamp, schema_hash}`.
+* **Agent Notes (2025-08-07)**:
+  - Added an **API Explorer** button in the debug console that opens a modal and fetches the `/api` service map.
+  - The modal enumerates REST and WebSocket endpoints, providing quick discovery without leaving the dashboard.
+  - **Status**: Fully implemented; future improvement could include search and filtering within the modal for very large maps.
 
 ### 1.3 `/tv` – TradingView Helper
 * **Management Summary**: Troubleshooting chart embeds requires manual URL construction today.
@@ -76,6 +85,10 @@ lack UI triggers until they are exposed.
   - Helper defined at lines 341‑351 returning minimal HTML with a TradingView widget【F:src/solbot/server/api.py†L341-L351】.
   - Dashboard already embeds charts directly and never links to `/tv`.  Provide a small "Open in TradingView" button near
     charts that launches this endpoint in a new tab.
+* **Agent Notes (2025-08-07)**:
+  - Added an **Open TradingView** control beside the market pair buttons; clicking it opens `/tv?symbol=<PAIR>` in a new browser tab.
+  - The link is parameterized with the currently active symbol so operators view charts for the exact pair they are analysing.
+  - **Status**: Completed. A potential enhancement is to update the button label dynamically when the user switches tokens without reloading the page.
 
 ### 1.4 `/assets` – Supported Asset Catalogue
 * **Management Summary**: Without a canonical asset list, order forms risk invalid token symbols.
@@ -83,6 +96,11 @@ lack UI triggers until they are exposed.
   - Implemented at lines 357‑359 returning `["SOL", "ETH", ...]`【F:src/solbot/server/api.py†L357-L359】.
   - `SolSeekerAPI.getAssets()` exists at line 2534 but no UI calls it【F:web/public/dashboard.html†L2534-L2534】.
   - Populate dropdowns such as the order ticket or strategy matrix validator with this list and cache it client‑side.
+* **Agent Notes (2025-08-07)**:
+  - Extended `updateDashboardData()` to call `apiClient.getAssets()` once and cache the result in `dashboardState.assets`.
+  - Added a **supported-assets dropdown** in the settings panel that lists every symbol returned by `/assets`.
+  - The dropdown doubles as input validation for order placement; subsequent refreshes reuse the cached list to minimize network chatter.
+  - **Status**: Completed. Future work could include refreshing the cache periodically to pick up newly listed tokens.
 
 ### 1.5 `/features/schema` – Feature Index Metadata
 * **Management Summary**: Operators cannot inspect which model features drive decisions.
@@ -90,6 +108,10 @@ lack UI triggers until they are exposed.
   - Route at lines 368‑378 returns names and descriptions for each feature index【F:src/solbot/server/api.py†L368-L378】.
   - Although `SolSeekerAPI.getFeaturesSchema()` exists (line 2538), no panel renders this documentation.
   - Add an expandable "AI Feature Schema" table using `<div id="featureSchema">` to help data scientists verify inputs.
+* **Agent Notes (2025-08-07)**:
+  - Created an **AI Feature Schema** panel with `<div id="featureSchema">` that renders the `/features/schema` response as a scrollable list of feature names and descriptions.
+  - Schema is fetched once during dashboard initialization and cached in `dashboardState.featureSchema` for reuse.
+  - **Status**: Completed. Potential enhancement: include search/filtering for large feature sets.
 
 ### 1.6 `/version` and `/manifest` – Build Provenance
 * **Management Summary**: Management cannot confirm the running commit or available endpoints from the UI, complicating
@@ -99,6 +121,11 @@ lack UI triggers until they are exposed.
   - `SolSeekerAPI.getVersion()` (line 2562) and `getManifest()` (line 2566) are unused.
   - Add an "About" dialog linking these endpoints and display `schema_hash` to detect mismatches between frontend bundle and
     backend.
+* **Agent Notes (2025-08-07)**:
+  - Implemented an **About** modal reachable from the debug console with an `aboutBtn` trigger.
+  - Modal concurrently fetches `/version` and `/manifest`, then displays commit hash, schema hash, and counts of REST and WebSocket endpoints.
+  - Includes graceful error handling and a close button; modal is hidden when clicking outside the content.
+  - **Status**: Completed. Future optimization might cache the response to avoid repeated network calls.
 
 ### 1.7 `/orders/ws` – Dedicated Order Event Stream
 * **Management Summary**: Trading feed cannot show real‑time fills without subscribing to the server’s order stream.
@@ -106,6 +133,10 @@ lack UI triggers until they are exposed.
   - WebSocket declared at lines 535‑537 forwarding messages from the generic hub【F:src/solbot/server/api.py†L535-L537】.
   - `initializeWebSockets()` never connects to `/orders/ws`; the trading feed remains a static placeholder.
   - Add `wsClient.connect('/orders/ws', onOrderEvent)` where `onOrderEvent` appends entries to `#tradingFeed`.
+* **Agent Notes (2025-08-07)**:
+  - Implemented `updateTradingFeed()` which subscribes to `/orders/ws` and formats each incoming order into the dashboard feed.
+  - Added posterior-driven neural entries and history appends when orders close, providing rich real-time context.
+  - **Status**: Completed. Monitor for performance under heavy traffic; future tuning may batch UI updates when volumes spike.
 
 ### 1.8 Generic Broadcast WebSocket `/ws`
 * **Management Summary**: The broadcast socket can deliver cross‑module events yet the dashboard does not expose a listener for
@@ -166,6 +197,11 @@ server routes are implemented, the panels will remain ornamental.
   - Static markup at lines 948‑971 lists `$NOVA Token Burn`, `Jupiter V2 Launch`, and `Solana Breakpoint`【F:web/public/dashboard.html†L948-L971】.
   - No API call exists; design a new `GET /catalysts` returning `{event, timestamp, severity}` and refresh panel via
     `updateCatalystList()`.
+* **Agent Notes (2025-08-07)**:
+  - Implemented a typed `Catalyst` model and exposed `GET /catalysts` returning `{ event, timestamp, severity }`.
+  - Added an **Upcoming Catalysts** panel driven by `apiClient.getCatalysts()`; items are color‑coded by severity and show relative times.
+  - Server test cases ensure the service map advertises the new route and that responses match the schema.
+  - **Status**: Completed. Future optimization might sort events chronologically and poll periodically for updates.
 
 ### 2.6 Backtest Progress WebSocket
 * **Management Summary**: Users cannot monitor long‑running backtests, leading to confusion about job status.
@@ -193,6 +229,11 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - `updateSystemHealth()` calls `apiClient.get('/metrics')` at lines 1799‑1810 and again via `dashboardState` at 2558‑2559【F:web/public/dashboard.html†L1799-L1810】【F:web/public/dashboard.html†L2558-L2559】.
   - `ServiceMap` advertises a metrics route (line 316) but `api.py` defines no `@app.get('/metrics')` handler【F:src/solbot/server/api.py†L316-L316】.
   - Implement a FastAPI route returning `{cpu, memory, network}` or remove polling.
+* **Agent Notes (2025-08-07)**:
+  - Added a typed `/metrics` endpoint that reports CPU load, memory utilization, and network throughput, importing `psutil` once and falling back to load averages when unavailable.
+  - Dashboard `updateSystemHealth()` now parses these fields to refresh resource meters in real time.
+  - Moved Prometheus statistics to `/metrics/prometheus` to avoid path conflicts.
+  - **Status**: Completed. Possible future work includes per‑process metrics for finer granularity.
 
 ### 3.2 Feature Stream Logged but Not Rendered
 * **Management Summary**: Real‑time model features arrive over WebSocket yet remain invisible to users.
@@ -200,6 +241,11 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - WebSocket `/features/ws` implemented at lines 579‑616 streams arrays of feature values【F:src/solbot/server/api.py†L579-L616】.
   - `initializeWebSockets()` subscribes but only logs the payload at lines 3366‑3370【F:web/public/dashboard.html†L3366-L3370】.
   - Create an "AI Feature Monitor" table (`<div id='featureStream'>`) and populate it on each message.
+* **Agent Notes (2025-08-07)**:
+  - Built a dedicated **AI Feature Monitor** panel with `<div id="featureStream">` that prepends timestamped feature vectors streamed from `/features/ws`.
+  - Log maintains the most recent 50 entries to prevent unbounded growth.
+  - Also leveraged the same stream to update the Current Feature Snapshot panel with the latest values.
+  - **Status**: Completed. For heavy streams, consider virtualized rendering or throttling.
 
 ### 3.3 Backtest Summary vs. Expected Streaming
 * **Management Summary**: The backtest form appears unresponsive because the frontend waits for messages that never arrive.
@@ -221,6 +267,11 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - UI contains `#tradingFeed` container (lines 1000‑1010) and helper `appendTradeEntry()` at 2116‑2144.
   - Backend provides `/orders/ws` (lines 535‑537) but `initializeWebSockets()` never connects; only generic `/ws` exists.
   - Add `wsClient.connect('/orders/ws', appendTradeEntry)` to populate the feed and remove `feedPlaceholder`.
+* **Agent Notes (2025-08-07)**:
+  - Introduced `updateTradingFeed()` which establishes a `/orders/ws` WebSocket and routes events into `addFeedEntry()` for display.
+  - Implemented dual entries for trade executions and accompanying neural decisions, plus history recording on order closure.
+  - Removed placeholder text so feed shows only genuine events.
+  - **Status**: Completed. Future refinement may include pagination or archiving for long-running sessions.
 
 ### 3.6 License Mode Indicator vs. Rich License Data
 * **Management Summary**: Status banner only distinguishes demo vs. live, ignoring detailed license fields already provided by
@@ -229,6 +280,10 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - `updateLicenseMode()` toggles CSS based solely on `state.mode` from `/state` (lines 2658‑2695).
   - `/license` offers additional fields such as `owner` and `issued_at` (lines 261‑267) yet the function never consumes them.
   - Extend `updateDashboardData()` to merge `getLicense()` output and display token mint and expiry in the settings modal.
+* **Agent Notes (2025-08-07)**:
+  - Merged license data into dashboard state and implemented `updateLicensePanel()` to render `mode`, `owner`, and `issued_at` in a dedicated diagnostics panel.
+  - `updateLicenseMode()` now derives demo vs. live from license metadata, ensuring consistent state even if `/state` and `/license` diverge.
+  - **Status**: Completed. Potential follow-up is to show token mint and expiration once backend exposes those fields.
 
 ### 3.7 Feature Snapshot Fetched but Hidden
 * **Management Summary**: The dashboard retrieves a one‑off feature vector but never exposes it, preventing operators from verifying model inputs.
@@ -236,6 +291,10 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - `/features` provides the latest feature array (lines 361‑366)【F:src/solbot/server/api.py†L361-L366】.
   - `updateDashboardData()` stores the response in `dashboardState.features`, yet no UI component reads it (lines 2666‑2681)【F:web/public/dashboard.html†L2666-L2681】.
   - Surface a "Current Feature Snapshot" panel or remove the fetch to avoid unnecessary bandwidth.
+* **Agent Notes (2025-08-07)**:
+  - Added a **Current Feature Snapshot** panel that maps the latest feature vector to schema labels using cached metadata from `/features/schema`.
+  - `renderFeatureSnapshot()` refreshes the panel on initial load and whenever `/features/ws` delivers new data, including a timestamp of capture.
+  - **Status**: Completed. To further optimize, consider diffing against previous snapshots to highlight changing features.
 
 ---
 

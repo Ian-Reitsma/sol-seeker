@@ -5,23 +5,6 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/metrics": {
-      "get": {
-        "summary": "Metrics",
-        "description": "Endpoint that serves Prometheus metrics.",
-        "operationId": "metrics_metrics_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/license": {
       "get": {
         "summary": "License Info",
@@ -32,8 +15,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "title": "Response License Info License Get"
+                  "$ref": "#/components/schemas/LicenseInfo"
                 }
               }
             }
@@ -140,6 +122,18 @@
         "summary": "Tradingview Page",
         "description": "Return simple TradingView iframe for manual inspection.",
         "operationId": "tradingview_page_tv_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Symbol",
+              "default": "SOL"
+            },
+            "name": "symbol",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -147,6 +141,16 @@
               "text/html": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -173,6 +177,24 @@
         }
       }
     },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metrics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/assets": {
       "get": {
         "summary": "Assets Endpoint",
@@ -184,10 +206,32 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "type": "object"
+                    "type": "string"
                   },
                   "type": "array",
                   "title": "Response Assets Endpoint Assets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalysts": {
+      "get": {
+        "summary": "Catalysts Endpoint",
+        "operationId": "catalysts_endpoint_catalysts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Catalyst"
+                  },
+                  "type": "array",
+                  "title": "Response Catalysts Endpoint Catalysts Get"
                 }
               }
             }
@@ -551,6 +595,29 @@
         ],
         "title": "BacktestResponse"
       },
+      "Catalyst": {
+        "properties": {
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "timestamp",
+          "severity"
+        ],
+        "title": "Catalyst"
+      },
       "EndpointMap": {
         "properties": {
           "health": {
@@ -656,6 +723,10 @@
           "state": {
             "type": "string",
             "title": "State"
+          },
+          "catalysts": {
+            "type": "string",
+            "title": "Catalysts"
           }
         },
         "type": "object",
@@ -685,7 +756,8 @@
           "manifest",
           "tv",
           "license",
-          "state"
+          "state",
+          "catalysts"
         ],
         "title": "EndpointMap"
       },
@@ -795,6 +867,29 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "LicenseInfo": {
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "title": "Wallet"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "issued_at": {
+            "type": "integer",
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet",
+          "mode",
+          "issued_at"
+        ],
+        "title": "LicenseInfo"
+      },
       "Manifest": {
         "properties": {
           "version": {
@@ -828,6 +923,37 @@
           "timestamp"
         ],
         "title": "Manifest"
+      },
+      "Metrics": {
+        "properties": {
+          "cpu": {
+            "type": "number",
+            "title": "Cpu"
+          },
+          "memory": {
+            "type": "number",
+            "title": "Memory"
+          },
+          "network": {
+            "$ref": "#/components/schemas/NetworkStats"
+          }
+        },
+        "type": "object",
+        "title": "Metrics"
+      },
+      "NetworkStats": {
+        "properties": {
+          "tps": {
+            "type": "number",
+            "title": "Tps"
+          },
+          "fee": {
+            "type": "number",
+            "title": "Fee"
+          }
+        },
+        "type": "object",
+        "title": "NetworkStats"
       },
       "OrderRequest": {
         "properties": {
@@ -971,8 +1097,7 @@
             "$ref": "#/components/schemas/EndpointMap"
           },
           "license": {
-            "type": "object",
-            "title": "License"
+            "$ref": "#/components/schemas/LicenseInfo"
           },
           "timestamp": {
             "type": "integer",

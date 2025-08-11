@@ -104,6 +104,7 @@ def test_api_order_flow():
         assert root_data["endpoints"]["redoc"] == app.url_path_for("redoc_html")
         assert root_data["endpoints"]["openapi"] == app.url_path_for("openapi")
         assert root_data["endpoints"]["metrics"] == app.url_path_for("metrics")
+        assert root_data["endpoints"]["catalysts"] == app.url_path_for("catalysts_endpoint")
         assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
         assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
@@ -132,6 +133,12 @@ def test_api_order_flow():
         lic = resp.json()
         assert lic["mode"] == "full"
         assert lic["wallet"] == cfg.wallet
+
+        resp = client.get("/catalysts")
+        assert resp.status_code == 200
+        cats = resp.json()
+        assert isinstance(cats, list)
+        assert {"event", "timestamp", "severity"} <= set(cats[0].keys())
 
         resp = client.get("/state")
         assert resp.status_code == 200
