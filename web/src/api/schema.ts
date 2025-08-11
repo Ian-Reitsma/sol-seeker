@@ -67,10 +67,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * API Index
+         * Api Index
          * @description Return resource index and embed template for TradingView.
          */
-        get: operations["api_api_get"];
+        get: operations["api_index_api_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -399,6 +399,8 @@ export interface components {
             positions_ws: string;
             /** Dashboard Ws */
             dashboard_ws: string;
+            /** Logs Ws */
+            logs_ws: string;
             /** Dashboard */
             dashboard: string;
             /** Manifest */
@@ -647,7 +649,7 @@ export interface operations {
             };
         };
     };
-    api_api_get: {
+    api_index_api_get: {
         parameters: {
             query?: never;
             header?: never;

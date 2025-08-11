@@ -155,6 +155,7 @@ class EndpointMap(BaseModel):
     posterior_ws: str
     positions_ws: str
     dashboard_ws: str
+    logs_ws: str
     dashboard: str
     manifest: str
     tv: str
@@ -208,6 +209,8 @@ def create_app(
     pos_connections: list[WebSocket] = []
     pos_lock = asyncio.Lock()
     order_subs: list[asyncio.Queue[dict]] = []
+    log_subs: list[asyncio.Queue[dict]] = []
+    log_lock = asyncio.Lock()
     poller_task: Optional[asyncio.Task] = None
     runtime_state = {"running": True, "emergency_stop": False, "settings": {}}
 
@@ -219,6 +222,19 @@ def create_app(
     def unsubscribe_orders(q: asyncio.Queue[dict]) -> None:
         with contextlib.suppress(ValueError):
             order_subs.remove(q)
+
+    class WSLogHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:  # pragma: no cover - minimal
+            data = {
+                "level": record.levelname.lower(),
+                "timestamp": int(record.created),
+                "message": record.getMessage(),
+            }
+            loop = asyncio.get_event_loop()
+            for q in list(log_subs):
+                loop.call_soon_threadsafe(q.put_nowait, data)
+
+    logging.getLogger().addHandler(WSLogHandler())
 
     def check_key(key: Optional[str] = Depends(api_key_header)) -> None:
         expected_hash = os.getenv("API_KEY_HASH")
@@ -300,14 +316,15 @@ def create_app(
             metrics=app.url_path_for("metrics"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
-            posterior_ws=app.url_path_for("posterior_ws"),
-            positions_ws=app.url_path_for("positions_ws"),
-            dashboard_ws=app.url_path_for("dashboard_ws"),
-            dashboard=app.url_path_for("dashboard"),
-            manifest=app.url_path_for("manifest"),
-            tv=app.url_path_for("tradingview_page"),
-            license=app.url_path_for("license_info"),
-            state=app.url_path_for("state"),
+              posterior_ws=app.url_path_for("posterior_ws"),
+              positions_ws=app.url_path_for("positions_ws"),
+              dashboard_ws=app.url_path_for("dashboard_ws"),
+              logs_ws=app.url_path_for("logs_ws"),
+              dashboard=app.url_path_for("dashboard"),
+              manifest=app.url_path_for("manifest"),
+              tv=app.url_path_for("tradingview_page"),
+              license=app.url_path_for("license_info"),
+              state=app.url_path_for("state"),
         )
         return ServiceMap(
             tradingview="https://www.tradingview.com/widgetembed/?symbol=<sym>USDT",
@@ -518,6 +535,46 @@ def create_app(
     @app.websocket("/orders/ws")
     async def orders_ws(ws_conn: WebSocket):
         await ws(ws_conn)
+
+    @app.websocket("/logs/ws")
+    async def logs_ws(ws_conn: WebSocket):
+        await ws_conn.accept()
+        key = ws_conn.headers.get("X-API-Key") or ws_conn.query_params.get("key")
+        expected_hash = os.getenv("API_KEY_HASH")
+        if expected_hash:
+            import hashlib, hmac
+            if not key or not hmac.compare_digest(
+                hashlib.sha256(key.encode()).hexdigest(), expected_hash
+            ):
+                await ws_conn.send_json({"error": "unauthorized"})
+                await ws_conn.close(code=1008)
+                return
+        q: asyncio.Queue[dict] = asyncio.Queue()
+        async with log_lock:
+            log_subs.append(q)
+        try:
+            while True:
+                log_task = asyncio.create_task(q.get())
+                recv_task = asyncio.create_task(ws_conn.receive_text())
+                done, _ = await asyncio.wait(
+                    {log_task, recv_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                if recv_task in done:
+                    log_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                        await log_task
+                    break
+                record = log_task.result()
+                recv_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
+                    await recv_task
+                await ws_conn.send_json(record)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            async with log_lock:
+                with contextlib.suppress(ValueError):
+                    log_subs.remove(q)
 
     @app.websocket("/features/ws")
     async def features_ws(ws: WebSocket):

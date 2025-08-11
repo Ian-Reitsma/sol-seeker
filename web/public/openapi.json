@@ -99,9 +99,9 @@
     },
     "/api": {
       "get": {
-        "summary": "API Index",
+        "summary": "Api Index",
         "description": "Return resource index and embed template for TradingView.",
-        "operationId": "api_api_get",
+        "operationId": "api_index_api_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -633,6 +633,10 @@
             "type": "string",
             "title": "Dashboard Ws"
           },
+          "logs_ws": {
+            "type": "string",
+            "title": "Logs Ws"
+          },
           "dashboard": {
             "type": "string",
             "title": "Dashboard"
@@ -676,6 +680,7 @@
           "posterior_ws",
           "positions_ws",
           "dashboard_ws",
+          "logs_ws",
           "dashboard",
           "manifest",
           "tv",
