@@ -109,6 +109,7 @@ def test_api_order_flow():
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
         assert root_data["endpoints"]["positions_ws"] == app.url_path_for("positions_ws")
         assert root_data["endpoints"]["dashboard_ws"] == app.url_path_for("dashboard_ws")
+        assert root_data["endpoints"]["logs_ws"] == app.url_path_for("logs_ws")
         assert root_data["endpoints"]["dashboard"] == app.url_path_for("dashboard")
         assert root_data["endpoints"]["manifest"] == app.url_path_for("manifest")
         assert root_data["endpoints"]["tv"] == app.url_path_for("tradingview_page")
