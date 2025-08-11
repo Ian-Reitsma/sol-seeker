@@ -128,14 +128,14 @@ class PosteriorSnapshot(BaseModel):
 
 
 class NetworkStats(BaseModel):
-    tps: float | None = None
-    fee: float | None = None
+    tps: Optional[float] = None
+    fee: Optional[float] = None
 
 
 class Metrics(BaseModel):
-    cpu: float | None = None
-    memory: float | None = None
-    network: NetworkStats | None = None
+    cpu: Optional[float] = None
+    memory: Optional[float] = None
+    network: Optional[NetworkStats] = None
 
 
 class RouteInfo(BaseModel):
