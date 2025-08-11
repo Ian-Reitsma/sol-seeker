@@ -492,3 +492,14 @@
 
 ### Next Steps
 - Execute the audit instructions sequentially, confirming each widget hits the backend and degrades gracefully on failure.
+
+## OpenAI Assistant - Gap Analysis and Audit Extension
+
+**Date:** 2025-08-07
+
+### Summary
+- Logged an additional frontend/backend gap analysis highlighting remaining `$NOVA` placeholders and static panels.
+- Extended `AGENTS-AUDIT.md` with neural trading feed wiring, a dynamic “upcoming catalysts” list, and strategy performance plus risk analytics panels, each with selectors, endpoints, and verification steps.
+
+### Next Steps
+- Implement or remove each new audit item so the dashboard reflects live backend data.

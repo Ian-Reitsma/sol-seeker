@@ -113,6 +113,11 @@ Widgets from “Whale Tracker” through “MEV Shield & Alpha Signals” appear
    - **UI:** Replace text blocks with values from endpoints; include timestamp to show data freshness.
    - **Verification:** For each, simulate server downtime and ensure card displays “DATA UNAVAILABLE” rather than stale demo text.
 
+4. **Neural trading feed – `#tradingFeed`, `#pauseFeed` (lines ~1174–1187)**
+   - **Endpoint:** Subscribe to `/orders/ws` (include stored API key) and append `{ timestamp, token, qty, side, price, posterior, strategy }` events.
+   - **UI:** Replace `#feedPlaceholder` with live rows; `#pauseFeed` toggles streaming and text swaps between “PAUSE” and “RESUME”.
+   - **Verification:** Post demo orders and confirm feed updates in <1 s; pausing halts new messages until resumed.
+
 ### 5. Social & News Feeds
 
 Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pulse”, “Trending Now”, and “Breaking News” occupy lines
@@ -133,6 +138,11 @@ Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pu
    - **UI:** Replace static bullet list; store last seen article ID to avoid repeats.
    - **Verification:** Compare timestamps with backend to ensure chronology.
 
+4. **Upcoming catalysts – `#catalystList` (lines ~1122–1164)**
+   - **Endpoint:** `GET /events/catalysts` returning `[ { name, eta, severity } ]`.
+   - **UI:** Render rows with colored dots per severity and countdown timers; strip `$NOVA` demo entries.
+   - **Verification:** Vary API payloads to ensure list refreshes every minute and clears when empty.
+
 ### 6. Backtesting & Optimisation Lab
 
 1. **Run Test form – `#btRun` click handler (lines ~2340–2470)**
@@ -143,6 +153,16 @@ Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pu
 2. **Parameter persistence**
    - **Storage:** `localStorage.backtest_params` with JSON `{ period, capital, strategy_weights }`.
    - **Verification:** Reload page and confirm fields repopulate; validate numeric ranges before POST.
+
+3. **Strategy performance matrix & breakdown – `#strategyPerformance`, `#strategyBreakdown` (lines ~1369–1447)**
+   - **Endpoint:** `GET /strategy/performance?period=7d|30d` for heatmap data and `/strategy/breakdown` returning `{ name, pnl, win_rate }`.
+   - **UI:** Populate heatmap cells and strategy cards dynamically; highlight selected period button.
+   - **Verification:** Toggle 7D/30D buttons and ensure network calls update DOM; card count matches array length.
+
+4. **Risk analytics panel – `#riskAnalytics` (lines ~1448–1469)**
+   - **Endpoint:** `GET /strategy/risk` yielding `{ sharpe, max_drawdown, volatility, calmar }`.
+   - **UI:** Replace static metrics; color negative drawdown in orange and hide panel on non-200.
+   - **Verification:** Alter backend values and confirm updates propagate without reload.
 
 ### 7. System Health & Settings
 
