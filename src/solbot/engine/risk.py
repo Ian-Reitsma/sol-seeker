@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Dict, List
+import time
 
 import numpy as np
 
@@ -21,6 +22,7 @@ class RiskManager:
         self.peak_equity: float = 0.0
         self.equity: float = 0.0
         self.price_history: Dict[str, List[float]] = {}
+        self.equity_history: List[tuple[int, float]] = []
 
     # ------------------------------------------------------------------
     # Compatibility helpers
@@ -31,12 +33,28 @@ class RiskManager:
         self.equity = new_equity
         if new_equity > self.peak_equity:
             self.peak_equity = new_equity
+        ts = int(time.time())
+        self.equity_history.append((ts, new_equity))
+        if len(self.equity_history) > 1000:
+            self.equity_history.pop(0)
 
     @property
     def drawdown(self) -> float:
         if self.peak_equity == 0:
             return 0.0
         return (self.peak_equity - self.equity) / self.peak_equity
+
+    def reset(self) -> None:
+        """Clear all state and equity history."""
+
+        self.positions.clear()
+        self.pnl.clear()
+        self.market_prices.clear()
+        self.price_history.clear()
+        self.max_exposure.clear()
+        self.peak_equity = 0.0
+        self.equity_history.clear()
+        self.update_equity(0.0)
 
     # ------------------------------------------------------------------
     # Position and PnL tracking
@@ -223,4 +241,40 @@ class RiskManager:
         if std <= 0:
             return 0.0
         return float(mean / std)
+
+    # ------------------------------------------------------------------
+    # Additional exposure metrics
+    # ------------------------------------------------------------------
+    def total_exposure(self) -> float:
+        """Return total absolute notional exposure across all positions."""
+
+        return sum(
+            abs(pos.qty * self.market_prices.get(tok, pos.cost))
+            for tok, pos in self.positions.items()
+        )
+
+    @property
+    def exposure(self) -> float:
+        """Portfolio exposure as a fraction of equity."""
+
+        if self.equity == 0:
+            return 0.0
+        return self.total_exposure() / self.equity
+
+    @property
+    def leverage(self) -> float:
+        """Simple leverage ratio based on total exposure."""
+
+        return self.exposure
+
+    @property
+    def position_size(self) -> float:
+        """Largest position notional size."""
+
+        if not self.positions:
+            return 0.0
+        return max(
+            abs(pos.qty * self.market_prices.get(tok, pos.cost))
+            for tok, pos in self.positions.items()
+        )
 

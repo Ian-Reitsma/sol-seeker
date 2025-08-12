@@ -33,8 +33,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "title": "Response State State Get"
+                  "$ref": "#/components/schemas/State"
                 }
               }
             }
@@ -60,8 +59,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "title": "Response Update State State Post"
+                  "$ref": "#/components/schemas/State"
                 }
               }
             }
@@ -448,6 +446,79 @@
         }
       }
     },
+    "/strategy/performance": {
+      "get": {
+        "summary": "Strategy Performance",
+        "operationId": "strategy_performance_strategy_performance_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "title": "Period",
+              "type": "string"
+            },
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyPerf"
+                  },
+                  "type": "array",
+                  "title": "Response Strategy Performance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/strategy/breakdown": {
+      "get": {
+        "summary": "Strategy Breakdown",
+        "operationId": "strategy_breakdown_strategy_breakdown_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyBreakdownItem"
+                  },
+                  "type": "array",
+                  "title": "Response Strategy Breakdown"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/strategy/risk": {
+      "get": {
+        "summary": "Strategy Risk",
+        "operationId": "strategy_risk_strategy_risk_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyRisk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/features": {
       "get": {
         "summary": "Features Endpoint",
@@ -511,7 +582,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/BacktestRequest"
+                "$ref": "#/components/schemas/BacktestJobRequest"
               }
             }
           },
@@ -523,7 +594,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BacktestResponse"
+                  "$ref": "#/components/schemas/BacktestJobResponse"
                 }
               }
             }
@@ -673,6 +744,63 @@
         ]
       }
     },
+    "/chart/portfolio": {
+      "get": {
+        "summary": "Portfolio Equity Chart",
+        "description": "Return recorded equity history for the full portfolio.",
+        "operationId": "chart_portfolio_chart_portfolio_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Tf",
+              "default": "1H"
+            },
+            "name": "tf",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "series": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": [
+                          {"type": "integer"},
+                          {"type": "number"}
+                        ],
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  },
+                  "required": ["series"],
+                  "title": "PortfolioChart"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/chart/{symbol}": {
       "get": {
         "summary": "Chart",
@@ -791,56 +919,41 @@
         ],
         "title": "ArbitrageStat"
       },
-      "BacktestRequest": {
+      "BacktestJobRequest": {
         "properties": {
-          "source": {
+          "period": {
             "type": "string",
-            "title": "Source"
+            "title": "Period"
           },
-          "fee": {
+          "capital": {
             "type": "number",
-            "title": "Fee",
-            "default": 0.0
+            "title": "Capital"
           },
-          "slippage": {
-            "type": "number",
-            "title": "Slippage",
-            "default": 0.0
-          },
-          "initial_cash": {
-            "type": "number",
-            "title": "Initial Cash",
-            "default": 0.0
+          "strategy_mix": {
+            "type": "string",
+            "title": "Strategy Mix"
           }
         },
         "type": "object",
         "required": [
-          "source"
+          "period",
+          "capital",
+          "strategy_mix"
         ],
-        "title": "BacktestRequest"
+        "title": "BacktestJobRequest"
       },
-      "BacktestResponse": {
+      "BacktestJobResponse": {
         "properties": {
-          "pnl": {
-            "type": "number",
-            "title": "Pnl"
-          },
-          "drawdown": {
-            "type": "number",
-            "title": "Drawdown"
-          },
-          "sharpe": {
-            "type": "number",
-            "title": "Sharpe"
+          "id": {
+            "type": "string",
+            "title": "Id"
           }
         },
         "type": "object",
         "required": [
-          "pnl",
-          "drawdown",
-          "sharpe"
+          "id"
         ],
-        "title": "BacktestResponse"
+        "title": "BacktestJobResponse"
       },
       "Catalyst": {
         "properties": {
@@ -924,6 +1037,10 @@
             "type": "string",
             "title": "Chart"
           },
+          "chart_portfolio": {
+            "type": "string",
+            "title": "Chart Portfolio"
+          },
           "version": {
             "type": "string",
             "title": "Version"
@@ -996,22 +1113,6 @@
             "type": "string",
             "title": "Risk Security"
           },
-          "sentiment_trending": {
-            "type": "string",
-            "title": "Sentiment Trending"
-          },
-          "sentiment_influencers": {
-            "type": "string",
-            "title": "Sentiment Influencers"
-          },
-          "sentiment_pulse": {
-            "type": "string",
-            "title": "Sentiment Pulse"
-          },
-          "news": {
-            "type": "string",
-            "title": "News"
-          },
           "whales": {
             "type": "string",
             "title": "Whales"
@@ -1031,6 +1132,22 @@
           "arbitrage": {
             "type": "string",
             "title": "Arbitrage"
+          },
+          "sentiment_trending": {
+            "type": "string",
+            "title": "Sentiment Trending"
+          },
+          "sentiment_influencers": {
+            "type": "string",
+            "title": "Sentiment Influencers"
+          },
+          "sentiment_pulse": {
+            "type": "string",
+            "title": "Sentiment Pulse"
+          },
+          "news": {
+            "type": "string",
+            "title": "News"
           }
         },
         "type": "object",
@@ -1045,6 +1162,7 @@
           "orders",
           "backtest",
           "chart",
+          "chart_portfolio",
           "version",
           "docs",
           "redoc",
@@ -1063,15 +1181,15 @@
           "state",
           "catalysts",
           "risk_security",
-          "sentiment_trending",
-          "sentiment_influencers",
-          "sentiment_pulse",
-          "news",
           "whales",
           "smart_money_flow",
           "copy_trading",
           "strategies",
-          "arbitrage"
+          "arbitrage",
+          "sentiment_trending",
+          "sentiment_influencers",
+          "sentiment_pulse",
+          "news"
         ],
         "title": "EndpointMap"
       },
@@ -1611,10 +1729,88 @@
           "settings": {
             "type": "object",
             "title": "Settings"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "paper_assets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "Paper Assets"
+          },
+          "paper_capital": {
+            "type": "number",
+            "title": "Paper Capital"
           }
         },
         "type": "object",
         "title": "StateUpdate"
+      },
+      "PaperConfig": {
+        "properties": {
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "Assets"
+          },
+          "capital": {
+            "type": "number",
+            "title": "Capital"
+          }
+        },
+        "type": "object",
+        "title": "PaperConfig"
+      },
+      "State": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "emergency_stop": {
+            "type": "boolean",
+            "title": "Emergency Stop"
+          },
+          "settings": {
+            "type": "object",
+            "title": "Settings"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "paper": {
+            "$ref": "#/components/schemas/PaperConfig"
+          },
+          "license": {
+            "$ref": "#/components/schemas/LicenseInfo"
+          },
+          "status": {
+            "type": "object",
+            "title": "Status"
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "running",
+          "emergency_stop",
+          "settings",
+          "mode",
+          "paper",
+          "license",
+          "status",
+          "timestamp"
+        ],
+        "type": "object",
+        "title": "State"
       },
       "StrategyStat": {
         "properties": {
@@ -1653,6 +1849,67 @@
           "success"
         ],
         "title": "StrategyStat"
+      },
+      "StrategyPerf": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate"
+          }
+        },
+        "type": "object",
+        "required": ["name", "pnl", "win_rate"],
+        "title": "StrategyPerf"
+      },
+      "StrategyBreakdownItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate"
+          }
+        },
+        "type": "object",
+        "required": ["name", "pnl", "win_rate"],
+        "title": "StrategyBreakdownItem"
+      },
+      "StrategyRisk": {
+        "properties": {
+          "sharpe": {
+            "type": "number",
+            "title": "Sharpe"
+          },
+          "max_drawdown": {
+            "type": "number",
+            "title": "Max Drawdown"
+          },
+          "volatility": {
+            "type": "number",
+            "title": "Volatility"
+          },
+          "calmar": {
+            "type": "number",
+            "title": "Calmar"
+          }
+        },
+        "type": "object",
+        "required": ["sharpe", "max_drawdown", "volatility", "calmar"],
+        "title": "StrategyRisk"
       },
       "TrendingToken": {
         "properties": {

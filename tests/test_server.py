@@ -61,6 +61,7 @@ def test_api_order_flow():
 
     connector._get_fees = no_fee  # type: ignore[attr-defined]
     risk = RiskManager()
+    risk.update_equity(1000.0)
     trade = TradeEngine(risk, connector, dal)
     fe = PyFeatureEngine()
     fe.update(Event(kind=EventKind.SWAP, amount_in=1.0), slot=1)
@@ -111,6 +112,9 @@ def test_api_order_flow():
         assert root_data["endpoints"]["copy_trading"] == app.url_path_for("copy_trading_endpoint")
         assert root_data["endpoints"]["strategies"] == app.url_path_for("strategies_endpoint")
         assert root_data["endpoints"]["arbitrage"] == app.url_path_for("arbitrage_endpoint")
+        assert root_data["endpoints"]["strategy_performance"] == app.url_path_for("strategy_performance")
+        assert root_data["endpoints"]["strategy_breakdown"] == app.url_path_for("strategy_breakdown")
+        assert root_data["endpoints"]["strategy_risk"] == app.url_path_for("strategy_risk")
         assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
         assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
@@ -190,6 +194,21 @@ def test_api_order_flow():
         arb = resp.json()
         assert set(arb) == {"status", "trades", "pnl", "spread", "opportunities", "latency"}
 
+        resp = client.get("/strategy/performance")
+        assert resp.status_code == 200
+        perf = resp.json()
+        assert perf and {"name", "pnl", "win_rate"} <= perf[0].keys()
+
+        resp = client.get("/strategy/breakdown")
+        assert resp.status_code == 200
+        br = resp.json()
+        assert br and {"name", "pnl", "win_rate"} <= br[0].keys()
+
+        resp = client.get("/strategy/risk")
+        assert resp.status_code == 200
+        risk_stats = resp.json()
+        assert {"sharpe", "max_drawdown", "volatility", "calmar"} <= risk_stats.keys()
+
         resp = client.get("/api")
         assert resp.status_code == 200
         smap = resp.json()
@@ -204,6 +223,9 @@ def test_api_order_flow():
             "smart_money_flow",
             "strategies",
             "arbitrage",
+            "strategy_performance",
+            "strategy_breakdown",
+            "strategy_risk",
         ):
             assert key in eps
 
@@ -340,6 +362,30 @@ def test_api_order_flow():
         assert dash["risk"]["var"] == risk.var
         assert dash["risk"]["es"] == risk.es
         assert dash["risk"]["sharpe"] == risk.sharpe
+        assert dash["risk"]["position_size"] == risk.position_size
+        assert dash["risk"]["leverage"] == risk.leverage
+        assert dash["risk"]["exposure"] == risk.exposure
+
+        risk.update_equity(1100.0)
+        resp = client.get("/chart/portfolio")
+        assert resp.status_code == 200
+        assert resp.json()["series"] == [list(t) for t in risk.equity_history]
+
+        resp = client.post(
+            "/backtest",
+            json={"period": "1D", "capital": 1000, "strategy_mix": "mix"},
+        )
+        assert resp.status_code == 200
+        job_id = resp.json()["id"]
+        with client.websocket_connect(f"/backtest/ws/{job_id}") as ws:
+            msg = ws.receive_json()
+            assert msg["progress"] == 0
+            msg = ws.receive_json()
+            assert msg["progress"] == 50
+            msg = ws.receive_json()
+            assert msg["progress"] == 100 and "pnl" in msg
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
 
         resp = client.get("/manifest")
         assert resp.status_code == 200
@@ -361,3 +407,73 @@ def test_api_order_flow():
         assert "/sentiment/influencers" in rest_paths
         assert "/sentiment/pulse" in rest_paths
         assert "/news" in rest_paths
+
+
+def test_demo_mode_and_emergency_stop():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    fe = PyFeatureEngine()
+    posterior = PosteriorEngine()
+    bootstrap = BootstrapCoordinator()
+    assets = AssetService(dal)
+    assets.dal.save_assets([{"symbol": "SOL"}])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+    with TestClient(app) as client:
+        # enable demo mode with paper config
+        resp = client.post(
+            "/state",
+            json={"mode": "demo", "paper_assets": ["SOL"], "paper_capital": 1000},
+        )
+        assert resp.status_code == 200
+        st = resp.json()
+        assert st["mode"] == "demo"
+        assert st["paper"]["assets"] == ["SOL"]
+        assert st["paper"]["capital"] == 1000
+
+        # orders blocked in demo mode
+        resp = client.post(
+            "/orders",
+            json={"token": "SOL", "qty": 1, "side": "buy"},
+            headers={"X-API-Key": "test"},
+        )
+        assert resp.status_code == 403
+
+        # switch to live and place order
+        resp = client.post("/state", json={"mode": "live"})
+        assert resp.status_code == 200
+        assert resp.json()["mode"] == "live"
+        resp = client.post(
+            "/orders",
+            json={"token": "SOL", "qty": 1, "side": "buy"},
+            headers={"X-API-Key": "test"},
+        )
+        assert resp.status_code == 200
+        assert "SOL" in risk.positions
+
+        # trigger emergency stop and ensure positions cleared
+        resp = client.post("/state", json={"emergency_stop": True})
+        assert resp.status_code == 200
+    assert risk.positions == {}
+
+

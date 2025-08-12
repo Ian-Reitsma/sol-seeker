@@ -210,12 +210,22 @@ server routes are implemented, the panels will remain ornamental.
   - Server exposes only synchronous `POST /backtest`; implement `@app.websocket('/backtest/ws/{id}')` streaming `{progress,
     pnl}` and close on completion.
 
+* **Agent Notes (2025-08-09)**:
+  - Reworked `/backtest` into async jobs and added `/backtest/ws/{id}` emitting staged progress and final stats.
+  - Dashboard progress bar subscribes to this stream and shows final PnL on completion.
+  - **Status**: Completed.
+
 ### 2.7 Portfolio Equity Chart Endpoint
 * **Management Summary**: Equity curve is a key KPI yet the chart never renders.
 * **Developer Notes**:
   - `loadEquityChart()` fetches `/chart/portfolio?tf=...` at lines 3187‑3193【F:web/public/dashboard.html†L3187-L3193】.
   - Backend only supports `/chart/{symbol}`; either add `/chart/portfolio` or adapt the frontend to call `/chart/SOL` (or
     whichever symbol represents equity).
+
+* **Agent Notes (2025-08-09)**:
+  - Added `/chart/portfolio` powered by `RiskManager.equity_history` and advertised in service map.
+  - Frontend renders the returned series via Chart.js with live equity label.
+  - **Status**: Completed.
 
 ---
 
@@ -254,12 +264,22 @@ In these cases both sides ship partial implementations, but mismatched expectati
   - The frontend nevertheless attempts to open `/backtest/ws/{id}` (lines 2281‑2316) for progress updates.
   - Decide between a purely synchronous job (remove WebSocket logic) or implement streaming as described in §2.6.
 
+* **Agent Notes (2025-08-09)**:
+  - Implemented asynchronous `/backtest` jobs returning an ID and `/backtest/ws/{id}` streaming `{progress, pnl, drawdown, sharpe}`.
+  - Dashboard connects to the WebSocket, updates the progress bar, and renders final metrics when `progress` hits `100`.
+  - Added server tests verifying staged progress messages and websocket closure.
+
 ### 3.4 Chart API Shape Mismatch
 * **Management Summary**: Portfolio chart never displays because UI and API disagree on path structure.
 * **Developer Notes**:
   - API exposes `/chart/{symbol}` at lines 832‑837【F:src/solbot/server/api.py†L832-L837】.
   - Dashboard requests `/chart/portfolio?tf=1H|4H|1D` (lines 3187‑3193)【F:web/public/dashboard.html†L3187-L3193】.
   - Align by either implementing `/chart/portfolio` or using `/chart/${symbol}` consistently.
+
+* **Agent Notes (2025-08-09)**:
+  - Added `/chart/portfolio` endpoint backed by `RiskManager.equity_history` and advertised in the service map.
+  - `loadEquityChart()` now renders the equity curve via Chart.js when `series` data is returned.
+  - Included endpoint in OpenAPI spec and regression tests.
 
 ### 3.5 Trading Feed Not Subscribed to Order Stream
 * **Management Summary**: Live fills are vital for traders yet the feed stays empty.

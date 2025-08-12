@@ -30,6 +30,18 @@ This file defines the immediate and near-term directives for the next developmen
    - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
    <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries; Jest test `ws_reconnect.test.ts` exercises repeated failures to confirm the limit. Performance profiling not yet started. -->
 
+## Recent Accomplishment – Demo Mode Toggle and Equity Chart (2025-08-09)
+
+### Summary
+- Enabled switching between live and demo trading modes with persistent paper assets and capital via `/state`.
+- Blocked order placement in demo mode and reset risk state when toggling to paper trading.
+- Implemented `/chart/portfolio` backed by `RiskManager.equity_history` and added websocket-driven `/backtest/ws/{id}` progress stream.
+- Expanded tests to cover state transitions, portfolio chart, and backtest progress.
+
+### Next Agent Objectives
+- Replace simulated backtest data with real strategy execution and support cancellation.
+- Surface equity history limits and add pagination or downsampling for long sessions.
+
 ## Dashboard-API Connectivity Gaps
 The static HTML dashboard in `web/public/dashboard.html` still presents demo data. Every element below must either consume a real
 endpoint or be removed. Wire items **in place** rather than creating new components so future agents can diff easily. Always
@@ -42,11 +54,15 @@ browser network panel or `curl` that the request returns 2xx and the DOM updates
    - **Endpoint:** `POST /state` with `{ running: boolean }`.
    - **UI:** Text and style swap between `▶ START` and `⏸ PAUSE`.
    - **Verification:** After POST, `GET /state` and confirm `running` matches. Update tooltip to show last transition time.
+   <!-- Agent Notes (2025-08-09): Implemented trading toggle button wired to `/state`. Verifies state via `GET /state` and updates
+   tooltip with last change timestamp. -->
 
 2. **Emergency stop – `.emergency-stop` (lines ~115 & ~2519)**
    - **Endpoint:** `POST /state` with `{ running: false, emergency_stop: true }`.
    - **UI:** Button flashes red, then shows `✓ STOPPED` for 3 s. Trading toggle reset to `▶ START`.
    - **Verification:** `GET /positions` must return `{}`; new `/state` reads `running=false`.
+   <!-- Agent Notes (2025-08-09): Emergency stop posts `{ running:false, emergency_stop:true }`, verifies positions cleared and
+   temporarily shows ✓ STOPPED before restoring button. -->
 
 3. **RPC latency indicator – add `id="rpcLatency"` to latency span (line ~89)**
    - **Endpoint:** `GET /health` every 5 s; use `health.rpc_latency_ms`.
@@ -178,11 +194,17 @@ Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pu
    - **Endpoint:** `GET /strategy/performance?period=7d|30d` for heatmap data and `/strategy/breakdown` returning `{ name, pnl, win_rate }`.
    - **UI:** Populate heatmap cells and strategy cards dynamically; highlight selected period button.
    - **Verification:** Toggle 7D/30D buttons and ensure network calls update DOM; card count matches array length.
+   <!-- Agent Notes (2025-08-09): Implemented demo endpoints `/strategy/performance` and `/strategy/breakdown` with deterministic
+   stats. Added Strategy Performance panel with 7D/30D toggles and live cards driven by these routes. Verified DOM updates and
+   button styling reflect the selected period. -->
 
 4. **Risk analytics panel – `#riskAnalytics` (lines ~1448–1469)**
    - **Endpoint:** `GET /strategy/risk` yielding `{ sharpe, max_drawdown, volatility, calmar }`.
    - **UI:** Replace static metrics; color negative drawdown in orange and hide panel on non-200.
    - **Verification:** Alter backend values and confirm updates propagate without reload.
+   <!-- Agent Notes (2025-08-09): Added `/strategy/risk` endpoint returning fixed Sharpe, drawdown, volatility, and Calmar
+   ratios. Dashboard renders these values in a dedicated Risk Analytics panel, defaulting to “DATA UNAVAILABLE” on request
+   failure. -->
 
 ### 7. System Health & Settings
 
