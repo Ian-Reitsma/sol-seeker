@@ -503,3 +503,27 @@
 
 ### Next Steps
 - Implement or remove each new audit item so the dashboard reflects live backend data.
+
+## OpenAI Assistant - Demo Mode and Backtest Streaming
+
+**Date:** 2025-08-09
+
+### Summary
+- Replaced placeholder equity chart with `RiskManager`'s live `equity_history` and exposed it through `/chart/portfolio`.
+- Added websocket-driven backtest jobs and tests validating progress and final metrics.
+- Documented demo vs. live trading mode with configurable paper assets and capital across README and audit files.
+
+### Next Steps
+- Integrate real strategy execution into backtest jobs and surface equity history limits.
+
+## OpenAI Assistant - Strategy Analytics and Risk Panel
+
+**Date:** 2025-08-09
+
+### Summary
+- Introduced `/strategy/performance`, `/strategy/breakdown`, and `/strategy/risk` endpoints with deterministic demo data.
+- Wired dashboard panels for Strategy Performance and Risk Analytics with 7D/30D toggles and live metrics.
+- Enhanced demo mode seeding so paper capital always reflects in equity history.
+
+### Next Steps
+- Replace placeholder strategy stats with live engine outputs and expose historical periods beyond 30D.

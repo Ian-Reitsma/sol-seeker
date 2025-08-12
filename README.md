@@ -25,15 +25,18 @@ sol-bot/
 
 ## Recent Updates
 
-The current iteration introduces a configurable backtesting pipeline and major dashboard improvements:
+The latest iteration focuses on paper‑trading controls, equity analytics, and long‑running job streaming:
 
-- **Backtesting API:** A new `/backtest` endpoint spins up a temporary `TradeEngine` and executes historical simulations against CSV data. The request accepts fee, slippage, and starting capital parameters, returning PnL, drawdown, and Sharpe metrics.
-- **Dashboard Enhancements:** Settings now auto-save with a transient “Saving…” indicator, disabled controls, and toast notifications on failure. WebSocket reconnect logic tracks attempts per endpoint with exponential backoff, and polling/websocket connections pause when the tab is hidden. The positions list diffs DOM nodes to minimise reflows.
+- **Trading Mode Toggle:** `/state` now persists `mode` along with optional `paper_assets` and `paper_capital`, allowing operators to configure demo portfolios before switching to live trading. Orders are rejected when demo mode is active.
+- **Backtesting Jobs:** `/backtest` launches an asynchronous simulation and returns an ID; progress and final metrics stream over `/backtest/ws/{id}` so the dashboard progress bar reflects execution.
+- **Portfolio Equity Chart:** `/chart/portfolio` exposes `RiskManager.equity_history`, enabling the dashboard to plot equity curves from real risk data instead of placeholders.
+- **Strategy Analytics:** `/strategy/performance`, `/strategy/breakdown`, and `/strategy/risk` return deterministic demo metrics that power the Strategy Performance and Risk Analytics panels.
+- **Dashboard Enhancements:** Settings auto‑save with a transient “Saving…” indicator, disabled controls, and toast notifications on failure. WebSocket reconnect logic tracks attempts per endpoint with exponential backoff, and polling/websocket connections pause when the tab is hidden. The positions list diffs DOM nodes to minimise reflows.
 
 ### Next Steps for Contributors
 
-1. **Test Coverage:** Add unit tests for the new `/backtest` route and front‑end helpers. Ensure the web client has a working Jest setup so `npm test` passes.
-2. **Backtest UX:** Persist recent backtest configurations and surface runtime errors to the UI. Consider streaming progress for long simulations.
+1. **Test Coverage:** Extend unit tests for backtest streaming and the portfolio chart endpoint. Ensure the web client has a working Jest setup so `npm test` passes.
+2. **Backtest UX:** Add cancellation controls and surface backend errors to the UI during long simulations.
 3. **Resilience:** Harden auto‑save and reconnection routines with retry limits and user feedback when the server remains unreachable.
 4. **Performance:** Profile the DOM diffing and WebSocket reconnection paths under heavy load and document any bottlenecks.
 

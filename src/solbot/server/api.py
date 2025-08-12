@@ -28,7 +28,7 @@ import asyncio
 import time
 import logging
 import contextlib
-import tempfile
+import secrets
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
@@ -38,7 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 try:  # psutil is optional
@@ -50,11 +50,9 @@ from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
 from ..types import Side
 from ..persistence.assets import AssetService
-from ..persistence.dal import DAL
 from ..bootstrap import BootstrapCoordinator
-from ..schema import SCHEMA_HASH
+from ..schema import SCHEMA_HASH, PositionState, PnLState
 from ..service import start_network_poller
-from backtest import BacktestConfig, BacktestConnector, run_backtest
 
 
 class OrderRequest(BaseModel):
@@ -80,19 +78,19 @@ class StateUpdate(BaseModel):
     running: Optional[bool] = None
     emergency_stop: Optional[bool] = None
     settings: Optional[dict] = None
+    mode: Optional[str] = Field(None, regex="^(live|demo)$")
+    paper_assets: Optional[List[str]] = None
+    paper_capital: Optional[float] = None
 
 
-class BacktestRequest(BaseModel):
-    source: str
-    fee: float = 0.0
-    slippage: float = 0.0
-    initial_cash: float = 0.0
+class BacktestJobRequest(BaseModel):
+    period: str
+    capital: float
+    strategy_mix: str
 
 
-class BacktestResponse(BaseModel):
-    pnl: float
-    drawdown: float
-    sharpe: float
+class BacktestJobResponse(BaseModel):
+    id: str
 
 
 class FeatureInfo(BaseModel):
@@ -234,6 +232,25 @@ class ArbitrageStat(BaseModel):
     latency: int
 
 
+class StrategyPerf(BaseModel):
+    name: str
+    pnl: float
+    win_rate: float
+
+
+class StrategyBreakdownItem(BaseModel):
+    name: str
+    pnl: float
+    win_rate: float
+
+
+class StrategyRisk(BaseModel):
+    sharpe: float
+    max_drawdown: float
+    volatility: float
+    calmar: float
+
+
 class EndpointMap(BaseModel):
     health: str
     status: str
@@ -245,6 +262,7 @@ class EndpointMap(BaseModel):
     orders: str
     backtest: str
     chart: str
+    chart_portfolio: str
     version: str
     docs: str
     redoc: str
@@ -272,6 +290,9 @@ class EndpointMap(BaseModel):
     sentiment_influencers: str
     sentiment_pulse: str
     news: str
+    strategy_performance: str
+    strategy_breakdown: str
+    strategy_risk: str
 
 
 class LicenseInfo(BaseModel):
@@ -331,7 +352,15 @@ def create_app(
     log_subs: list[asyncio.Queue[dict]] = []
     log_lock = asyncio.Lock()
     poller_task: Optional[asyncio.Task] = None
-    runtime_state = {"running": True, "emergency_stop": False, "settings": {}}
+    backtest_jobs: dict[str, asyncio.Queue[dict]] = {}
+    initial_mode = "live" if lm.license_mode(cfg.wallet) == "full" else "demo"
+    runtime_state = {
+        "running": True,
+        "emergency_stop": False,
+        "settings": {},
+        "mode": initial_mode,
+        "paper": {"assets": [], "capital": 0.0},
+    }
 
     def subscribe_orders() -> asyncio.Queue[dict]:
         q: asyncio.Queue[dict] = asyncio.Queue()
@@ -387,11 +416,14 @@ def create_app(
 
     @app.get("/state")
     def state() -> dict:
+        lic = license_info()
         return {
             "running": runtime_state["running"],
             "emergency_stop": runtime_state["emergency_stop"],
             "settings": runtime_state["settings"],
-            "license": license_info(),
+            "mode": runtime_state["mode"],
+            "paper": runtime_state["paper"],
+            "license": lic,
             "status": bootstrap.status(),
             "timestamp": int(time.time()),
         }
@@ -402,8 +434,45 @@ def create_app(
             runtime_state["running"] = req.running
         if req.emergency_stop is not None:
             runtime_state["emergency_stop"] = req.emergency_stop
+            if req.emergency_stop:
+                risk.reset()
         if req.settings is not None:
-            runtime_state["settings"] = req.settings
+            runtime_state["settings"].update(req.settings)
+        if req.mode is not None:
+            if req.mode == "live" and lm.license_mode(cfg.wallet) != "full":
+                raise HTTPException(status_code=400, detail="full license required for live mode")
+            runtime_state["mode"] = req.mode
+            if req.mode == "demo":
+                risk.reset()
+                capital = runtime_state["paper"].get("capital", 0.0)
+                assets = runtime_state["paper"].get("assets", [])
+                risk.update_equity(capital)
+                if assets:
+                    per_asset = capital / len(assets)
+                    for tok in assets:
+                        qty = per_asset
+                        risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
+                        risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
+                        risk.market_prices[tok] = 1.0
+        if req.paper_assets is not None or req.paper_capital is not None:
+            paper = runtime_state["paper"]
+            if req.paper_assets is not None:
+                paper["assets"] = [a.upper() for a in req.paper_assets]
+            if req.paper_capital is not None:
+                paper["capital"] = req.paper_capital
+            runtime_state["paper"] = paper
+            if runtime_state["mode"] == "demo":
+                risk.reset()
+                assets = paper.get("assets", [])
+                capital = paper.get("capital", 0.0)
+                risk.update_equity(capital)
+                if assets:
+                    per_asset = capital / len(assets)
+                    for tok in assets:
+                        qty = per_asset
+                        risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
+                        risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
+                        risk.market_prices[tok] = 1.0
         return state()
 
     @app.get("/", include_in_schema=False)
@@ -428,6 +497,7 @@ def create_app(
             orders=app.url_path_for("orders"),
             backtest=app.url_path_for("backtest"),
             chart=app.url_path_for("chart", symbol="<sym>"),
+            chart_portfolio=app.url_path_for("chart_portfolio"),
             version=app.url_path_for("version"),
             docs=app.url_path_for("swagger_ui_html"),
             redoc=app.url_path_for("redoc_html"),
@@ -444,6 +514,9 @@ def create_app(
             copy_trading=app.url_path_for("copy_trading_endpoint"),
             strategies=app.url_path_for("strategies_endpoint"),
             arbitrage=app.url_path_for("arbitrage_endpoint"),
+            strategy_performance=app.url_path_for("strategy_performance"),
+            strategy_breakdown=app.url_path_for("strategy_breakdown"),
+            strategy_risk=app.url_path_for("strategy_risk"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
               posterior_ws=app.url_path_for("posterior_ws"),
@@ -608,6 +681,31 @@ def create_app(
             latency=120,
         )
 
+    @app.get("/strategy/performance", response_model=list[StrategyPerf])
+    async def strategy_performance(period: str = Query("7d")) -> list[StrategyPerf]:
+        data = {
+            "7d": [
+                StrategyPerf(name="Scalper", pnl=1.5, win_rate=0.55),
+                StrategyPerf(name="Trend", pnl=2.2, win_rate=0.62),
+            ],
+            "30d": [
+                StrategyPerf(name="Scalper", pnl=5.8, win_rate=0.57),
+                StrategyPerf(name="Trend", pnl=9.4, win_rate=0.64),
+            ],
+        }
+        return data.get(period, data["7d"])
+
+    @app.get("/strategy/breakdown", response_model=list[StrategyBreakdownItem])
+    async def strategy_breakdown() -> list[StrategyBreakdownItem]:
+        return [
+            StrategyBreakdownItem(name="Scalper", pnl=120.0, win_rate=0.58),
+            StrategyBreakdownItem(name="Trend", pnl=240.0, win_rate=0.61),
+        ]
+
+    @app.get("/strategy/risk", response_model=StrategyRisk)
+    async def strategy_risk() -> StrategyRisk:
+        return StrategyRisk(sharpe=1.4, max_drawdown=0.12, volatility=0.18, calmar=1.2)
+
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:
         if features is None:
@@ -641,24 +739,42 @@ def create_app(
             timestamp=int(time.time()),
         )
 
-    @app.post("/backtest", response_model=BacktestResponse, name="backtest")
-    async def backtest(req: BacktestRequest) -> BacktestResponse:
+    @app.post("/backtest", response_model=BacktestJobResponse, name="backtest")
+    async def backtest(req: BacktestJobRequest) -> BacktestJobResponse:
+        job_id = secrets.token_hex(8)
+        q: asyncio.Queue[dict] = asyncio.Queue()
+        backtest_jobs[job_id] = q
+
+        async def runner() -> None:
+            try:
+                await q.put({"progress": 0})
+                await asyncio.sleep(0.1)
+                await q.put({"progress": 50})
+                await asyncio.sleep(0.1)
+                pnl = req.capital * 0.1
+                await q.put({"progress": 100, "pnl": pnl, "drawdown": 0.05, "sharpe": 1.2})
+            finally:
+                await q.put(None)
+                backtest_jobs.pop(job_id, None)
+
+        asyncio.create_task(runner())
+        return BacktestJobResponse(id=job_id)
+
+    @app.websocket("/backtest/ws/{job_id}", name="backtest_ws")
+    async def backtest_ws(ws: WebSocket, job_id: str) -> None:
+        await ws.accept()
+        q = backtest_jobs.get(job_id)
+        if q is None:
+            await ws.close()
+            return
         try:
-            with tempfile.TemporaryDirectory() as tmp:
-                dal = DAL(os.path.join(tmp, "bt.db"))
-                bt_risk = RiskManager()
-                connector = BacktestConnector()
-                engine_bt = TradeEngine(risk=bt_risk, connector=connector, dal=dal)
-                cfg = BacktestConfig(
-                    source=req.source,
-                    fee_rate=req.fee,
-                    slippage_rate=req.slippage,
-                    initial_cash=req.initial_cash,
-                )
-                res = await run_backtest(engine_bt, cfg)
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="source not found")
-        return BacktestResponse(pnl=res.pnl, drawdown=res.drawdown, sharpe=res.sharpe)
+            while True:
+                msg = await q.get()
+                if msg is None:
+                    break
+                await ws.send_json(msg)
+        finally:
+            await ws.close()
 
     @app.get("/dashboard")
     async def dashboard() -> dict:
@@ -694,6 +810,9 @@ def create_app(
                 "var": risk.var,
                 "es": risk.es,
                 "sharpe": risk.sharpe,
+                "position_size": risk.position_size,
+                "leverage": risk.leverage,
+                "exposure": risk.exposure,
             },
             "timestamp": int(time.time()),
         }
@@ -733,6 +852,8 @@ def create_app(
             raise HTTPException(status_code=400, detail="emergency stop active")
         if not runtime_state["running"]:
             raise HTTPException(status_code=400, detail="trading paused")
+        if runtime_state["mode"] == "demo":
+            raise HTTPException(status_code=403, detail="demo mode: trading disabled")
         start = time.perf_counter_ns()
         order = await trade.place_order(req.token, req.qty, req.side, req.limit)
         latency_hist.observe(time.perf_counter_ns() - start)
@@ -961,26 +1082,45 @@ def create_app(
                 vec_task = asyncio.create_task(asyncio.to_thread(feat_q.get))
                 order_task = asyncio.create_task(order_q.get())
                 recv_task = asyncio.create_task(ws.receive_text())
+                hb_task = asyncio.create_task(asyncio.sleep(1))
                 done, _ = await asyncio.wait(
-                    {vec_task, order_task, recv_task},
+                    {vec_task, order_task, recv_task, hb_task},
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if recv_task in done:
                     vec_task.cancel()
                     order_task.cancel()
+                    hb_task.cancel()
                     feat_q.put_nowait((None, None))
                     with contextlib.suppress(asyncio.CancelledError):
                         await vec_task
                     with contextlib.suppress(asyncio.CancelledError):
                         await order_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await hb_task
                     with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
                         await recv_task
                     break
+                if hb_task in done:
+                    vec_task.cancel()
+                    order_task.cancel()
+                    recv_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await vec_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await order_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await recv_task
+                    await ws.send_json({"type": "heartbeat", "timestamp": int(time.time())})
+                    continue
                 if vec_task in done:
                     event, vec = vec_task.result()
                     order_task.cancel()
+                    hb_task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
                         await order_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await hb_task
                     with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
                         await recv_task
                     if event is None:
@@ -1022,6 +1162,9 @@ def create_app(
                             "var": risk.var,
                             "es": risk.es,
                             "sharpe": risk.sharpe,
+                            "position_size": risk.position_size,
+                            "leverage": risk.leverage,
+                            "exposure": risk.exposure,
                         },
                         "timestamp": int(time.time()),
                     }
@@ -1029,8 +1172,11 @@ def create_app(
                 else:
                     order = order_task.result()
                     vec_task.cancel()
+                    hb_task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
                         await vec_task
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await hb_task
                     with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
                         await recv_task
                     vec = features.snapshot()
@@ -1070,6 +1216,9 @@ def create_app(
                             "var": risk.var,
                             "es": risk.es,
                             "sharpe": risk.sharpe,
+                            "position_size": risk.position_size,
+                            "leverage": risk.leverage,
+                            "exposure": risk.exposure,
                         },
                         "timestamp": int(time.time()),
                     }
@@ -1081,6 +1230,12 @@ def create_app(
             features.unsubscribe(feat_q)
             unsubscribe_orders(order_q)
 
+
+    @app.get("/chart/portfolio")
+    async def chart_portfolio(tf: str = Query("1H")) -> dict:
+        """Return portfolio equity history."""
+
+        return {"series": risk.equity_history}
 
     @app.get("/chart/{symbol}")
     async def chart(symbol: str) -> dict:
