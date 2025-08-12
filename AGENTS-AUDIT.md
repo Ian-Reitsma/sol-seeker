@@ -2,6 +2,14 @@
 
 This file defines the immediate and near-term directives for the next development agent. The items are ordered by criticality and expected impact. Implement each item completely before moving to the next.
 
+## Recent Accomplishment – Analytics Expansion and Security Panel Wiring (2025-08-07)
+
+### Summary
+- Introduced `StrategyStat` and `ArbitrageStat` models with `/strategies` and `/arbitrage` endpoints returning deterministic demo metrics and registering both routes in the service map.
+- Added sentiment and news analytics via `/sentiment/trending`, `/sentiment/influencers`, `/sentiment/pulse`, and `/news`, each backed by Pydantic models and advertised for dashboard discovery.
+- Exposed security flag elements (`#rugPull`, `#liquidity`, `#contractVerified`, `#holderDistribution`, `#tradingPatterns`) in the dashboard and updated the renderer to fetch `/risk/security`, renaming the prior market liquidity stat to avoid ID collisions.
+- Expanded server tests to cover all new analytics routes and assert service-map exposure; added a Jest unit test verifying the WebSocket reconnect ceiling halts retries.
+
 ## Recent Accomplishment – Backtest Endpoint and Dashboard Enhancements (2025-08-07)
 
 ### Summary
@@ -12,7 +20,7 @@ This file defines the immediate and near-term directives for the next developmen
 1. **Testing Infrastructure**
    - Implement unit and integration tests for `run_backtest`, `/backtest`, and front-end helpers. Set up Jest so `npm test` executes.
    - Add error-path tests for autosave and WebSocket reconnection logic.
-   <!-- Progress: Extended `tests/test_server.py` to cover `/risk/security`, `/whales`, and `/smart-money-flow` endpoints and verify their presence in the service map. Autosave and reconnect error-path tests remain todo. -->
+   <!-- Progress: Extended `tests/test_server.py` to cover `/risk/security`, `/whales`, `/smart-money-flow`, `/strategies`, `/arbitrage`, `/sentiment/trending`, `/sentiment/influencers`, `/sentiment/pulse`, and `/news` endpoints while asserting service-map entries. Added Jest `ws_reconnect.test.ts` to confirm reconnect ceiling behavior. Autosave and reconnect error-path tests remain todo. -->
 2. **Backtest UX & Persistence**
    - Persist API credentials and backtest parameters in local storage with validation and clear error messages.
    - Stream backtest progress and support cancellation for long jobs; handle and surface backend errors.
@@ -20,7 +28,7 @@ This file defines the immediate and near-term directives for the next developmen
 3. **Resilience & Performance**
    - Enforce reconnect attempt limits with user notifications when an endpoint remains unreachable.
    - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
-   <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries. Performance profiling not yet started. -->
+   <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries; Jest test `ws_reconnect.test.ts` exercises repeated failures to confirm the limit. Performance profiling not yet started. -->
 
 ## Dashboard-API Connectivity Gaps
 The static HTML dashboard in `web/public/dashboard.html` still presents demo data. Every element below must either consume a real
@@ -98,7 +106,7 @@ around lines ~220–330 and currently holds placeholder text.
    - **Endpoint:** `GET /risk/security` (to be implemented) returning boolean flags with detail strings.
    - **UI:** Show ✓/⚠/✗ icons based on flag and tooltip with `detail`.
    - **Fallback:** If endpoint not available, hide entire section to avoid misleading “SAFE” labels.
-   <!-- Server-side delivered: `/risk/security` returns structured flags (`status` + `detail`) for rug pull, liquidity, contract verification, holder distribution, and trading patterns. Front‑end wiring still pending; selectors untouched. -->
+   <!-- Completed: Dashboard exposes `#rugPull`, `#liquidity`, `#contractVerified`, `#holderDistribution`, and `#tradingPatterns` IDs and `renderSecurityReport()` fetches `/risk/security` to populate status and detail; previous market liquidity stat renamed to `#marketLiquidity` to avoid ID conflicts. -->
 
 ### 4. Analytics & Strategy Modules
 
@@ -114,6 +122,8 @@ Widgets from “Whale Tracker” through “MEV Shield & Alpha Signals” appear
    - **Endpoint:** `/strategies` delivering per-strategy `{ trades, pnl, confidence, targets, success }`.
    - **UI:** Build rows dynamically; hide card if array empty.
    - **Verification:** Add console assertion that strategies length matches row count rendered.
+
+   <!-- Server endpoints implemented: `/strategies` and `/arbitrage` return demo `StrategyStat` and `ArbitrageStat` arrays and are advertised in the service map. Dashboard wiring not yet started. -->
 
 3. **Market maker / risk guardian / MEV shield / alpha signals / flash‑loan opportunities**
    - **Endpoint:** `/liquidity`, `/risk/guardian`, `/mev`, `/alpha`, `/flashloan` (to be defined).
@@ -134,16 +144,19 @@ Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pu
    - **Endpoint:** `/sentiment/trending` returning array `{ symbol, mentions, change_pct, sentiment }`.
    - **UI:** Populate list; remove `$NOVA` defaults.
    - **Verification:** Ensure entries reorder when API results change; highlight negative sentiment in red.
+   <!-- Server endpoint `/sentiment/trending` implemented with demo payload; UI list still static. -->
 
 2. **Influencer alerts**
    - **Endpoint:** `/sentiment/influencers` giving `{ handle, message, followers, stance }`.
    - **UI:** Render avatars/handles dynamically; clicking opens source link.
    - **Verification:** Confirm no duplicates and stale rows purge after 1 h.
+   <!-- Server endpoint `/sentiment/influencers` implemented; dashboard rendering and link handling remain TODO. -->
 
 3. **Breaking news & community pulse**
    - **Endpoint:** `/news` for headline feed and `/sentiment/pulse` for fear/greed metrics.
    - **UI:** Replace static bullet list; store last seen article ID to avoid repeats.
    - **Verification:** Compare timestamps with backend to ensure chronology.
+   <!-- `/news` and `/sentiment/pulse` endpoints added with demo data; front-end still uses placeholders. -->
 
 4. **Upcoming catalysts – `#catalystList` (lines ~1122–1164)**
    - **Endpoint:** `GET /events/catalysts` returning `[ { name, eta, severity } ]`.

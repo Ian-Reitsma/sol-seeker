@@ -109,6 +109,8 @@ def test_api_order_flow():
         assert root_data["endpoints"]["whales"] == app.url_path_for("whales_endpoint")
         assert root_data["endpoints"]["smart_money_flow"] == app.url_path_for("smart_money_flow_endpoint")
         assert root_data["endpoints"]["copy_trading"] == app.url_path_for("copy_trading_endpoint")
+        assert root_data["endpoints"]["strategies"] == app.url_path_for("strategies_endpoint")
+        assert root_data["endpoints"]["arbitrage"] == app.url_path_for("arbitrage_endpoint")
         assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
         assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
@@ -135,7 +137,33 @@ def test_api_order_flow():
         resp = client.get("/risk/security")
         assert resp.status_code == 200
         sec = resp.json()
-        assert "rug_pull" in sec and "liquidity" in sec
+        assert {
+            "rug_pull",
+            "liquidity",
+            "contract_verified",
+            "holder_distribution",
+            "trading_patterns",
+        } <= sec.keys()
+
+        resp = client.get("/sentiment/trending")
+        assert resp.status_code == 200
+        trending = resp.json()
+        assert trending and {"symbol", "mentions", "sentiment", "change_pct"} <= trending[0].keys()
+
+        resp = client.get("/sentiment/influencers")
+        assert resp.status_code == 200
+        infl = resp.json()
+        assert infl and {"handle", "message", "followers", "stance"} <= infl[0].keys()
+
+        resp = client.get("/sentiment/pulse")
+        assert resp.status_code == 200
+        pulse = resp.json()
+        assert {"fear_greed", "fear_greed_pct", "social_volume", "social_volume_pct", "fomo", "fomo_pct"} <= pulse.keys()
+
+        resp = client.get("/news")
+        assert resp.status_code == 200
+        news = resp.json()
+        assert news and {"id", "title", "source", "confidence"} <= news[0].keys()
 
         resp = client.get("/whales")
         assert resp.status_code == 200
@@ -151,6 +179,33 @@ def test_api_order_flow():
         assert resp.status_code == 200
         trades = resp.json()
         assert all({"whale", "profit"} <= set(t.keys()) for t in trades)
+
+        resp = client.get("/strategies")
+        assert resp.status_code == 200
+        strats = resp.json()
+        assert all({"name", "trades", "pnl", "confidence", "targets", "success"} <= set(s.keys()) for s in strats)
+
+        resp = client.get("/arbitrage")
+        assert resp.status_code == 200
+        arb = resp.json()
+        assert set(arb) == {"status", "trades", "pnl", "spread", "opportunities", "latency"}
+
+        resp = client.get("/api")
+        assert resp.status_code == 200
+        smap = resp.json()
+        eps = smap.get("endpoints", {})
+        for key in (
+            "risk_security",
+            "sentiment_trending",
+            "sentiment_influencers",
+            "sentiment_pulse",
+            "news",
+            "whales",
+            "smart_money_flow",
+            "strategies",
+            "arbitrage",
+        ):
+            assert key in eps
 
         resp = client.get("/license")
         assert resp.status_code == 200
@@ -300,3 +355,9 @@ def test_api_order_flow():
         assert "/dashboard" in rest_paths
         assert "/tv" in rest_paths
         assert "/state" in rest_paths
+        assert "/strategies" in rest_paths
+        assert "/arbitrage" in rest_paths
+        assert "/sentiment/trending" in rest_paths
+        assert "/sentiment/influencers" in rest_paths
+        assert "/sentiment/pulse" in rest_paths
+        assert "/news" in rest_paths

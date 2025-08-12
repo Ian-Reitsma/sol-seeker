@@ -283,7 +283,7 @@
                                     <div class="hologram-text text-xs text-blade-amber/80" id="rugPullDetail">No threats detected</div>
                                 </div>
                             </div>
-                            <div class="hologram-text text-cyan-glow font-bold" id="rugPullStatus">SAFE</div>
+                            <div class="hologram-text text-cyan-glow font-bold" id="rugPull">SAFE</div>
                         </div>
                         <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0" id="rugPullTooltip">
                             Rug Pull Detection: ACTIVE
@@ -294,22 +294,22 @@
                     <div class="space-y-3" id="securityFlags">
                         <div class="flex justify-between items-center tooltip-trigger relative">
                             <span class="hologram-text text-blade-amber/80 text-sm">LIQUIDITY ANALYSIS</span>
-                            <span class="hologram-text cyan-glow text-sm" id="liquidityStatus">✓ SAFE</span>
+                            <span class="hologram-text cyan-glow text-sm" id="liquidity">✓ SAFE</span>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0"></div>
                         </div>
                         <div class="flex justify-between items-center tooltip-trigger relative">
                             <span class="hologram-text text-blade-amber/80 text-sm">CONTRACT VERIFICATION</span>
-                            <span class="hologram-text cyan-glow text-sm" id="contractStatus">✓ SAFE</span>
+                            <span class="hologram-text cyan-glow text-sm" id="contractVerified">✓ SAFE</span>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0"></div>
                         </div>
                         <div class="flex justify-between items-center tooltip-trigger relative">
                             <span class="hologram-text text-blade-amber/80 text-sm">HOLDER DISTRIBUTION</span>
-                            <span class="hologram-text cyan-glow text-sm" id="holderStatus">✓ SAFE</span>
+                            <span class="hologram-text cyan-glow text-sm" id="holderDistribution">✓ SAFE</span>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0"></div>
                         </div>
                         <div class="flex justify-between items-center tooltip-trigger relative">
                             <span class="hologram-text text-blade-amber/80 text-sm">TRADING PATTERNS</span>
-                            <span class="hologram-text text-blade-yellow text-sm" id="tradingStatus">⚠ WARN</span>
+                            <span class="hologram-text text-blade-yellow text-sm" id="tradingPatterns">⚠ WARN</span>
                             <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0"></div>
                         </div>
                     </div>
@@ -557,7 +557,7 @@
                             </div>
                             <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">LIQUIDITY</div>
-                                <div class="hologram-text text-lg text-blade-yellow" id="liquidity">N/A</div>
+                                <div class="hologram-text text-lg text-blade-yellow" id="marketLiquidity">N/A</div>
                             </div>
                             <div class="bg-void-black/50 p-4 rounded border border-blade-orange/20">
                                 <div class="hologram-text text-xs text-blade-amber/80 mb-1">SPREAD</div>
@@ -2904,7 +2904,7 @@
                 icon = '✗';
                 cls = 'hologram-text text-blade-orange text-sm';
             }
-            if (id === 'rugPullStatus') cls += ' font-bold';
+            if (id === 'rugPull') cls += ' font-bold';
             el.className = cls;
             el.textContent = `${icon} ${flag.status}`;
             const tooltip = el.parentElement.querySelector('.tooltip');
@@ -2921,11 +2921,11 @@
                 return;
             }
             if (panel) panel.classList.remove('hidden');
-            renderFlag('rugPullStatus', sec.rug_pull);
-            renderFlag('liquidityStatus', sec.liquidity);
-            renderFlag('contractStatus', sec.contract_verified);
-            renderFlag('holderStatus', sec.holder_distribution);
-            renderFlag('tradingStatus', sec.trading_patterns);
+            renderFlag('rugPull', sec.rug_pull);
+            renderFlag('liquidity', sec.liquidity);
+            renderFlag('contractVerified', sec.contract_verified);
+            renderFlag('holderDistribution', sec.holder_distribution);
+            renderFlag('tradingPatterns', sec.trading_patterns);
             if (sec.rug_pull && sec.rug_pull.detail) {
                 const detail = document.getElementById('rugPullDetail');
                 if (detail) detail.textContent = sec.rug_pull.detail;
@@ -3125,7 +3125,7 @@
                 volatilityEl.textContent = market.volatility;
             }
 
-            const liquidityEl = document.getElementById('liquidity');
+            const liquidityEl = document.getElementById('marketLiquidity');
             if (liquidityEl && market.liquidity !== undefined) {
                 liquidityEl.textContent = `$${market.liquidity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
