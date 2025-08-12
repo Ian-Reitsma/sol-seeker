@@ -169,6 +169,36 @@ class SecurityReport(BaseModel):
     trading_patterns: SecurityFlag
 
 
+class TrendingToken(BaseModel):
+    symbol: str
+    mentions: int
+    change_pct: float
+    sentiment: str
+
+
+class InfluencerAlert(BaseModel):
+    handle: str
+    message: str
+    followers: int
+    stance: str
+
+
+class PulseMetrics(BaseModel):
+    fear_greed: int
+    fear_greed_pct: float
+    social_volume: int
+    social_volume_pct: float
+    fomo: int
+    fomo_pct: float
+
+
+class NewsItem(BaseModel):
+    id: int
+    title: str
+    source: str
+    confidence: int
+
+
 class WhaleStats(BaseModel):
     following: int
     success_rate: float
@@ -184,6 +214,24 @@ class SmartMoneyFlow(BaseModel):
 class CopyTrade(BaseModel):
     whale: str
     profit: float | None = None
+
+
+class StrategyStat(BaseModel):
+    name: str
+    trades: int
+    pnl: float
+    confidence: float
+    targets: int
+    success: float
+
+
+class ArbitrageStat(BaseModel):
+    status: str
+    trades: int
+    pnl: float
+    spread: float
+    opportunities: int
+    latency: int
 
 
 class EndpointMap(BaseModel):
@@ -218,6 +266,12 @@ class EndpointMap(BaseModel):
     whales: str
     smart_money_flow: str
     copy_trading: str
+    strategies: str
+    arbitrage: str
+    sentiment_trending: str
+    sentiment_influencers: str
+    sentiment_pulse: str
+    news: str
 
 
 class LicenseInfo(BaseModel):
@@ -381,9 +435,15 @@ def create_app(
             metrics=app.url_path_for("metrics"),
             catalysts=app.url_path_for("catalysts_endpoint"),
             risk_security=app.url_path_for("risk_security_endpoint"),
+            sentiment_trending=app.url_path_for("sentiment_trending"),
+            sentiment_influencers=app.url_path_for("sentiment_influencers"),
+            sentiment_pulse=app.url_path_for("sentiment_pulse"),
+            news=app.url_path_for("news_endpoint"),
             whales=app.url_path_for("whales_endpoint"),
             smart_money_flow=app.url_path_for("smart_money_flow_endpoint"),
             copy_trading=app.url_path_for("copy_trading_endpoint"),
+            strategies=app.url_path_for("strategies_endpoint"),
+            arbitrage=app.url_path_for("arbitrage_endpoint"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
               posterior_ws=app.url_path_for("posterior_ws"),
@@ -474,6 +534,42 @@ def create_app(
             trading_patterns=SecurityFlag(status="OK", detail="No anomalies"),
         )
 
+    @app.get("/sentiment/trending", response_model=list[TrendingToken])
+    async def sentiment_trending() -> list[TrendingToken]:
+        """Return currently trending tokens with sentiment data."""
+        return [
+            TrendingToken(symbol="SOL", mentions=123, change_pct=5.4, sentiment="BULLISH"),
+            TrendingToken(symbol="ETH", mentions=98, change_pct=-2.1, sentiment="BEARISH"),
+        ]
+
+    @app.get("/sentiment/influencers", response_model=list[InfluencerAlert])
+    async def sentiment_influencers() -> list[InfluencerAlert]:
+        """Return recent influencer messages."""
+        return [
+            InfluencerAlert(handle="@trader1", message="Accumulating SOL", followers=12000, stance="bull"),
+            InfluencerAlert(handle="@skeptic", message="Taking profits", followers=8000, stance="bear"),
+        ]
+
+    @app.get("/sentiment/pulse", response_model=PulseMetrics)
+    async def sentiment_pulse() -> PulseMetrics:
+        """Return aggregate community sentiment metrics."""
+        return PulseMetrics(
+            fear_greed=55,
+            fear_greed_pct=55.0,
+            social_volume=67,
+            social_volume_pct=67.0,
+            fomo=40,
+            fomo_pct=40.0,
+        )
+
+    @app.get("/news", response_model=list[NewsItem])
+    async def news_endpoint() -> list[NewsItem]:
+        """Return latest news items."""
+        return [
+            NewsItem(id=1, title="SOL surges on volume", source="Reporter", confidence=80),
+            NewsItem(id=2, title="ETH sees profit taking", source="Reporter", confidence=60),
+        ]
+
     @app.get("/whales", response_model=WhaleStats)
     async def whales_endpoint() -> WhaleStats:
         """Return basic whale tracking statistics."""
@@ -491,6 +587,26 @@ def create_app(
             CopyTrade(whale="0xWhale1", profit=2.1),
             CopyTrade(whale="0xWhale2", profit=-0.4),
         ]
+
+    @app.get("/strategies", response_model=list[StrategyStat])
+    async def strategies_endpoint() -> list[StrategyStat]:
+        """Return demo strategy performance statistics."""
+        return [
+            StrategyStat(name="Listing Sniper", trades=12, pnl=1.2, confidence=78.0, targets=3, success=83.0),
+            StrategyStat(name="Arbitrage", trades=5, pnl=0.8, confidence=65.0, targets=2, success=60.0),
+        ]
+
+    @app.get("/arbitrage", response_model=ArbitrageStat)
+    async def arbitrage_endpoint() -> ArbitrageStat:
+        """Return demo arbitrage engine status."""
+        return ArbitrageStat(
+            status="IDLE",
+            trades=0,
+            pnl=0.0,
+            spread=0.15,
+            opportunities=0,
+            latency=120,
+        )
 
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:

@@ -239,6 +239,215 @@
         }
       }
     },
+    "/risk/security": {
+      "get": {
+        "summary": "Risk Security Endpoint",
+        "operationId": "risk_security_endpoint_risk_security_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sentiment/trending": {
+      "get": {
+        "summary": "Sentiment Trending",
+        "description": "Return currently trending tokens with sentiment data.",
+        "operationId": "sentiment_trending_sentiment_trending_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrendingToken"
+                  },
+                  "type": "array",
+                  "title": "Response Sentiment Trending Sentiment Trending Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sentiment/influencers": {
+      "get": {
+        "summary": "Sentiment Influencers",
+        "description": "Return recent influencer messages.",
+        "operationId": "sentiment_influencers_sentiment_influencers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InfluencerAlert"
+                  },
+                  "type": "array",
+                  "title": "Response Sentiment Influencers Sentiment Influencers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sentiment/pulse": {
+      "get": {
+        "summary": "Sentiment Pulse",
+        "description": "Return aggregate community sentiment metrics.",
+        "operationId": "sentiment_pulse_sentiment_pulse_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulseMetrics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/news": {
+      "get": {
+        "summary": "News Endpoint",
+        "description": "Return latest news items.",
+        "operationId": "news_endpoint_news_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NewsItem"
+                  },
+                  "type": "array",
+                  "title": "Response News Endpoint News Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whales": {
+      "get": {
+        "summary": "Whales Endpoint",
+        "description": "Return basic whale tracking statistics.",
+        "operationId": "whales_endpoint_whales_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhaleStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/smart-money-flow": {
+      "get": {
+        "summary": "Smart Money Flow Endpoint",
+        "description": "Return net inflow statistics for smart money.",
+        "operationId": "smart_money_flow_endpoint_smart_money_flow_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartMoneyFlow"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/copy-trading": {
+      "get": {
+        "summary": "Copy Trading Endpoint",
+        "description": "Return recent profitable whale trades being copied.",
+        "operationId": "copy_trading_endpoint_copy_trading_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CopyTrade"
+                  },
+                  "type": "array",
+                  "title": "Response Copy Trading Endpoint Copy Trading Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/strategies": {
+      "get": {
+        "summary": "Strategies Endpoint",
+        "description": "Return demo strategy performance statistics.",
+        "operationId": "strategies_endpoint_strategies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyStat"
+                  },
+                  "type": "array",
+                  "title": "Response Strategies Endpoint Strategies Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/arbitrage": {
+      "get": {
+        "summary": "Arbitrage Endpoint",
+        "description": "Return demo arbitrage engine status.",
+        "operationId": "arbitrage_endpoint_arbitrage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArbitrageStat"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/features": {
       "get": {
         "summary": "Features Endpoint",
@@ -544,6 +753,44 @@
   },
   "components": {
     "schemas": {
+      "ArbitrageStat": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "trades": {
+            "type": "integer",
+            "title": "Trades"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "spread": {
+            "type": "number",
+            "title": "Spread"
+          },
+          "opportunities": {
+            "type": "integer",
+            "title": "Opportunities"
+          },
+          "latency": {
+            "type": "integer",
+            "title": "Latency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "trades",
+          "pnl",
+          "spread",
+          "opportunities",
+          "latency"
+        ],
+        "title": "ArbitrageStat"
+      },
       "BacktestRequest": {
         "properties": {
           "source": {
@@ -617,6 +864,23 @@
           "severity"
         ],
         "title": "Catalyst"
+      },
+      "CopyTrade": {
+        "properties": {
+          "whale": {
+            "type": "string",
+            "title": "Whale"
+          },
+          "profit": {
+            "type": "number",
+            "title": "Profit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "whale"
+        ],
+        "title": "CopyTrade"
       },
       "EndpointMap": {
         "properties": {
@@ -727,6 +991,46 @@
           "catalysts": {
             "type": "string",
             "title": "Catalysts"
+          },
+          "risk_security": {
+            "type": "string",
+            "title": "Risk Security"
+          },
+          "sentiment_trending": {
+            "type": "string",
+            "title": "Sentiment Trending"
+          },
+          "sentiment_influencers": {
+            "type": "string",
+            "title": "Sentiment Influencers"
+          },
+          "sentiment_pulse": {
+            "type": "string",
+            "title": "Sentiment Pulse"
+          },
+          "news": {
+            "type": "string",
+            "title": "News"
+          },
+          "whales": {
+            "type": "string",
+            "title": "Whales"
+          },
+          "smart_money_flow": {
+            "type": "string",
+            "title": "Smart Money Flow"
+          },
+          "copy_trading": {
+            "type": "string",
+            "title": "Copy Trading"
+          },
+          "strategies": {
+            "type": "string",
+            "title": "Strategies"
+          },
+          "arbitrage": {
+            "type": "string",
+            "title": "Arbitrage"
           }
         },
         "type": "object",
@@ -757,7 +1061,17 @@
           "tv",
           "license",
           "state",
-          "catalysts"
+          "catalysts",
+          "risk_security",
+          "sentiment_trending",
+          "sentiment_influencers",
+          "sentiment_pulse",
+          "news",
+          "whales",
+          "smart_money_flow",
+          "copy_trading",
+          "strategies",
+          "arbitrage"
         ],
         "title": "EndpointMap"
       },
@@ -867,6 +1181,34 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "InfluencerAlert": {
+        "properties": {
+          "handle": {
+            "type": "string",
+            "title": "Handle"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "followers": {
+            "type": "integer",
+            "title": "Followers"
+          },
+          "stance": {
+            "type": "string",
+            "title": "Stance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "handle",
+          "message",
+          "followers",
+          "stance"
+        ],
+        "title": "InfluencerAlert"
+      },
       "LicenseInfo": {
         "properties": {
           "wallet": {
@@ -954,6 +1296,34 @@
         },
         "type": "object",
         "title": "NetworkStats"
+      },
+      "NewsItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "confidence": {
+            "type": "integer",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source",
+          "confidence"
+        ],
+        "title": "NewsItem"
       },
       "OrderRequest": {
         "properties": {
@@ -1066,6 +1436,44 @@
         ],
         "title": "PosteriorSnapshot"
       },
+      "PulseMetrics": {
+        "properties": {
+          "fear_greed": {
+            "type": "integer",
+            "title": "Fear Greed"
+          },
+          "fear_greed_pct": {
+            "type": "number",
+            "title": "Fear Greed Pct"
+          },
+          "social_volume": {
+            "type": "integer",
+            "title": "Social Volume"
+          },
+          "social_volume_pct": {
+            "type": "number",
+            "title": "Social Volume Pct"
+          },
+          "fomo": {
+            "type": "integer",
+            "title": "Fomo"
+          },
+          "fomo_pct": {
+            "type": "number",
+            "title": "Fomo Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fear_greed",
+          "fear_greed_pct",
+          "social_volume",
+          "social_volume_pct",
+          "fomo",
+          "fomo_pct"
+        ],
+        "title": "PulseMetrics"
+      },
       "RouteInfo": {
         "properties": {
           "path": {
@@ -1086,6 +1494,52 @@
           "methods"
         ],
         "title": "RouteInfo"
+      },
+      "SecurityFlag": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "detail"
+        ],
+        "title": "SecurityFlag"
+      },
+      "SecurityReport": {
+        "properties": {
+          "rug_pull": {
+            "$ref": "#/components/schemas/SecurityFlag"
+          },
+          "liquidity": {
+            "$ref": "#/components/schemas/SecurityFlag"
+          },
+          "contract_verified": {
+            "$ref": "#/components/schemas/SecurityFlag"
+          },
+          "holder_distribution": {
+            "$ref": "#/components/schemas/SecurityFlag"
+          },
+          "trading_patterns": {
+            "$ref": "#/components/schemas/SecurityFlag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rug_pull",
+          "liquidity",
+          "contract_verified",
+          "holder_distribution",
+          "trading_patterns"
+        ],
+        "title": "SecurityReport"
       },
       "ServiceMap": {
         "properties": {
@@ -1126,6 +1580,24 @@
         "title": "Side",
         "description": "An enumeration."
       },
+      "SmartMoneyFlow": {
+        "properties": {
+          "net_inflow": {
+            "type": "number",
+            "title": "Net Inflow"
+          },
+          "trend": {
+            "type": "string",
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "net_inflow",
+          "trend"
+        ],
+        "title": "SmartMoneyFlow"
+      },
       "StateUpdate": {
         "properties": {
           "running": {
@@ -1143,6 +1615,72 @@
         },
         "type": "object",
         "title": "StateUpdate"
+      },
+      "StrategyStat": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "trades": {
+            "type": "integer",
+            "title": "Trades"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "targets": {
+            "type": "integer",
+            "title": "Targets"
+          },
+          "success": {
+            "type": "number",
+            "title": "Success"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "trades",
+          "pnl",
+          "confidence",
+          "targets",
+          "success"
+        ],
+        "title": "StrategyStat"
+      },
+      "TrendingToken": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "mentions": {
+            "type": "integer",
+            "title": "Mentions"
+          },
+          "change_pct": {
+            "type": "number",
+            "title": "Change Pct"
+          },
+          "sentiment": {
+            "type": "string",
+            "title": "Sentiment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "mentions",
+          "change_pct",
+          "sentiment"
+        ],
+        "title": "TrendingToken"
       },
       "ValidationError": {
         "properties": {
@@ -1176,6 +1714,34 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WhaleStats": {
+        "properties": {
+          "following": {
+            "type": "integer",
+            "title": "Following"
+          },
+          "success_rate": {
+            "type": "number",
+            "title": "Success Rate"
+          },
+          "copied_today": {
+            "type": "integer",
+            "title": "Copied Today"
+          },
+          "profit": {
+            "type": "number",
+            "title": "Profit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "following",
+          "success_rate",
+          "copied_today",
+          "profit"
+        ],
+        "title": "WhaleStats"
       }
     },
     "securitySchemes": {
