@@ -761,17 +761,19 @@
                         </div>
                         
                         <div class="space-y-3">
-                            <div id="whaleAlerts" class="space-y-3"></div>
+                            <div id="whaleAlerts" class="space-y-3">
+                                <div id="copyTradingSpinner" class="hologram-text text-blade-amber/60 text-xs animate-pulse">LOADING...</div>
+                            </div>
 
                               <!-- Smart Money Flow -->
                               <div class="bg-void-black/50 p-3 rounded border border-blade-yellow/30">
                                   <div class="flex items-center justify-between mb-2">
                                       <div class="hologram-text text-blade-yellow font-bold text-sm">SMART MONEY FLOW</div>
-                                      <div class="hologram-text text-cyan-glow text-sm" id="smartMoneyValue">--</div>
+                                      <div class="hologram-text text-cyan-glow text-sm animate-pulse" id="smartMoneyValue">--</div>
                                   </div>
                                   <div class="flex justify-between text-xs">
                                       <span class="hologram-text text-blade-amber/60">Last 1H Net Inflow</span>
-                                      <span class="hologram-text text-cyan-glow" id="smartMoneyTrend">--</span>
+                                      <span class="hologram-text text-cyan-glow animate-pulse" id="smartMoneyTrend">--</span>
                                   </div>
                               </div>
 
@@ -781,19 +783,19 @@
                                   <div class="grid grid-cols-2 gap-3 text-xs">
                                       <div>
                                           <div class="hologram-text text-blade-amber/80">FOLLOWING</div>
-                                          <div class="hologram-text text-white font-bold" id="whaleFollowing">-</div>
+                                          <div class="hologram-text text-white font-bold animate-pulse" id="whaleFollowing">-</div>
                                       </div>
                                       <div>
                                           <div class="hologram-text text-blade-amber/80">SUCCESS RATE</div>
-                                          <div class="hologram-text text-cyan-glow font-bold" id="whaleSuccessRate">-</div>
+                                          <div class="hologram-text text-cyan-glow font-bold animate-pulse" id="whaleSuccessRate">-</div>
                                       </div>
                                       <div>
                                           <div class="hologram-text text-blade-amber/80">COPIED TODAY</div>
-                                          <div class="hologram-text text-white font-bold" id="whaleCopiedToday">-</div>
+                                          <div class="hologram-text text-white font-bold animate-pulse" id="whaleCopiedToday">-</div>
                                       </div>
                                       <div>
                                           <div class="hologram-text text-blade-amber/80">PROFIT</div>
-                                          <div class="hologram-text text-cyan-glow font-bold" id="whaleProfit">-</div>
+                                          <div class="hologram-text text-cyan-glow font-bold animate-pulse" id="whaleProfit">-</div>
                                       </div>
                                   </div>
                               </div>
@@ -1762,14 +1764,15 @@
         async function pollRpcLatency() {
             if (document.hidden) return;
             try {
-                const health = await apiClient.getHealth();
-                if (health && typeof health.rpc_latency_ms !== 'undefined') {
-                    const latency = health.rpc_latency_ms;
-                    document.getElementById('rpcLatency').textContent = `${latency}ms`;
-                    lastRpcSample = Date.now();
-                    lastRpcStatus = health.status || 'Unknown';
-                    updateRpcTooltip();
-                }
+        const health = await apiClient.getHealth();
+        if (health && typeof health.rpc_latency_ms !== 'undefined') {
+            const latency = health.rpc_latency_ms;
+            document.getElementById('rpcLatency').textContent = `${latency}ms`;
+            console.log('RPC latency sample:', latency);
+            lastRpcSample = Date.now();
+            lastRpcStatus = health.status || 'Unknown';
+            updateRpcTooltip();
+        }
             } catch (err) {
                 console.error('RPC latency poll failed', err);
             }
@@ -2346,9 +2349,23 @@
         let backtestEndpoint = null;
 
         async function runBacktest() {
-            const period = document.getElementById('btPeriod').value;
-            const capital = parseFloat(document.getElementById('btCapital').value) || 0;
-            const strategy_mix = document.getElementById('btStrategyMix').value;
+            const period = document.getElementById('btPeriod').value.trim();
+            const capital = parseFloat(document.getElementById('btCapital').value);
+            const strategy_mix = document.getElementById('btStrategyMix').value.trim();
+
+            if (!period) {
+                showToast('Backtest period is required');
+                return;
+            }
+            if (!Number.isFinite(capital) || capital <= 0) {
+                showToast('Starting capital must be a positive number');
+                return;
+            }
+            if (!strategy_mix) {
+                showToast('Strategy mix is required');
+                return;
+            }
+
             const params = { period, capital, strategy_mix };
             localStorage.setItem('backtest_params', JSON.stringify(params));
 
@@ -2705,14 +2722,39 @@
         if (apiBaseInput) {
             apiBaseInput.value = apiClient.baseURL;
             apiBaseInput.addEventListener('change', (e) => {
-                apiClient.setApiBase(e.target.value);
+                try {
+                    const url = new URL(e.target.value.trim());
+                    apiClient.setApiBase(url.toString());
+                } catch {
+                    showToast('Invalid API base URL');
+                    apiBaseInput.value = apiClient.baseURL;
+                }
             });
         }
         if (apiKeyInput) {
             apiKeyInput.value = apiClient.apiKey;
             apiKeyInput.addEventListener('change', (e) => {
-                apiClient.setApiKey(e.target.value);
+                const key = e.target.value.trim();
+                if (!key) {
+                    showToast('API key cannot be empty');
+                    apiKeyInput.value = apiClient.apiKey;
+                    return;
+                }
+                apiClient.setApiKey(key);
             });
+        }
+
+        // Restore saved backtest parameters
+        const storedBt = localStorage.getItem('backtest_params');
+        if (storedBt) {
+            try {
+                const params = JSON.parse(storedBt);
+                if (params.period) document.getElementById('btPeriod').value = params.period;
+                if (params.capital !== undefined) document.getElementById('btCapital').value = params.capital;
+                if (params.strategy_mix) document.getElementById('btStrategyMix').value = params.strategy_mix;
+            } catch (err) {
+                console.warn('Invalid stored backtest params', err);
+            }
         }
         
         // Dashboard state management
@@ -3227,6 +3269,9 @@
 
         async function loadAnalytics() {
             if (document.hidden) return;
+            showWhaleLoading();
+            showSmartMoneyLoading();
+            showCopyTradingLoading();
             try {
                 const [whales, flow, copyList, strategies, arb] = await Promise.all([
                       apiClient.get('/whales').catch(() => null),
@@ -3235,32 +3280,103 @@
                       apiClient.get('/strategies').catch(() => null),
                       apiClient.get('/arbitrage').catch(() => null)
                   ]);
-                  if (whales) updateWhaleStats(whales);
-                  if (flow) updateSmartMoney(flow);
-                  if (copyList) updateCopyTrading(copyList);
-                  if (strategies) updateStrategyMatrix(strategies);
+                  updateWhaleStats(whales);
+                  updateSmartMoney(flow);
+                  updateCopyTrading(copyList);
+                  updateStrategyMatrix(strategies);
                   if (arb) updateArbitrage(arb);
               } catch (err) {
                   console.error('Analytics load failed', err);
+                  updateWhaleStats(null);
+                  updateSmartMoney(null);
+                  updateCopyTrading(null);
+                  updateStrategyMatrix(null);
+              }
+          }
+
+          function showWhaleLoading() {
+              ['whaleFollowing','whaleSuccessRate','whaleCopiedToday','whaleProfit'].forEach(id => {
+                  const el = document.getElementById(id);
+                  if (el) {
+                      el.textContent = '-';
+                      el.classList.add('animate-pulse');
+                  }
+              });
+          }
+
+          function showSmartMoneyLoading() {
+              ['smartMoneyValue','smartMoneyTrend'].forEach(id => {
+                  const el = document.getElementById(id);
+                  if (el) {
+                      el.textContent = '--';
+                      el.classList.add('animate-pulse');
+                  }
+              });
+          }
+
+          function showCopyTradingLoading() {
+              const container = document.getElementById('whaleAlerts');
+              if (container) {
+                  container.innerHTML = '<div class="hologram-text text-blade-amber/60 text-xs animate-pulse">LOADING...</div>';
               }
           }
 
           function updateWhaleStats(data) {
+              const ids = ['whaleFollowing','whaleSuccessRate','whaleCopiedToday','whaleProfit'];
+              if (!data) {
+                  ids.forEach(id => {
+                      const el = document.getElementById(id);
+                      if (el) {
+                          el.textContent = '-';
+                          el.classList.remove('animate-pulse');
+                      }
+                  });
+                  return;
+              }
               const f = document.getElementById('whaleFollowing');
-              if (f) f.textContent = data.following != null ? `${data.following}` : '-';
+              if (f) {
+                  f.textContent = data.following != null ? `${data.following}` : '-';
+                  f.classList.remove('animate-pulse');
+              }
               const sr = document.getElementById('whaleSuccessRate');
-              if (sr) sr.textContent = data.success_rate != null ? `${data.success_rate}%` : '-';
+              if (sr) {
+                  sr.textContent = data.success_rate != null ? `${data.success_rate}%` : '-';
+                  sr.classList.remove('animate-pulse');
+              }
               const ct = document.getElementById('whaleCopiedToday');
-              if (ct) ct.textContent = data.copied_today != null ? `${data.copied_today}` : '-';
+              if (ct) {
+                  ct.textContent = data.copied_today != null ? `${data.copied_today}` : '-';
+                  ct.classList.remove('animate-pulse');
+              }
               const prof = document.getElementById('whaleProfit');
-              if (prof) prof.textContent = data.profit != null ? `${data.profit} SOL` : '-';
+              if (prof) {
+                  prof.textContent = data.profit != null ? `${data.profit} SOL` : '-';
+                  prof.classList.remove('animate-pulse');
+              }
           }
 
           function updateSmartMoney(flow) {
               const val = document.getElementById('smartMoneyValue');
-              if (val) val.textContent = flow.net_inflow != null ? `${flow.net_inflow} SOL` : '--';
               const tr = document.getElementById('smartMoneyTrend');
-              if (tr) tr.textContent = flow.trend || '--';
+              if (!flow) {
+                  if (val) {
+                      val.textContent = '--';
+                      val.classList.remove('animate-pulse');
+                  }
+                  if (tr) {
+                      tr.textContent = '--';
+                      tr.classList.remove('animate-pulse');
+                  }
+                  return;
+              }
+              if (val) {
+                  val.textContent = flow.net_inflow != null ? `${flow.net_inflow} SOL` : '--';
+                  val.classList.remove('animate-pulse');
+              }
+              if (tr) {
+                  tr.textContent = flow.trend || '--';
+                  tr.classList.remove('animate-pulse');
+              }
           }
 
           function updateCopyTrading(list) {
@@ -3537,6 +3653,9 @@
                     setTimeout(() => {
                         this.connect(endpoint, onMessage, onError);
                     }, delay);
+                } else {
+                    showToast(`Unable to reconnect to ${endpoint}`);
+                    if (onError) onError(new Error('max reconnect attempts reached'));
                 }
             }
 

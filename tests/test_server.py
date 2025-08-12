@@ -105,6 +105,10 @@ def test_api_order_flow():
         assert root_data["endpoints"]["openapi"] == app.url_path_for("openapi")
         assert root_data["endpoints"]["metrics"] == app.url_path_for("metrics")
         assert root_data["endpoints"]["catalysts"] == app.url_path_for("catalysts_endpoint")
+        assert root_data["endpoints"]["risk_security"] == app.url_path_for("risk_security_endpoint")
+        assert root_data["endpoints"]["whales"] == app.url_path_for("whales_endpoint")
+        assert root_data["endpoints"]["smart_money_flow"] == app.url_path_for("smart_money_flow_endpoint")
+        assert root_data["endpoints"]["copy_trading"] == app.url_path_for("copy_trading_endpoint")
         assert root_data["endpoints"]["orders_ws"] == app.url_path_for("ws")
         assert root_data["endpoints"]["features_ws"] == app.url_path_for("features_ws")
         assert root_data["endpoints"]["posterior_ws"] == app.url_path_for("posterior_ws")
@@ -127,6 +131,26 @@ def test_api_order_flow():
             assert ws.receive_json() == {"error": "unauthorized"}
         with client.websocket_connect("/dashboard/ws") as ws:
             assert ws.receive_json() == {"error": "unauthorized"}
+
+        resp = client.get("/risk/security")
+        assert resp.status_code == 200
+        sec = resp.json()
+        assert "rug_pull" in sec and "liquidity" in sec
+
+        resp = client.get("/whales")
+        assert resp.status_code == 200
+        whale = resp.json()
+        assert set(whale) == {"following", "success_rate", "copied_today", "profit"}
+
+        resp = client.get("/smart-money-flow")
+        assert resp.status_code == 200
+        flow = resp.json()
+        assert set(flow) == {"net_inflow", "trend"}
+
+        resp = client.get("/copy-trading")
+        assert resp.status_code == 200
+        trades = resp.json()
+        assert all({"whale", "profit"} <= set(t.keys()) for t in trades)
 
         resp = client.get("/license")
         assert resp.status_code == 200
