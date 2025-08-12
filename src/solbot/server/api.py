@@ -213,7 +213,7 @@ class SmartMoneyFlow(BaseModel):
 
 class CopyTrade(BaseModel):
     whale: str
-    profit: float | None = None
+    profit: Optional[float] = None
 
 
 class StrategyStat(BaseModel):
