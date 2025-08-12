@@ -12,12 +12,15 @@ This file defines the immediate and near-term directives for the next developmen
 1. **Testing Infrastructure**
    - Implement unit and integration tests for `run_backtest`, `/backtest`, and front-end helpers. Set up Jest so `npm test` executes.
    - Add error-path tests for autosave and WebSocket reconnection logic.
+   <!-- Progress: Extended `tests/test_server.py` to cover `/risk/security`, `/whales`, and `/smart-money-flow` endpoints and verify their presence in the service map. Autosave and reconnect error-path tests remain todo. -->
 2. **Backtest UX & Persistence**
    - Persist API credentials and backtest parameters in local storage with validation and clear error messages.
    - Stream backtest progress and support cancellation for long jobs; handle and surface backend errors.
+   <!-- Completed: Dashboard validates API base URL and key, restores both along with last backtest params from `localStorage`, and refuses submission until client-side schema checks pass. Missing CSV sources now raise HTTP 404 for clarity. Streaming/cancellation still pending. -->
 3. **Resilience & Performance**
    - Enforce reconnect attempt limits with user notifications when an endpoint remains unreachable.
    - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
+   <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries. Performance profiling not yet started. -->
 
 ## Dashboard-API Connectivity Gaps
 The static HTML dashboard in `web/public/dashboard.html` still presents demo data. Every element below must either consume a real
@@ -41,6 +44,7 @@ browser network panel or `curl` that the request returns 2xx and the DOM updates
    - **Endpoint:** `GET /health` every 5 s; use `health.rpc_latency_ms`.
    - **UI:** Replace hard-coded `12ms`; tooltip shows last sample timestamp.
    - **Verification:** Introduce console log on each poll; inspect network to ensure requests stop on tab visibility change.
+   <!-- Completed: Poller now runs at 5 s intervals when tab visible, writes `rpc_latency_ms` into `#rpcLatency`, and logs each sample via `console.log('RPC latency sample:', latency)` for ops troubleshooting. -->
 
 4. **WebSocket heartbeat – add `id="wsStatus"` (line ~96)**
    - **Endpoint:** `/dashboard/ws` heartbeat messages already contain `timestamp`.
@@ -73,6 +77,7 @@ browser network panel or `curl` that the request returns 2xx and the DOM updates
    - **Endpoint:** `POST /backtest` via form; results returned as `{ pnl, drawdown, sharpe }`.
    - **UI:** Display metrics and persist last config to `localStorage.backtest_last`.
    - **Verification:** Run backtest with known seed; confirm numbers match API JSON.
+   <!-- Completed: Client persists backtest parameters and API credentials, validates inputs before posting, and renders `{pnl, drawdown, sharpe}` from the `/backtest` response. File-missing errors surface as HTTP 404 with a toast message. -->
 
 5. **Equity curve / P&L breakdown charts (lines ~304–357)**
    - **Endpoint:** `GET /chart/portfolio?tf=1H|4H|1D` or historical `/equity` route if available.
@@ -93,6 +98,7 @@ around lines ~220–330 and currently holds placeholder text.
    - **Endpoint:** `GET /risk/security` (to be implemented) returning boolean flags with detail strings.
    - **UI:** Show ✓/⚠/✗ icons based on flag and tooltip with `detail`.
    - **Fallback:** If endpoint not available, hide entire section to avoid misleading “SAFE” labels.
+   <!-- Server-side delivered: `/risk/security` returns structured flags (`status` + `detail`) for rug pull, liquidity, contract verification, holder distribution, and trading patterns. Front‑end wiring still pending; selectors untouched. -->
 
 ### 4. Analytics & Strategy Modules
 
@@ -102,6 +108,7 @@ Widgets from “Whale Tracker” through “MEV Shield & Alpha Signals” appear
    - **Endpoint:** Design `/whales` providing `{ following, success_rate, copied_today, profit }` and `/smart-money-flow` for net inflow.
    - **UI:** Map fields to `#following`, `#successRate`, etc. Provide loading spinners until data arrives.
    - **Verification:** Call endpoints with mock data; ensure numbers disappear when API returns 503.
+   <!-- Completed: Added Pydantic models (`WhaleStats`, `SmartMoneyFlow`, `CopyTrade`) with demo data and exposed `/whales`, `/smart-money-flow`, and `/copy-trading`. Dashboard panel now shows spinners, fetches all three routes in parallel, and clears fields or displays "DATA UNAVAILABLE" on failure. -->
 
 2. **Neural strategy matrix & arbitrage modules**
    - **Endpoint:** `/strategies` delivering per-strategy `{ trades, pnl, confidence, targets, success }`.

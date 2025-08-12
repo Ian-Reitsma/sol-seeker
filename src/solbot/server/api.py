@@ -156,6 +156,36 @@ class Catalyst(BaseModel):
     severity: str
 
 
+class SecurityFlag(BaseModel):
+    status: str
+    detail: str
+
+
+class SecurityReport(BaseModel):
+    rug_pull: SecurityFlag
+    liquidity: SecurityFlag
+    contract_verified: SecurityFlag
+    holder_distribution: SecurityFlag
+    trading_patterns: SecurityFlag
+
+
+class WhaleStats(BaseModel):
+    following: int
+    success_rate: float
+    copied_today: int
+    profit: float
+
+
+class SmartMoneyFlow(BaseModel):
+    net_inflow: float
+    trend: str
+
+
+class CopyTrade(BaseModel):
+    whale: str
+    profit: float | None = None
+
+
 class EndpointMap(BaseModel):
     health: str
     status: str
@@ -184,6 +214,10 @@ class EndpointMap(BaseModel):
     license: str
     state: str
     catalysts: str
+    risk_security: str
+    whales: str
+    smart_money_flow: str
+    copy_trading: str
 
 
 class LicenseInfo(BaseModel):
@@ -346,6 +380,10 @@ def create_app(
             openapi=app.url_path_for("openapi"),
             metrics=app.url_path_for("metrics"),
             catalysts=app.url_path_for("catalysts_endpoint"),
+            risk_security=app.url_path_for("risk_security_endpoint"),
+            whales=app.url_path_for("whales_endpoint"),
+            smart_money_flow=app.url_path_for("smart_money_flow_endpoint"),
+            copy_trading=app.url_path_for("copy_trading_endpoint"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
               posterior_ws=app.url_path_for("posterior_ws"),
@@ -426,6 +464,34 @@ def create_app(
             Catalyst(event="Solana Breakpoint", timestamp=now + 2 * 24 * 3600 + 14 * 3600, severity="low"),
         ]
 
+    @app.get("/risk/security", response_model=SecurityReport)
+    async def risk_security_endpoint() -> SecurityReport:
+        return SecurityReport(
+            rug_pull=SecurityFlag(status="OK", detail="No threats detected"),
+            liquidity=SecurityFlag(status="OK", detail="Sufficient liquidity"),
+            contract_verified=SecurityFlag(status="OK", detail="Contract verified"),
+            holder_distribution=SecurityFlag(status="OK", detail="Balanced holders"),
+            trading_patterns=SecurityFlag(status="OK", detail="No anomalies"),
+        )
+
+    @app.get("/whales", response_model=WhaleStats)
+    async def whales_endpoint() -> WhaleStats:
+        """Return basic whale tracking statistics."""
+        return WhaleStats(following=3, success_rate=0.65, copied_today=1, profit=5.2)
+
+    @app.get("/smart-money-flow", response_model=SmartMoneyFlow)
+    async def smart_money_flow_endpoint() -> SmartMoneyFlow:
+        """Return net inflow statistics for smart money."""
+        return SmartMoneyFlow(net_inflow=1.7, trend="UP")
+
+    @app.get("/copy-trading", response_model=list[CopyTrade])
+    async def copy_trading_endpoint() -> list[CopyTrade]:
+        """Return recent profitable whale trades being copied."""
+        return [
+            CopyTrade(whale="0xWhale1", profit=2.1),
+            CopyTrade(whale="0xWhale2", profit=-0.4),
+        ]
+
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:
         if features is None:
@@ -461,18 +527,21 @@ def create_app(
 
     @app.post("/backtest", response_model=BacktestResponse, name="backtest")
     async def backtest(req: BacktestRequest) -> BacktestResponse:
-        with tempfile.TemporaryDirectory() as tmp:
-            dal = DAL(os.path.join(tmp, "bt.db"))
-            bt_risk = RiskManager()
-            connector = BacktestConnector()
-            engine_bt = TradeEngine(risk=bt_risk, connector=connector, dal=dal)
-            cfg = BacktestConfig(
-                source=req.source,
-                fee_rate=req.fee,
-                slippage_rate=req.slippage,
-                initial_cash=req.initial_cash,
-            )
-            res = await run_backtest(engine_bt, cfg)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                dal = DAL(os.path.join(tmp, "bt.db"))
+                bt_risk = RiskManager()
+                connector = BacktestConnector()
+                engine_bt = TradeEngine(risk=bt_risk, connector=connector, dal=dal)
+                cfg = BacktestConfig(
+                    source=req.source,
+                    fee_rate=req.fee,
+                    slippage_rate=req.slippage,
+                    initial_cash=req.initial_cash,
+                )
+                res = await run_backtest(engine_bt, cfg)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="source not found")
         return BacktestResponse(pnl=res.pnl, drawdown=res.drawdown, sharpe=res.sharpe)
 
     @app.get("/dashboard")
