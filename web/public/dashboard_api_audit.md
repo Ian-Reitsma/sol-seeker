@@ -219,6 +219,7 @@ server routes are implemented, the panels will remain ornamental.
   - `loadEquityChart()` fetches `/chart/portfolio?tf=...` at lines 3187‑3193【F:web/public/dashboard.html†L3187-L3193】.
   - Backend only supports `/chart/{symbol}`; either add `/chart/portfolio` or adapt the frontend to call `/chart/SOL` (or
     whichever symbol represents equity).
+  - Query constraints: `limit` must be positive and when both `start` and `end` are supplied `start` must not exceed `end`; otherwise the server returns HTTP 400.
 
 * **Agent Notes (2025-08-09)**:
   - Added `/chart/portfolio` powered by `RiskManager.equity_history` and advertised in service map.

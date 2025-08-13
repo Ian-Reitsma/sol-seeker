@@ -436,6 +436,21 @@ def create_app(
             "timestamp": int(time.time()),
         }
 
+    def seed_demo_positions(tokens: list[str], capital: float) -> None:
+        """Populate demo positions using ``capital`` equally across ``tokens``."""
+        uniq = list(dict.fromkeys(tokens))
+        risk.reset()
+        risk.update_equity(capital)
+        if uniq:
+            per_asset = capital / len(uniq)
+            for tok in uniq:
+                qty = per_asset
+                risk.positions[tok] = PositionState(
+                    token=tok, qty=qty, cost=1.0, unrealized=0.0
+                )
+                risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
+                risk.market_prices[tok] = 1.0
+
     @app.post("/state")
     def update_state(req: StateUpdate) -> dict:
         if req.running is not None:
@@ -448,44 +463,33 @@ def create_app(
             runtime_state["settings"].update(req.settings)
         if req.mode is not None:
             if req.mode == "live" and lm.license_mode(cfg.wallet) != "full":
-                raise HTTPException(status_code=400, detail="full license required for live mode")
+                raise HTTPException(
+                    status_code=400, detail="full license required for live mode"
+                )
             runtime_state["mode"] = req.mode
             if req.mode == "demo":
-                risk.reset()
                 capital = runtime_state["paper"].get("capital", 0.0)
                 tokens = runtime_state["paper"].get("assets", [])
-                risk.update_equity(capital)
-                if tokens:
-                    per_asset = capital / len(tokens)
-                    for tok in tokens:
-                        qty = per_asset
-                        risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
-                        risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
-                        risk.market_prices[tok] = 1.0
+                seed_demo_positions(tokens, capital)
         if req.paper_assets is not None or req.paper_capital is not None:
             paper = runtime_state["paper"]
             if req.paper_assets is not None:
                 available = {a["symbol"].upper() for a in assets.list_assets()}
-                normalized = [a.upper() for a in req.paper_assets]
+                normalized = [s.strip().upper() for s in req.paper_assets if s.strip()]
+                normalized = list(dict.fromkeys(normalized))
                 unknown = [s for s in normalized if s not in available]
                 if unknown:
-                    raise HTTPException(status_code=400, detail=f"unknown assets: {', '.join(unknown)}")
+                    raise HTTPException(
+                        status_code=400, detail=f"unknown assets: {', '.join(unknown)}"
+                    )
                 paper["assets"] = normalized
             if req.paper_capital is not None:
                 paper["capital"] = req.paper_capital
             runtime_state["paper"] = paper
             if runtime_state["mode"] == "demo":
-                risk.reset()
                 tokens = paper.get("assets", [])
                 capital = paper.get("capital", 0.0)
-                risk.update_equity(capital)
-                if tokens:
-                    per_asset = capital / len(tokens)
-                    for tok in tokens:
-                        qty = per_asset
-                        risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
-                        risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
-                        risk.market_prices[tok] = 1.0
+                seed_demo_positions(tokens, capital)
         return state()
 
     @app.get("/", include_in_schema=False)
@@ -814,6 +818,8 @@ def create_app(
         finally:
             recv.cancel()
             qtask.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
             await ws.close()
 
     @app.get("/dashboard")
@@ -1280,12 +1286,17 @@ def create_app(
     ) -> dict:
         """Return portfolio equity history."""
 
+        if limit is not None and limit <= 0:
+            raise HTTPException(status_code=400, detail="limit must be > 0")
+        if start is not None and end is not None and start > end:
+            raise HTTPException(status_code=400, detail="start must be <= end")
+
         series = list(risk.equity_history)
         if start is not None:
             series = [p for p in series if p[0] >= start]
         if end is not None:
             series = [p for p in series if p[0] <= end]
-        if limit is not None and limit > 0:
+        if limit is not None:
             series = series[-limit:]
         return {"series": series}
 

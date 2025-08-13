@@ -2525,14 +2525,7 @@
                 cancelBtn.onclick = () => {
                     if (backtestEndpoint) {
                         wsClient.send(backtestEndpoint, { action: 'cancel' });
-                        wsClient.disconnect(backtestEndpoint);
-                        backtestEndpoint = null;
                     }
-                    btn.disabled = false;
-                    btn.textContent = 'RUN BACKTEST';
-                    cancelBtn.classList.add('hidden');
-                    progress.classList.add('hidden');
-                    bar.style.width = '0';
                 };
             } catch (err) {
                 console.error('Backtest failed:', err);
@@ -2893,8 +2886,11 @@
             metrics: null,
             license: null,
             lastUpdate: null,
-            isDemo: false
+            isDemo: false,
+            licenseError: false
         };
+
+        const licenseInfoTemplate = document.getElementById('licenseInfo')?.innerHTML;
 
         let strategyPeriod = '7d';
         
@@ -2904,6 +2900,7 @@
             
             try {
                 // Fetch core dashboard data
+                let licenseErr = false;
                 const [dashboard, positions, orders, featureSnap, posterior, state, security, license, catalysts] = await Promise.all([
                     apiClient.getDashboard(),
                     apiClient.getPositions(),
@@ -2912,7 +2909,7 @@
                     apiClient.getPosterior(),
                     apiClient.getState(),
                     apiClient.getRiskSecurity().catch(() => null),
-                    apiClient.getLicense().catch(() => null),
+                    apiClient.getLicense().catch(() => { licenseErr = true; return null; }),
                     apiClient.getCatalysts().catch(() => null)
                 ]);
 
@@ -2930,6 +2927,7 @@
                 dashboardState.lastUpdate = new Date();
                 dashboardState.state = state;
                 dashboardState.security = security;
+                dashboardState.licenseError = licenseErr;
                 dashboardState.license = license;
                 dashboardState.catalysts = catalysts;
                 if (state && state.settings) {
@@ -3271,12 +3269,23 @@
         function updateLicenseInfo() {
             const panel = document.getElementById('licenseInfo');
             if (!panel) return;
+            if (dashboardState.licenseError) {
+                panel.classList.remove('hidden');
+                panel.textContent = 'License data unavailable';
+                panel.classList.add('text-blade-orange');
+                return;
+            }
             const lic = dashboardState.license;
             if (!lic) {
                 panel.classList.add('hidden');
+                panel.textContent = '';
+                panel.classList.remove('text-blade-orange');
+                panel.innerHTML = licenseInfoTemplate || '';
                 return;
             }
             panel.classList.remove('hidden');
+            panel.classList.remove('text-blade-orange');
+            panel.innerHTML = licenseInfoTemplate || '';
             const walletEl = document.getElementById('licenseWallet');
             const modeEl = document.getElementById('licenseMode');
             const issuedEl = document.getElementById('licenseIssued');
