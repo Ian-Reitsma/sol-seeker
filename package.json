@@ -17,7 +17,6 @@
     "typescript": "^5.3.3"
   },
   "scripts": {
-    "pretest": "npm install",
     "test": "jest"
   },
   "jest": {
