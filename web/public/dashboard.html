@@ -1481,11 +1481,11 @@
                     CONFIGURATION
                 </h3>
                 <!-- License Diagnostics -->
-                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4 hidden" id="licensePanel">
+                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4 hidden" id="licenseInfo">
                     <h4 class="hologram-text text-blade-amber font-bold mb-3">LICENSE</h4>
                     <div class="space-y-1 text-xs hologram-text">
-                        <div>MODE: <span id="licenseModeDetail">-</span></div>
-                        <div>OWNER: <span id="licenseOwner">-</span></div>
+                        <div>WALLET: <span id="licenseWallet">-</span></div>
+                        <div>MODE: <span id="licenseMode">-</span></div>
                         <div>ISSUED: <span id="licenseIssued">-</span></div>
                     </div>
                 </div>
@@ -2142,6 +2142,33 @@
         const demoCashInput = document.getElementById('demoCash');
         const demoAssetsSelect = document.getElementById('demoAssets');
         const demoOptions = document.getElementById('demoOptions');
+        function updateOrderTicket() {
+            const btn = document.getElementById('submitOrder') || document.getElementById('openTradingView');
+            if (btn) {
+                btn.disabled = dashboardState.isDemo;
+                btn.classList.toggle('opacity-50', dashboardState.isDemo);
+            }
+        }
+        function loadSavedMode() {
+            const mode = localStorage.getItem('mode');
+            const cash = localStorage.getItem('paper_capital');
+            const assets = localStorage.getItem('paper_assets');
+            if (mode && modeSelect) {
+                modeSelect.value = mode;
+                demoOptions.classList.toggle('hidden', mode !== 'demo');
+                if (cash && demoCashInput) demoCashInput.value = cash;
+                if (assets && demoAssetsSelect) {
+                    try {
+                        const list = JSON.parse(assets);
+                        Array.from(demoAssetsSelect.options).forEach(o => {
+                            o.selected = list.includes(o.value);
+                        });
+                    } catch {}
+                }
+                dashboardState.isDemo = mode === 'demo';
+                updateLicenseMode(dashboardState.isDemo);
+            }
+        }
         async function saveMode() {
             const mode = modeSelect.value;
             demoOptions.classList.toggle('hidden', mode !== 'demo');
@@ -2151,7 +2178,13 @@
                 const assets = Array.from(demoAssetsSelect.selectedOptions).map(o => o.value);
                 payload.paper_capital = cash;
                 payload.paper_assets = assets;
+                localStorage.setItem('paper_capital', String(cash));
+                localStorage.setItem('paper_assets', JSON.stringify(assets));
+            } else {
+                localStorage.removeItem('paper_capital');
+                localStorage.removeItem('paper_assets');
             }
+            localStorage.setItem('mode', mode);
             try {
                 const res = await apiClient.setState(payload);
                 dashboardState.state = res;
@@ -2467,6 +2500,16 @@
                     if (msg.progress !== undefined) {
                         bar.style.width = `${msg.progress}%`;
                     }
+                    if (msg.cancelled) {
+                        wsClient.disconnect(backtestEndpoint);
+                        backtestEndpoint = null;
+                        btn.disabled = false;
+                        btn.textContent = 'RUN BACKTEST';
+                        cancelBtn.classList.add('hidden');
+                        progress.classList.add('hidden');
+                        bar.style.width = '0';
+                        return;
+                    }
                     if (msg.pnl !== undefined) {
                         document.getElementById('backtestPnL').textContent = `$${msg.pnl.toFixed(2)}`;
                         document.getElementById('backtestStats').textContent = `DD ${(msg.drawdown * 100).toFixed(2)}% • SHARPE ${msg.sharpe.toFixed(2)}`;
@@ -2479,6 +2522,18 @@
                         bar.style.width = '0';
                     }
                 });
+                cancelBtn.onclick = () => {
+                    if (backtestEndpoint) {
+                        wsClient.send(backtestEndpoint, { action: 'cancel' });
+                        wsClient.disconnect(backtestEndpoint);
+                        backtestEndpoint = null;
+                    }
+                    btn.disabled = false;
+                    btn.textContent = 'RUN BACKTEST';
+                    cancelBtn.classList.add('hidden');
+                    progress.classList.add('hidden');
+                    bar.style.width = '0';
+                };
             } catch (err) {
                 console.error('Backtest failed:', err);
                 showToast('Backtest failed');
@@ -2491,20 +2546,6 @@
         }
 
         document.getElementById('runBacktest').addEventListener('click', runBacktest);
-        document.getElementById('cancelBacktest').addEventListener('click', () => {
-            if (backtestEndpoint) {
-                wsClient.disconnect(backtestEndpoint);
-                backtestEndpoint = null;
-            }
-            const btn = document.getElementById('runBacktest');
-            const progress = document.getElementById('btProgress');
-            const bar = document.getElementById('btProgressBar');
-            btn.disabled = false;
-            btn.textContent = 'RUN BACKTEST';
-            progress.classList.add('hidden');
-            bar.style.width = '0';
-            document.getElementById('cancelBacktest').classList.add('hidden');
-        });
 
         // Emergency stop functionality
         document.querySelector('.emergency-stop').addEventListener('click', async function() {
@@ -2918,7 +2959,7 @@
                 updateSystemHealth();
                 updateRegimeAnalysis();
                 updateMarketStats();
-                updateLicensePanel();
+                updateLicenseInfo();
                 updateCatalystList(catalysts);
                 updateLicenseMode(dashboardState.isDemo);
                 
@@ -3156,7 +3197,7 @@
                 });
 
                 if (modeElement) {
-                    modeElement.textContent = 'DEMO MODE';
+                    modeElement.textContent = 'Demo mode – trading disabled';
                     modeElement.className = modeElement.className.replace('status-online', 'status-demo');
                 }
             } else {
@@ -3166,10 +3207,11 @@
                 });
 
                 if (modeElement) {
-                    modeElement.textContent = 'LIVE MODE';
+                    modeElement.textContent = 'Live mode';
                     modeElement.className = modeElement.className.replace('status-demo', 'status-online');
                 }
             }
+            updateOrderTicket();
         }
         
         // Update equity and drawdown labels from risk metrics
@@ -3226,8 +3268,8 @@
             }
         }
 
-        function updateLicensePanel() {
-            const panel = document.getElementById('licensePanel');
+        function updateLicenseInfo() {
+            const panel = document.getElementById('licenseInfo');
             if (!panel) return;
             const lic = dashboardState.license;
             if (!lic) {
@@ -3235,11 +3277,11 @@
                 return;
             }
             panel.classList.remove('hidden');
-            const modeEl = document.getElementById('licenseModeDetail');
-            const ownerEl = document.getElementById('licenseOwner');
+            const walletEl = document.getElementById('licenseWallet');
+            const modeEl = document.getElementById('licenseMode');
             const issuedEl = document.getElementById('licenseIssued');
+            if (walletEl) walletEl.textContent = lic.wallet || '-';
             if (modeEl) modeEl.textContent = lic.mode || '-';
-            if (ownerEl) ownerEl.textContent = lic.owner || lic.wallet || '-';
             if (issuedEl) {
                 issuedEl.textContent = lic.issued_at ? new Date(lic.issued_at * 1000).toLocaleString() : '-';
             }
@@ -3261,11 +3303,13 @@
         function populateDemoAssets(assets) {
             const sel = document.getElementById('demoAssets');
             if (!sel || !Array.isArray(assets)) return;
+            const saved = JSON.parse(localStorage.getItem('paper_assets') || '[]');
             sel.innerHTML = '';
             assets.forEach(tok => {
                 const opt = document.createElement('option');
                 opt.value = tok;
                 opt.textContent = tok;
+                if (saved.includes(tok)) opt.selected = true;
                 sel.appendChild(opt);
             });
         }
@@ -3720,7 +3764,8 @@
             const container = document.getElementById('equityContainer');
             if (!container) return;
             try {
-                const res = await fetch(`${apiClient.baseURL}/chart/portfolio?tf=${tf}`, {
+                const limit = 1000;
+                const res = await fetch(`${apiClient.baseURL}/chart/portfolio?tf=${tf}&limit=${limit}`, {
                     headers: apiClient.apiKey ? { 'X-API-Key': apiClient.apiKey } : {}
                 });
                 if (!res.ok) {
@@ -3845,6 +3890,13 @@
                 } else {
                     showToast(`Unable to reconnect to ${endpoint}`);
                     if (onError) onError(new Error('max reconnect attempts reached'));
+                }
+            }
+
+            send(endpoint, data) {
+                const ws = this.connections.get(endpoint);
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(data));
                 }
             }
 
@@ -4027,6 +4079,7 @@
         
         // Start dashboard when page loads
         document.addEventListener('DOMContentLoaded', function() {
+            loadSavedMode();
             initializeDashboard();
             document.querySelectorAll('.strategy-period').forEach(btn => {
                 btn.addEventListener('click', async () => {

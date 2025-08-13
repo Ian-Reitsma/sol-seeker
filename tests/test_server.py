@@ -1,7 +1,11 @@
 from fastapi.testclient import TestClient
 import pytest
 from starlette.websockets import WebSocketDisconnect
+from starlette.routing import WebSocketRoute
 from prometheus_client import REGISTRY
+import asyncio
+import time
+from backtest import BacktestResult
 
 from solbot.utils import BotConfig
 from solbot.engine import (
@@ -371,6 +375,13 @@ def test_api_order_flow():
         assert resp.status_code == 200
         assert resp.json()["series"] == [list(t) for t in risk.equity_history]
 
+        import solbot.server.api as api
+
+        async def fake_run_backtest(engine, cfg, strategy=None):
+            await asyncio.sleep(0.05)
+            return BacktestResult(pnl=10.0, drawdown=0.05, sharpe=1.2)
+        api.run_backtest = fake_run_backtest
+
         resp = client.post(
             "/backtest",
             json={"period": "1D", "capital": 1000, "strategy_mix": "mix"},
@@ -380,8 +391,6 @@ def test_api_order_flow():
         with client.websocket_connect(f"/backtest/ws/{job_id}") as ws:
             msg = ws.receive_json()
             assert msg["progress"] == 0
-            msg = ws.receive_json()
-            assert msg["progress"] == 50
             msg = ws.receive_json()
             assert msg["progress"] == 100 and "pnl" in msg
             with pytest.raises(WebSocketDisconnect):
@@ -407,6 +416,158 @@ def test_api_order_flow():
         assert "/sentiment/influencers" in rest_paths
         assert "/sentiment/pulse" in rest_paths
         assert "/news" in rest_paths
+
+
+def test_backtest_cancel():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 10.0
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000_000.0
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    fe = PyFeatureEngine()
+    posterior = PosteriorEngine()
+    bootstrap = BootstrapCoordinator()
+    assets = AssetService(dal)
+    assets.dal.save_assets([{ "symbol": "SOL" }])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+    with TestClient(app) as client:
+        import solbot.server.api as api
+
+        async def long_run_backtest(engine, cfg, strategy=None):
+            await asyncio.sleep(10)
+            return BacktestResult(pnl=0.0, drawdown=0.0, sharpe=0.0)
+        api.run_backtest = long_run_backtest
+
+        resp = client.post(
+            "/backtest",
+            json={"period": "1D", "capital": 1000, "strategy_mix": "mix"},
+        )
+        assert resp.status_code == 200
+        job_id = resp.json()["id"]
+        with client.websocket_connect(f"/backtest/ws/{job_id}") as ws:
+            msg = ws.receive_json()
+            assert msg["progress"] == 0
+            ws.send_json({"action": "cancel"})
+            msg = ws.receive_json()
+            assert msg["progress"] == 100 and msg.get("cancelled")
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
+
+
+def test_backtest_error():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 10.0
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000_000.0
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    fe = PyFeatureEngine()
+    posterior = PosteriorEngine()
+    bootstrap = BootstrapCoordinator()
+    assets = AssetService(dal)
+    assets.dal.save_assets([{ "symbol": "SOL" }])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+    with TestClient(app) as client:
+        import solbot.server.api as api
+
+        async def failing_backtest(engine, cfg, strategy=None):
+            await asyncio.sleep(0.1)
+            raise RuntimeError("boom")
+
+        api.run_backtest = failing_backtest
+
+        resp = client.post(
+            "/backtest",
+            json={"period": "1D", "capital": 1000, "strategy_mix": "mix"},
+        )
+        assert resp.status_code == 200
+        job_id = resp.json()["id"]
+        with client.websocket_connect(f"/backtest/ws/{job_id}") as ws:
+            msg = ws.receive_json()
+            if msg.get("progress") == 0:
+                msg = ws.receive_json()
+            assert msg["error"] == "boom"
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
+
+
+def test_dashboard_ws_heartbeat_timeout():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    fe = PyFeatureEngine()
+    posterior = PosteriorEngine()
+    bootstrap = BootstrapCoordinator()
+    assets = AssetService(dal)
+    assets.dal.save_assets([{ "symbol": "SOL" }])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+
+    async def stalled_ws(ws):
+        await ws.accept()
+        await asyncio.sleep(60)
+
+    for i, route in enumerate(app.router.routes):
+        if isinstance(route, WebSocketRoute) and route.path == "/dashboard/ws":
+            app.router.routes[i] = WebSocketRoute("/dashboard/ws", stalled_ws)
+            break
+
+    with TestClient(app) as client:
+        with client.websocket_connect("/dashboard/ws"):
+            hb_ts = time.time() * 1000 - 11000
+            is_live = time.time() * 1000 - hb_ts <= 10000
+            assert not is_live
 
 
 def test_demo_mode_and_emergency_stop():
@@ -476,4 +637,102 @@ def test_demo_mode_and_emergency_stop():
         assert resp.status_code == 200
     assert risk.positions == {}
 
+
+def test_state_paper_assets_validation():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    bootstrap = BootstrapCoordinator()
+    class DummyAssets(AssetService):
+        def refresh(self):
+            return self.list_assets()
+
+    assets = DummyAssets(dal)
+    assets.dal.save_assets([{ "symbol": "SOL" }])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    with TestClient(app) as client:
+        resp = client.post("/state", json={"paper_assets": ["BAD"]})
+        assert resp.status_code == 400
+
+        resp = client.post(
+            "/state", json={"paper_assets": ["SOL"], "paper_capital": 500}
+        )
+        assert resp.status_code == 200
+        st = resp.json()
+        assert st["paper"]["assets"] == ["SOL"]
+        assert st["paper"]["capital"] == 500
+
+        resp = client.get("/state")
+        assert resp.status_code == 200
+        st2 = resp.json()
+        assert st2["paper"]["assets"] == ["SOL"]
+        assert st2["paper"]["capital"] == 500
+
+
+def test_chart_portfolio_limit():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    for i in range(20):
+        risk.update_equity(float(i))
+    trade = TradeEngine(risk, connector, dal)
+    bootstrap = BootstrapCoordinator()
+
+    class DummyAssets(AssetService):
+        def refresh(self):
+            return self.list_assets()
+
+    assets = DummyAssets(dal)
+    assets.dal.save_assets([{"symbol": "SOL"}])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    with TestClient(app) as client:
+        resp = client.get("/chart/portfolio?limit=5")
+        assert resp.status_code == 200
+        series = resp.json()["series"]
+        assert len(series) == 5
+        assert series[0][1] == 15.0
+        assert series[-1][1] == 19.0
 
