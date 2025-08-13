@@ -29,6 +29,7 @@ import time
 import logging
 import contextlib
 import secrets
+from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
@@ -40,6 +41,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
 from typing import Optional, List
 from pathlib import Path
+from backtest import BacktestConfig, run_backtest
 
 try:  # psutil is optional
     import psutil  # type: ignore
@@ -91,6 +93,12 @@ class BacktestJobRequest(BaseModel):
 
 class BacktestJobResponse(BaseModel):
     id: str
+
+
+@dataclass
+class BacktestJob:
+    queue: asyncio.Queue[dict]
+    task: asyncio.Task
 
 
 class FeatureInfo(BaseModel):
@@ -352,7 +360,7 @@ def create_app(
     log_subs: list[asyncio.Queue[dict]] = []
     log_lock = asyncio.Lock()
     poller_task: Optional[asyncio.Task] = None
-    backtest_jobs: dict[str, asyncio.Queue[dict]] = {}
+    backtest_jobs: dict[str, BacktestJob] = {}
     initial_mode = "live" if lm.license_mode(cfg.wallet) == "full" else "demo"
     runtime_state = {
         "running": True,
@@ -445,11 +453,11 @@ def create_app(
             if req.mode == "demo":
                 risk.reset()
                 capital = runtime_state["paper"].get("capital", 0.0)
-                assets = runtime_state["paper"].get("assets", [])
+                tokens = runtime_state["paper"].get("assets", [])
                 risk.update_equity(capital)
-                if assets:
-                    per_asset = capital / len(assets)
-                    for tok in assets:
+                if tokens:
+                    per_asset = capital / len(tokens)
+                    for tok in tokens:
                         qty = per_asset
                         risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
                         risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
@@ -457,18 +465,23 @@ def create_app(
         if req.paper_assets is not None or req.paper_capital is not None:
             paper = runtime_state["paper"]
             if req.paper_assets is not None:
-                paper["assets"] = [a.upper() for a in req.paper_assets]
+                available = {a["symbol"].upper() for a in assets.list_assets()}
+                normalized = [a.upper() for a in req.paper_assets]
+                unknown = [s for s in normalized if s not in available]
+                if unknown:
+                    raise HTTPException(status_code=400, detail=f"unknown assets: {', '.join(unknown)}")
+                paper["assets"] = normalized
             if req.paper_capital is not None:
                 paper["capital"] = req.paper_capital
             runtime_state["paper"] = paper
             if runtime_state["mode"] == "demo":
                 risk.reset()
-                assets = paper.get("assets", [])
+                tokens = paper.get("assets", [])
                 capital = paper.get("capital", 0.0)
                 risk.update_equity(capital)
-                if assets:
-                    per_asset = capital / len(assets)
-                    for tok in assets:
+                if tokens:
+                    per_asset = capital / len(tokens)
+                    for tok in tokens:
                         qty = per_asset
                         risk.positions[tok] = PositionState(token=tok, qty=qty, cost=1.0, unrealized=0.0)
                         risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
@@ -743,37 +756,64 @@ def create_app(
     async def backtest(req: BacktestJobRequest) -> BacktestJobResponse:
         job_id = secrets.token_hex(8)
         q: asyncio.Queue[dict] = asyncio.Queue()
-        backtest_jobs[job_id] = q
 
         async def runner() -> None:
             try:
                 await q.put({"progress": 0})
-                await asyncio.sleep(0.1)
-                await q.put({"progress": 50})
-                await asyncio.sleep(0.1)
-                pnl = req.capital * 0.1
-                await q.put({"progress": 100, "pnl": pnl, "drawdown": 0.05, "sharpe": 1.2})
+                cfg = BacktestConfig(source=req.period, initial_cash=req.capital)
+                res = await run_backtest(trade, cfg)
+                await q.put(
+                    {
+                        "progress": 100,
+                        "pnl": res.pnl,
+                        "drawdown": res.drawdown,
+                        "sharpe": res.sharpe,
+                    }
+                )
+            except asyncio.CancelledError:
+                await q.put({"progress": 100, "cancelled": True})
+                raise
+            except Exception as e:  # pragma: no cover - defensive
+                await q.put({"error": str(e)})
             finally:
                 await q.put(None)
                 backtest_jobs.pop(job_id, None)
 
-        asyncio.create_task(runner())
+        task = asyncio.create_task(runner())
+        backtest_jobs[job_id] = BacktestJob(queue=q, task=task)
         return BacktestJobResponse(id=job_id)
 
     @app.websocket("/backtest/ws/{job_id}", name="backtest_ws")
     async def backtest_ws(ws: WebSocket, job_id: str) -> None:
         await ws.accept()
-        q = backtest_jobs.get(job_id)
-        if q is None:
+        job = backtest_jobs.get(job_id)
+        if job is None:
             await ws.close()
             return
+        q = job.queue
+        task = job.task
+        recv = asyncio.create_task(ws.receive_json())
+        qtask = asyncio.create_task(q.get())
         try:
             while True:
-                msg = await q.get()
-                if msg is None:
-                    break
-                await ws.send_json(msg)
+                done, _ = await asyncio.wait({recv, qtask}, return_when=asyncio.FIRST_COMPLETED)
+                if qtask in done:
+                    msg = qtask.result()
+                    if msg is None:
+                        break
+                    await ws.send_json(msg)
+                    qtask = asyncio.create_task(q.get())
+                if recv in done:
+                    try:
+                        data = recv.result()
+                    except WebSocketDisconnect:
+                        break
+                    if data.get("action") == "cancel":
+                        task.cancel()
+                    recv = asyncio.create_task(ws.receive_json())
         finally:
+            recv.cancel()
+            qtask.cancel()
             await ws.close()
 
     @app.get("/dashboard")
@@ -1232,10 +1272,22 @@ def create_app(
 
 
     @app.get("/chart/portfolio")
-    async def chart_portfolio(tf: str = Query("1H")) -> dict:
+    async def chart_portfolio(
+        tf: str = Query("1H"),
+        start: int | None = Query(None),
+        end: int | None = Query(None),
+        limit: int | None = Query(None),
+    ) -> dict:
         """Return portfolio equity history."""
 
-        return {"series": risk.equity_history}
+        series = list(risk.equity_history)
+        if start is not None:
+            series = [p for p in series if p[0] >= start]
+        if end is not None:
+            series = [p for p in series if p[0] <= end]
+        if limit is not None and limit > 0:
+            series = series[-limit:]
+        return {"series": series}
 
     @app.get("/chart/{symbol}")
     async def chart(symbol: str) -> dict:

@@ -41,6 +41,7 @@ included only to demonstrate that the entire codebase was surveyed.
 | `GET /state` / `POST /state` | Trading state & settings | `updateDashboardData()` fetches state and settings panel posts updates【F:web/public/dashboard.html†L2658-L2267】 |
 | `GET /dashboard` | Core risk/market snapshot | Fetched on load to populate portfolio metrics【F:web/public/dashboard.html†L2666-L2674】 |
 | `GET /posterior` | Regime probabilities | `updateDashboardData()` pulls `apiClient.getPosterior()` and `updateRegimeAnalysis()` renders the odds【F:web/public/dashboard.html†L2666-L2673】【F:web/public/dashboard.html†L2888-L2897】 |
+| `GET /license` | License diagnostics | `updateDashboardData()` caches the response and `updateLicenseInfo()` renders wallet, mode and issued time【F:web/public/dashboard.html†L2902-L2973】【F:web/public/dashboard.html†L3271-L3284】 |
 | `POST /backtest` | Historical simulation results | `runBacktest()` posts form params and updates the metrics card【F:web/public/dashboard.html†L2283-L2316】 |
 | `GET /positions`, `GET /orders`, `POST /orders` | Position list, order history and placement | Called in initialization and trade modal【F:web/public/dashboard.html†L2666-L2670】【F:web/public/dashboard.html†L2390-L2390】 |
 | WebSockets `/dashboard/ws`, `/positions/ws`, `/posterior/ws`, `/logs/ws` | Real‑time risk, positions, regime probabilities and debug logs | `initializeWebSockets()` connects and updates UI【F:web/public/dashboard.html†L3334-L3378】 |
@@ -55,18 +56,15 @@ These backend features ship with the server but have no dashboard entry point.  
 lack UI triggers until they are exposed.
 
 ### 1.1 `/license` – Wallet License Diagnostics
-* **Management Summary**: Without a direct license view, operators cannot audit token expiry or distribution records from the
-  UI.
+* **Management Summary**: Without a direct license view, operators cannot audit token expiry or distribution records from the UI.
 * **Developer Notes**:
-  - Endpoint defined at `src/solbot/server/api.py` lines 261‑267 returning `{owner, mode, issued_at}`【F:src/solbot/server/api.py†L261-L267】.
-  - `SolSeekerAPI.getLicense()` is stubbed at dashboard line 2570 yet never invoked【F:web/public/dashboard.html†L2570-L2571】.
-  - Add a "License" panel in settings that calls `apiClient.getLicense()` during `updateDashboardData()` and surfaces fields
-    like `mode` and `expires`.
-* **Agent Notes (2025-08-07)**:
-  - Created a hidden `<div id="licensePanel">` in the settings section that becomes visible when license data is present.
-  - `updateDashboardData()` now invokes `apiClient.getLicense()` and caches the response in `dashboardState.license` alongside other core data.
-  - Implemented `updateLicensePanel()` to populate mode, owner, and a human‑readable `issued_at`; the panel automatically hides when the endpoint returns null.
+  - Endpoint defined at `src/solbot/server/api.py` lines 417‑424 returning `{wallet, mode, issued_at}`【F:src/solbot/server/api.py†L417-L424】.
+  - `SolSeekerAPI.getLicense()` fetches this endpoint and `updateLicenseInfo()` renders the panel during `updateDashboardData()`【F:web/public/dashboard.html†L2902-L2973】【F:web/public/dashboard.html†L3271-L3284】.
+* **Agent Notes (2025-08-10)**:
+  - Added a visible `<div id="licenseInfo">` in the settings section showing wallet, mode and issued time.
+  - `updateLicenseInfo()` populates the fields and hides the panel when the endpoint returns null.
   - **Status**: Completed for existing fields. Further optimization could include displaying an expiration date once `/license` exposes `expires_at`.
+
 
 ### 1.2 `/api` – Service Map & Discovery
 * **Management Summary**: Lacking endpoint discovery forces manual documentation upkeep.
@@ -298,10 +296,10 @@ In these cases both sides ship partial implementations, but mismatched expectati
   the backend.
 * **Developer Notes**:
   - `updateLicenseMode()` toggles CSS based solely on `state.mode` from `/state` (lines 2658‑2695).
-  - `/license` offers additional fields such as `owner` and `issued_at` (lines 261‑267) yet the function never consumes them.
+  - `/license` offers fields `wallet`, `mode`, and `issued_at` (lines 417‑424) yet the function never consumed them.
   - Extend `updateDashboardData()` to merge `getLicense()` output and display token mint and expiry in the settings modal.
-* **Agent Notes (2025-08-07)**:
-  - Merged license data into dashboard state and implemented `updateLicensePanel()` to render `mode`, `owner`, and `issued_at` in a dedicated diagnostics panel.
+* **Agent Notes (2025-08-10)**:
+  - Merged license data into dashboard state and implemented `updateLicenseInfo()` to render `wallet`, `mode`, and `issued_at` in a dedicated diagnostics panel.
   - `updateLicenseMode()` now derives demo vs. live from license metadata, ensuring consistent state even if `/state` and `/license` diverge.
   - **Status**: Completed. Potential follow-up is to show token mint and expiration once backend exposes those fields.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Dict, List
+from collections import deque
 import time
 
 import numpy as np
@@ -22,7 +23,7 @@ class RiskManager:
         self.peak_equity: float = 0.0
         self.equity: float = 0.0
         self.price_history: Dict[str, List[float]] = {}
-        self.equity_history: List[tuple[int, float]] = []
+        self.equity_history: deque[tuple[int, float]] = deque(maxlen=10_000)
 
     # ------------------------------------------------------------------
     # Compatibility helpers
@@ -35,8 +36,6 @@ class RiskManager:
             self.peak_equity = new_equity
         ts = int(time.time())
         self.equity_history.append((ts, new_equity))
-        if len(self.equity_history) > 1000:
-            self.equity_history.pop(0)
 
     @property
     def drawdown(self) -> float:
