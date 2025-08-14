@@ -19,21 +19,5 @@
   "scripts": {
     "test": "jest"
   },
-  "jest": {
-    "preset": "ts-jest/presets/default-esm",
-    "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [
-      ".ts"
-    ],
-    "roots": [
-      "<rootDir>/web"
-    ],
-    "globals": {
-      "ts-jest": {
-        "tsconfig": "<rootDir>/web/tsconfig.test.json",
-        "useESM": true
-      }
-    }
-  },
   "private": true
 }

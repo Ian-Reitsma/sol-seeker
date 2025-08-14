@@ -65,9 +65,15 @@ test('news feed renders chronologically and pulse shows metrics with timestamp',
     if (!container) return;
     if (!Array.isArray(list) || list.length === 0) {
       if (container.children.length === 0) {
-        container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+        const msg = document.createElement('div');
+        msg.className = 'hologram-text text-blade-amber/60';
+        msg.textContent = 'NO NEWS';
+        container.appendChild(msg);
       }
       return;
+    }
+    if (container.textContent && container.textContent.includes('NO NEWS')) {
+      container.replaceChildren();
     }
     let lastId = parseInt(localStorage.getItem('last_news_id') || '0', 10);
     const fresh = list
@@ -79,14 +85,29 @@ test('news feed renders chronologically and pulse shows metrics with timestamp',
       row.dataset.timestamp = item.timestamp;
       const ts = new Date(item.timestamp).toLocaleString();
       const meta = `Source: ${item.source}${item.confidence !== undefined ? ` • Confidence: ${item.confidence}%` : ''} • ${ts}`;
-      row.innerHTML = `<div class="w-2 h-2 bg-blade-orange rounded-full mt-1"></div><div><div class="hologram-text text-white">${item.title}</div><div class="hologram-text text-blade-amber/60">${meta}</div></div>`;
+      const dot = document.createElement('div');
+      dot.className = 'w-2 h-2 bg-blade-orange rounded-full mt-1';
+      row.appendChild(dot);
+      const wrap = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'hologram-text text-white';
+      title.textContent = item.title;
+      wrap.appendChild(title);
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'hologram-text text-blade-amber/60';
+      metaDiv.textContent = meta;
+      wrap.appendChild(metaDiv);
+      row.appendChild(wrap);
       container.insertBefore(row, container.firstChild);
       if (item.id > lastId) lastId = item.id;
     });
     if (fresh.length > 0) {
       localStorage.setItem('last_news_id', String(lastId));
     } else if (container.children.length === 0) {
-      container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+      const msg = document.createElement('div');
+      msg.className = 'hologram-text text-blade-amber/60';
+      msg.textContent = 'NO NEWS';
+      container.appendChild(msg);
     }
   }
 

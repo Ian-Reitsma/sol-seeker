@@ -33,9 +33,12 @@ test('trending tokens update and reorder with sentiment colors', async () => {
   function updateTrending(tokens: any[]) {
     const container = document.getElementById('trendingTokens');
     if (!container) return;
-    container.innerHTML = '';
+    container.replaceChildren();
     if (!Array.isArray(tokens) || tokens.length === 0) {
-      container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
+      const msg = document.createElement('div');
+      msg.className = 'hologram-text text-blade-amber/60';
+      msg.textContent = 'DATA UNAVAILABLE';
+      container.appendChild(msg);
       return;
     }
     tokens.forEach(t => {
@@ -44,7 +47,34 @@ test('trending tokens update and reorder with sentiment colors', async () => {
       const sentimentClass = t.sentiment && t.sentiment.toUpperCase().includes('BEAR')
         ? 'text-blade-orange'
         : 'text-cyan-glow';
-      row.innerHTML = `<div class="flex items-center space-x-3"><div class="w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold">🔥</div><div><div class="hologram-text text-white font-bold">${t.symbol}</div><div class="hologram-text text-xs text-blade-amber/60">${t.mentions} mentions • ${t.change_pct}%</div></div></div><div class="text-right"><div class="hologram-text ${sentimentClass} font-bold">${t.sentiment}</div><div class="hologram-text text-xs text-blade-amber/60">SENTIMENT</div></div>`;
+      const left = document.createElement('div');
+      left.className = 'flex items-center space-x-3';
+      const icon = document.createElement('div');
+      icon.className = 'w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold';
+      icon.textContent = '🔥';
+      left.appendChild(icon);
+      const info = document.createElement('div');
+      const sym = document.createElement('div');
+      sym.className = 'hologram-text text-white font-bold';
+      sym.textContent = t.symbol;
+      info.appendChild(sym);
+      const mentions = document.createElement('div');
+      mentions.className = 'hologram-text text-xs text-blade-amber/60';
+      mentions.textContent = `${t.mentions} mentions • ${t.change_pct}%`;
+      info.appendChild(mentions);
+      left.appendChild(info);
+      row.appendChild(left);
+      const right = document.createElement('div');
+      right.className = 'text-right';
+      const val = document.createElement('div');
+      val.className = `hologram-text ${sentimentClass} font-bold`;
+      val.textContent = String(t.sentiment);
+      right.appendChild(val);
+      const label = document.createElement('div');
+      label.className = 'hologram-text text-xs text-blade-amber/60';
+      label.textContent = 'SENTIMENT';
+      right.appendChild(label);
+      row.appendChild(right);
       container.appendChild(row);
     });
   }
