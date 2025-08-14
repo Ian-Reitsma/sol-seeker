@@ -215,10 +215,10 @@
         }
       }
     },
-    "/catalysts": {
+    "/events/catalysts": {
       "get": {
         "summary": "Catalysts Endpoint",
-        "operationId": "catalysts_endpoint_catalysts_get",
+        "operationId": "catalysts_endpoint_events_catalysts_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -229,7 +229,7 @@
                     "$ref": "#/components/schemas/Catalyst"
                   },
                   "type": "array",
-                  "title": "Response Catalysts Endpoint Catalysts Get"
+                  "title": "Response Catalysts Endpoint Events Catalysts Get"
                 }
               }
             }
@@ -957,13 +957,13 @@
       },
       "Catalyst": {
         "properties": {
-          "event": {
+          "name": {
             "type": "string",
-            "title": "Event"
+            "title": "Name"
           },
-          "timestamp": {
+          "eta": {
             "type": "integer",
-            "title": "Timestamp"
+            "title": "Eta"
           },
           "severity": {
             "type": "string",
@@ -972,8 +972,8 @@
         },
         "type": "object",
         "required": [
-          "event",
-          "timestamp",
+          "name",
+          "eta",
           "severity"
         ],
         "title": "Catalyst"

@@ -1,6 +1,7 @@
 import csv
 import os
 import tempfile
+import asyncio
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -48,6 +49,49 @@ async def test_run_backtest_missing_file(tmp_path):
     cfg = BacktestConfig(source=str(tmp_path / "missing.csv"))
     with pytest.raises(FileNotFoundError):
         await run_backtest(engine, cfg)
+
+
+@pytest.mark.asyncio
+async def test_run_backtest_default_strategy(tmp_path):
+    csv_path = tmp_path / "data.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["timestamp", "price", "volume"])
+        writer.writeheader()
+        writer.writerow({"timestamp": 1, "price": 100, "volume": 0})
+        writer.writerow({"timestamp": 2, "price": 110, "volume": 0})
+        writer.writerow({"timestamp": 3, "price": 100, "volume": 0})
+
+    connector = BacktestConnector()
+    risk = RiskManager()
+    dal = DAL(str(tmp_path / "bt.db"))
+    engine = TradeEngine(risk=risk, connector=connector, dal=dal)
+    cfg = BacktestConfig(source=str(csv_path), initial_cash=1000.0)
+
+    res = await run_backtest(engine, cfg)
+    assert res.pnl == pytest.approx(-10.0)
+    assert res.drawdown > 0
+
+
+@pytest.mark.asyncio
+async def test_run_backtest_cancel(tmp_path):
+    csv_path = tmp_path / "data.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["timestamp", "price", "volume"])
+        writer.writeheader()
+        for i in range(1000):
+            writer.writerow({"timestamp": i, "price": 100 + i % 2, "volume": 0})
+
+    connector = BacktestConnector()
+    risk = RiskManager()
+    dal = DAL(str(tmp_path / "bt.db"))
+    engine = TradeEngine(risk=risk, connector=connector, dal=dal)
+    cfg = BacktestConfig(source=str(csv_path), initial_cash=0.0)
+
+    task = asyncio.create_task(run_backtest(engine, cfg))
+    await asyncio.sleep(0.01)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
 
 
 class BTRequest(BaseModel):

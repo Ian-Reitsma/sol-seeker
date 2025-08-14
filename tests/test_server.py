@@ -5,6 +5,7 @@ from starlette.routing import WebSocketRoute
 from prometheus_client import REGISTRY
 import asyncio
 import time
+import csv
 from backtest import BacktestResult
 
 from solbot.utils import BotConfig
@@ -109,7 +110,7 @@ def test_api_order_flow():
         assert root_data["endpoints"]["redoc"] == app.url_path_for("redoc_html")
         assert root_data["endpoints"]["openapi"] == app.url_path_for("openapi")
         assert root_data["endpoints"]["metrics"] == app.url_path_for("metrics")
-        assert root_data["endpoints"]["catalysts"] == app.url_path_for("catalysts_endpoint")
+        assert root_data["endpoints"]["events_catalysts"] == app.url_path_for("catalysts_endpoint")
         assert root_data["endpoints"]["risk_security"] == app.url_path_for("risk_security_endpoint")
         assert root_data["endpoints"]["whales"] == app.url_path_for("whales_endpoint")
         assert root_data["endpoints"]["smart_money_flow"] == app.url_path_for("smart_money_flow_endpoint")
@@ -239,11 +240,11 @@ def test_api_order_flow():
         assert lic["mode"] == "full"
         assert lic["wallet"] == cfg.wallet
 
-        resp = client.get("/catalysts")
+        resp = client.get("/events/catalysts")
         assert resp.status_code == 200
         cats = resp.json()
         assert isinstance(cats, list)
-        assert {"event", "timestamp", "severity"} <= set(cats[0].keys())
+        assert {"name", "eta", "severity"} <= set(cats[0].keys())
 
         resp = client.get("/state")
         assert resp.status_code == 200
@@ -418,7 +419,7 @@ def test_api_order_flow():
         assert "/news" in rest_paths
 
 
-def test_backtest_complete():
+def test_backtest_complete(tmp_path):
     for collector in list(REGISTRY._collector_to_names.keys()):
         REGISTRY.unregister(collector)
     tmp = tempfile.NamedTemporaryFile(delete=False)
@@ -447,18 +448,18 @@ def test_backtest_complete():
     assets = AssetService(dal)
     assets.dal.save_assets([{"symbol": "SOL"}])
     app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+    csv_path = tmp_path / "data.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["timestamp", "price", "volume"])
+        writer.writeheader()
+        writer.writerow({"timestamp": 1, "price": 100, "volume": 0})
+        writer.writerow({"timestamp": 2, "price": 110, "volume": 0})
+        writer.writerow({"timestamp": 3, "price": 100, "volume": 0})
+
     with TestClient(app) as client:
-        import solbot.server.api as api
-
-        async def fake_run_backtest(engine, cfg, strategy=None):
-            await asyncio.sleep(0.05)
-            return BacktestResult(pnl=10.0, drawdown=0.05, sharpe=1.2)
-
-        api.run_backtest = fake_run_backtest
-
         resp = client.post(
             "/backtest",
-            json={"period": "1D", "capital": 1000, "strategy_mix": "mix"},
+            json={"period": str(csv_path), "capital": 1000, "strategy_mix": "momentum"},
         )
         assert resp.status_code == 200
         job_id = resp.json()["id"]
@@ -466,7 +467,7 @@ def test_backtest_complete():
             msg = ws.receive_json()
             assert msg["progress"] == 0
             msg = ws.receive_json()
-            assert msg["progress"] == 100 and msg["pnl"] == 10.0
+            assert msg["progress"] == 100 and abs(msg["pnl"]) == pytest.approx(10.0)
             with pytest.raises(WebSocketDisconnect):
                 ws.receive_json()
 
@@ -798,7 +799,7 @@ def test_state_paper_assets_dedup_and_allocation():
         assert risk.positions["ETH"].qty == 50
 
 
-def test_chart_portfolio_limit():
+def test_chart_portfolio_downsample():
     for collector in list(REGISTRY._collector_to_names.keys()):
         REGISTRY.unregister(collector)
     tmp = tempfile.NamedTemporaryFile(delete=False)
@@ -840,8 +841,52 @@ def test_chart_portfolio_limit():
         assert resp.status_code == 200
         series = resp.json()["series"]
         assert len(series) == 5
-        assert series[0][1] == 15.0
+        assert series[0][1] == 0.0
         assert series[-1][1] == 19.0
+
+
+def test_chart_portfolio_pagination():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    for i in range(20):
+        risk.update_equity(float(i))
+    trade = TradeEngine(risk, connector, dal)
+    bootstrap = BootstrapCoordinator()
+
+    class DummyAssets(AssetService):
+        def refresh(self):
+            return self.list_assets()
+
+    assets = DummyAssets(dal)
+    assets.dal.save_assets([{"symbol": "SOL"}])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    with TestClient(app) as client:
+        page1 = client.get("/chart/portfolio?offset=0&limit=5").json()["series"]
+        page2 = client.get("/chart/portfolio?offset=5&limit=5").json()["series"]
+        assert [p[1] for p in page1] == [0.0, 1.0, 2.0, 3.0, 4.0]
+        assert [p[1] for p in page2] == [5.0, 6.0, 7.0, 8.0, 9.0]
 
 
 def test_chart_portfolio_invalid_limit():
@@ -882,6 +927,8 @@ def test_chart_portfolio_invalid_limit():
     app = create_app(cfg, lm, risk, trade, assets, bootstrap)
     with TestClient(app) as client:
         resp = client.get("/chart/portfolio?limit=-1")
+        assert resp.status_code == 400
+        resp = client.get("/chart/portfolio?limit=1001")
         assert resp.status_code == 400
 
 

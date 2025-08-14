@@ -28,7 +28,7 @@ This file defines the immediate and near-term directives for the next developmen
 3. **Resilience & Performance**
    - Enforce reconnect attempt limits with user notifications when an endpoint remains unreachable.
    - Profile DOM diffing and reconnection code under heavy update rates; document bottlenecks and propose optimizations.
-   <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries; Jest test `ws_reconnect.test.ts` exercises repeated failures to confirm the limit. Performance profiling not yet started. -->
+   <!-- Completed: WebSocket manager tracks per-endpoint reconnect counts, logs attempts, and emits a toast after exceeding the ceiling before halting retries; Jest tests `ws_reconnect.test.ts` and `ws_reconnect_error.test.ts` cover success and failure paths. Added `perf_profile.test.ts` and `docs/dashboard_performance.md` profiling DOM diffing and reconnection loops with optimization notes. -->
 
 ## Recent Accomplishment – Demo Mode Toggle and Equity Chart (2025-08-09)
 
@@ -40,7 +40,9 @@ This file defines the immediate and near-term directives for the next developmen
 
 ### Next Agent Objectives
 - Replace simulated backtest data with real strategy execution and support cancellation.
+<!-- Completed: `/backtest` now executes a momentum strategy over CSV data and yields for cancellation; tests verify real PnL and job aborts. -->
 - Surface equity history limits and add pagination or downsampling for long sessions.
+<!-- Completed: `/chart/portfolio` now enforces `offset`/`limit` with server-side downsampling and the dashboard pages through history while tests guard limit and pagination paths. -->
 
 ## Dashboard-API Connectivity Gaps
 The static HTML dashboard in `web/public/dashboard.html` still presents demo data. Every element below must either consume a real
@@ -160,24 +162,25 @@ Sections “Social Sentiment Matrix”, “Influencer Alerts”, “Community Pu
    - **Endpoint:** `/sentiment/trending` returning array `{ symbol, mentions, change_pct, sentiment }`.
    - **UI:** Populate list; remove `$NOVA` defaults.
    - **Verification:** Ensure entries reorder when API results change; highlight negative sentiment in red.
-   <!-- Server endpoint `/sentiment/trending` implemented with demo payload; UI list still static. -->
+   <!-- Completed: Dashboard fetches `/sentiment/trending`, refreshes periodically, reorders entries, and marks negative sentiment in red. -->
 
 2. **Influencer alerts**
    - **Endpoint:** `/sentiment/influencers` giving `{ handle, message, followers, stance }`.
    - **UI:** Render avatars/handles dynamically; clicking opens source link.
    - **Verification:** Confirm no duplicates and stale rows purge after 1 h.
-   <!-- Server endpoint `/sentiment/influencers` implemented; dashboard rendering and link handling remain TODO. -->
+   <!-- Completed: dashboard renders influencer alerts with avatars, dedupes entries, purges stale ones after 1h, and opens source links. -->
 
 3. **Breaking news & community pulse**
-   - **Endpoint:** `/news` for headline feed and `/sentiment/pulse` for fear/greed metrics.
-   - **UI:** Replace static bullet list; store last seen article ID to avoid repeats.
-   - **Verification:** Compare timestamps with backend to ensure chronology.
-   <!-- `/news` and `/sentiment/pulse` endpoints added with demo data; front-end still uses placeholders. -->
+    - **Endpoint:** `/news` for headline feed and `/sentiment/pulse` for fear/greed metrics.
+    - **UI:** Replace static bullet list; store last seen article ID to avoid repeats.
+    - **Verification:** Compare timestamps with backend to ensure chronology.
+    <!-- Completed: dashboard fetches `/news` and `/sentiment/pulse`, renders fear/greed metrics with timestamps, stores last news ID, and maintains chronological order without duplicates. -->
 
 4. **Upcoming catalysts – `#catalystList` (lines ~1122–1164)**
    - **Endpoint:** `GET /events/catalysts` returning `[ { name, eta, severity } ]`.
    - **UI:** Render rows with colored dots per severity and countdown timers; strip `$NOVA` demo entries.
    - **Verification:** Vary API payloads to ensure list refreshes every minute and clears when empty.
+   <!-- Completed: dashboard fetches `/events/catalysts`, renders severity dots with countdowns, refreshes every minute, and clears when empty. -->
 
 ### 6. Backtesting & Optimisation Lab
 
