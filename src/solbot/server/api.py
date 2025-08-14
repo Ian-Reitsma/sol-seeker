@@ -371,7 +371,7 @@ def create_app(
         "emergency_stop": False,
         "settings": {},
         "mode": initial_mode,
-        "paper": {"assets": [], "capital": 0.0},
+        "paper": {"assets": ["SOL"], "capital": 1000.0},
     }
 
     def subscribe_orders() -> asyncio.Queue[dict]:
@@ -454,6 +454,12 @@ def create_app(
                 )
                 risk.pnl[tok] = PnLState(realized=0.0, unrealized=0.0)
                 risk.market_prices[tok] = 1.0
+
+    if initial_mode == "demo":
+        seed_demo_positions(
+            runtime_state["paper"].get("assets", []),
+            runtime_state["paper"].get("capital", 0.0),
+        )
 
     @app.post("/state")
     def update_state(req: StateUpdate) -> dict:
@@ -1312,6 +1318,7 @@ def create_app(
         start: Optional[int] = Query(None),
         end: Optional[int] = Query(None),
         offset: Optional[int] = Query(None),
+        cursor: Optional[int] = Query(None),
         limit: int = Query(MAX_PORTFOLIO_POINTS),
     ) -> dict:
         """Return portfolio equity history with pagination and downsampling."""
@@ -1323,6 +1330,8 @@ def create_app(
             )
         if offset is not None and offset < 0:
             raise HTTPException(status_code=400, detail="offset must be >= 0")
+        if offset is not None and cursor is not None:
+            raise HTTPException(status_code=400, detail="offset and cursor are mutually exclusive")
         if start is not None and end is not None and start > end:
             raise HTTPException(status_code=400, detail="start must be <= end")
 
@@ -1333,6 +1342,11 @@ def create_app(
             right = bisect_right(times, end) if end is not None else len(series)
             series = series[left:right]
 
+        if cursor is not None:
+            times = [p[0] for p in series]
+            idx = bisect_right(times, cursor)
+            series = series[idx:]
+
         total = len(series)
 
         if offset is not None:
@@ -1340,7 +1354,9 @@ def create_app(
                 return {"series": [], "total": total}
             series = series[offset : offset + limit]
         elif total > limit:
-            if limit == 1:
+            if cursor is not None:
+                series = series[:limit]
+            elif limit == 1:
                 series = [series[0]]
             else:
                 step = (total - 1) / (limit - 1)

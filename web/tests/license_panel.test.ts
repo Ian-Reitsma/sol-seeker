@@ -7,10 +7,10 @@ import * as vm from 'vm';
 
 test('renders license diagnostics panel', async () => {
   const html = readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
-  const dashMatch = html.match(/async function updateDashboardData\(\)[\s\S]*?}\n\s*}/);
-  const licMatch = html.match(/function updateLicenseInfo\(\)[\s\S]*?}\n\s*}/);
-  expect(dashMatch).toBeTruthy();
+  const licMatch = html.match(/async function loadLicense\(\)[\s\S]*?}\n\s*}/);
+  const infoMatch = html.match(/function updateLicenseInfo\(\)[\s\S]*?}\n\s*}/);
   expect(licMatch).toBeTruthy();
+  expect(infoMatch).toBeTruthy();
 
   document.body.innerHTML = '<div id="licenseInfo"><div>WALLET: <span id="licenseWallet"></span></div><div>MODE: <span id="licenseMode"></span></div><div>ISSUED: <span id="licenseIssued"></span></div></div>';
   const mockLicense = { wallet: 'demoWallet', mode: 'demo', issued_at: 1234567890 };
@@ -18,42 +18,16 @@ test('renders license diagnostics panel', async () => {
     document,
     dashboardState: { assets: null, license: null, licenseError: false, isDemo: false },
     apiClient: {
-      getDashboard: () => Promise.resolve(null),
-      getPositions: () => Promise.resolve(null),
-      getOrders: () => Promise.resolve(null),
-      getFeatures: () => Promise.resolve({ features: [] }),
-      getPosterior: () => Promise.resolve(null),
-      getState: () => Promise.resolve(null),
-      getRiskSecurity: () => Promise.resolve(null),
-      getLicense: () => Promise.resolve(mockLicense),
-      getCatalysts: () => Promise.resolve(null),
-      getAssets: () => Promise.resolve(null),
-      getFeaturesSchema: () => Promise.resolve(null)
+      getLicense: () => Promise.resolve(mockLicense)
     },
-    updateFeatureStream: () => {},
-    renderFeatureSnapshot: () => {},
     updateLicenseMode: () => {},
-    updateTradingButton: () => {},
-    populateAssetSelect: () => {},
-    applySettings: () => {},
-    updateModePanel: () => {},
-    renderFeatureSchema: () => {},
-    updatePortfolioMetrics: () => {},
-    updateRiskMetrics: () => {},
-    updateSecurityPanel: () => {},
-    updatePositionsDisplay: () => Promise.resolve(),
-    updateSystemHealth: () => {},
-    updateRegimeAnalysis: () => {},
-    updateMarketStats: () => {},
-    updateCatalystList: () => {},
-    tradingActive: false,
-    licenseInfoTemplate: document.getElementById('licenseInfo')!.innerHTML
+    licenseInfoTemplate: document.getElementById('licenseInfo')!.innerHTML,
+    requestAnimationFrame: (cb: any) => cb()
   };
   vm.createContext(context);
-  const script = new vm.Script(`${dashMatch![0]} ${licMatch![0]}`);
+  const script = new vm.Script(`${licMatch![0]} ${infoMatch![0]}`);
   script.runInContext(context);
-  await context.updateDashboardData();
-  context.updateLicenseInfo();
+  await context.loadLicense();
   expect(document.getElementById('licenseWallet')?.textContent).toBe(mockLicense.wallet);
   expect(document.getElementById('licenseMode')?.textContent).toBe(mockLicense.mode);
   const issuedText = new Date(mockLicense.issued_at * 1000).toLocaleString();

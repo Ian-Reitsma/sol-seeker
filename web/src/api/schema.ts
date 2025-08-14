@@ -1737,6 +1737,7 @@ export interface operations {
                 start?: number;
                 end?: number;
                 offset?: number;
+                cursor?: number;
                 limit?: number;
             };
             header?: never;

@@ -2,7 +2,6 @@
         
         body {
             background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
-            background-attachment: fixed;
         }
         
         .hologram-panel {
@@ -11,7 +10,7 @@
             box-shadow:
                 0 0 10px rgba(255, 140, 0, 0.2),
                 inset 0 0 10px rgba(255, 140, 0, 0.03);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(4px);
             position: relative;
         }
         
@@ -27,12 +26,18 @@
             z-index: -1;
             border-radius: inherit;
             opacity: 0.4;
-            animation: borderFlow 12s ease-in-out infinite;
+            animation: borderFlow 30s linear infinite;
         }
-        
+
         @keyframes borderFlow {
             0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hologram-panel::before {
+                animation: none;
+            }
         }
         
         .amber-glow {
