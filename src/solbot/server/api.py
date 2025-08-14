@@ -29,6 +29,7 @@ import time
 import logging
 import contextlib
 import secrets
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.routing import APIRoute, APIWebSocketRoute
@@ -55,6 +56,9 @@ from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
 from ..schema import SCHEMA_HASH, PositionState, PnLState
 from ..service import start_network_poller
+
+
+MAX_PORTFOLIO_POINTS = 1_000
 
 
 class OrderRequest(BaseModel):
@@ -157,8 +161,8 @@ class Manifest(BaseModel):
 
 
 class Catalyst(BaseModel):
-    event: str
-    timestamp: int
+    name: str
+    eta: int
     severity: str
 
 
@@ -287,7 +291,7 @@ class EndpointMap(BaseModel):
     tv: str
     license: str
     state: str
-    catalysts: str
+    events_catalysts: str
     risk_security: str
     whales: str
     smart_money_flow: str
@@ -520,7 +524,7 @@ def create_app(
             redoc=app.url_path_for("redoc_html"),
             openapi=app.url_path_for("openapi"),
             metrics=app.url_path_for("metrics"),
-            catalysts=app.url_path_for("catalysts_endpoint"),
+            events_catalysts=app.url_path_for("catalysts_endpoint"),
             risk_security=app.url_path_for("risk_security_endpoint"),
             sentiment_trending=app.url_path_for("sentiment_trending"),
             sentiment_influencers=app.url_path_for("sentiment_influencers"),
@@ -605,13 +609,13 @@ def create_app(
     async def assets_endpoint() -> list[str]:
         return [a["symbol"] for a in assets.list_assets()]
 
-    @app.get("/catalysts", response_model=list[Catalyst])
+    @app.get("/events/catalysts", response_model=list[Catalyst])
     async def catalysts_endpoint() -> list[Catalyst]:
         now = int(time.time())
         return [
-            Catalyst(event="$NOVA Token Burn", timestamp=now + 2 * 3600 + 15 * 60, severity="high"),
-            Catalyst(event="Jupiter V2 Launch", timestamp=now + 6 * 3600 + 42 * 60, severity="medium"),
-            Catalyst(event="Solana Breakpoint", timestamp=now + 2 * 24 * 3600 + 14 * 3600, severity="low"),
+            Catalyst(name="$NOVA Token Burn", eta=now + 2 * 3600 + 15 * 60, severity="high"),
+            Catalyst(name="Jupiter V2 Launch", eta=now + 6 * 3600 + 42 * 60, severity="medium"),
+            Catalyst(name="Solana Breakpoint", eta=now + 2 * 24 * 3600 + 14 * 3600, severity="low"),
         ]
 
     @app.get("/risk/security", response_model=SecurityReport)
@@ -765,7 +769,32 @@ def create_app(
             try:
                 await q.put({"progress": 0})
                 cfg = BacktestConfig(source=req.period, initial_cash=req.capital)
-                res = await run_backtest(trade, cfg)
+
+                def select_strategy(name: str):
+                    if name == "momentum":
+                        prev: Optional[float] = None
+                        holding = False
+
+                        def strat(bar):  # type: ignore[no-redef]
+                            nonlocal prev, holding
+                            if prev is None:
+                                prev = bar.price
+                                return None
+                            action = None
+                            if bar.price > prev and not holding:
+                                holding = True
+                                action = (Side.BUY, 1.0)
+                            elif bar.price < prev and holding:
+                                holding = False
+                                action = (Side.SELL, 1.0)
+                            prev = bar.price
+                            return action
+
+                        return strat
+                    return None
+
+                strat_fn = select_strategy(req.strategy_mix)
+                res = await run_backtest(trade, cfg, strat_fn)
                 await q.put(
                     {
                         "progress": 100,
@@ -1280,25 +1309,44 @@ def create_app(
     @app.get("/chart/portfolio")
     async def chart_portfolio(
         tf: str = Query("1H"),
-        start: int | None = Query(None),
-        end: int | None = Query(None),
-        limit: int | None = Query(None),
+        start: Optional[int] = Query(None),
+        end: Optional[int] = Query(None),
+        offset: Optional[int] = Query(None),
+        limit: int = Query(MAX_PORTFOLIO_POINTS),
     ) -> dict:
-        """Return portfolio equity history."""
+        """Return portfolio equity history with pagination and downsampling."""
 
-        if limit is not None and limit <= 0:
-            raise HTTPException(status_code=400, detail="limit must be > 0")
+        if limit <= 0 or limit > MAX_PORTFOLIO_POINTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"limit must be between 1 and {MAX_PORTFOLIO_POINTS}",
+            )
+        if offset is not None and offset < 0:
+            raise HTTPException(status_code=400, detail="offset must be >= 0")
         if start is not None and end is not None and start > end:
             raise HTTPException(status_code=400, detail="start must be <= end")
 
         series = list(risk.equity_history)
-        if start is not None:
-            series = [p for p in series if p[0] >= start]
-        if end is not None:
-            series = [p for p in series if p[0] <= end]
-        if limit is not None:
-            series = series[-limit:]
-        return {"series": series}
+        if start is not None or end is not None:
+            times = [p[0] for p in series]
+            left = bisect_left(times, start) if start is not None else 0
+            right = bisect_right(times, end) if end is not None else len(series)
+            series = series[left:right]
+
+        total = len(series)
+
+        if offset is not None:
+            if offset >= total:
+                return {"series": [], "total": total}
+            series = series[offset : offset + limit]
+        elif total > limit:
+            if limit == 1:
+                series = [series[0]]
+            else:
+                step = (total - 1) / (limit - 1)
+                series = [series[int(round(i * step))] for i in range(limit)]
+
+        return {"series": series, "total": total}
 
     @app.get("/chart/{symbol}")
     async def chart(symbol: str) -> dict:

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional, Tuple
 
+import asyncio
+
 from solbot.engine.trade import TradeEngine
 from solbot.types import Side
 from solbot.exchange import ExecutionResult
@@ -115,6 +117,7 @@ class BacktestRunner:
         equity_curve: List[float] = [cash]
 
         for bar in data:
+            await asyncio.sleep(0)
             price = bar.price
             equity = cash + position * price
             action = strategy(bar)
@@ -173,14 +176,29 @@ async def run_backtest(
     runner = BacktestRunner(
         engine,
         fee_model=FeeModel(cfg.fee_rate),
-        slippage_model=SlippageModel(cfg.slippage_rate),
+       slippage_model=SlippageModel(cfg.slippage_rate),
         initial_cash=cfg.initial_cash,
     )
 
     if strategy is None:
-        def noop(_: TradeBar) -> Optional[Tuple[Side, float]]:
-            return None
+        prev_price: Optional[float] = None
+        holding = False
 
-        strategy = noop
+        def momentum(bar: TradeBar) -> Optional[Tuple[Side, float]]:
+            nonlocal prev_price, holding
+            if prev_price is None:
+                prev_price = bar.price
+                return None
+            action = None
+            if bar.price > prev_price and not holding:
+                holding = True
+                action = (Side.BUY, 1.0)
+            elif bar.price < prev_price and holding:
+                holding = False
+                action = (Side.SELL, 1.0)
+            prev_price = bar.price
+            return action
+
+        strategy = momentum
 
     return await runner.run(data, strategy)

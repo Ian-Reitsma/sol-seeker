@@ -1047,6 +1047,7 @@
                               <!-- Community Sentiment Gauge -->
                               <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30">
                                   <div class="hologram-text text-blade-amber font-bold mb-3">COMMUNITY PULSE</div>
+                                  <div class="hologram-text text-blade-amber/60 text-xs mb-3" id="pulseTimestamp">--</div>
                                   <div class="space-y-3">
                                       <div>
                                           <div class="flex justify-between items-center mb-1">
@@ -1794,6 +1795,7 @@
         let wsHeartbeatTs = Date.now();
         let initialEquity = null;
         let lastRealizedPnL = 0;
+        const influencerState = new Map();
         // System time update
         function updateTime() {
             const now = new Date();
@@ -2753,7 +2755,7 @@
             }
 
             async getCatalysts() {
-                return this.get('/catalysts');
+                return this.get('/events/catalysts');
             }
 
             async getMetrics() {
@@ -2885,6 +2887,7 @@
             featureSchema: null,
             metrics: null,
             license: null,
+            catalysts: null,
             lastUpdate: null,
             isDemo: false,
             licenseError: false
@@ -2901,17 +2904,16 @@
             try {
                 // Fetch core dashboard data
                 let licenseErr = false;
-                const [dashboard, positions, orders, featureSnap, posterior, state, security, license, catalysts] = await Promise.all([
-                    apiClient.getDashboard(),
-                    apiClient.getPositions(),
-                    apiClient.getOrders(),
-                    apiClient.getFeatures(),
-                    apiClient.getPosterior(),
-                    apiClient.getState(),
-                    apiClient.getRiskSecurity().catch(() => null),
-                    apiClient.getLicense().catch(() => { licenseErr = true; return null; }),
-                    apiClient.getCatalysts().catch(() => null)
-                ]);
+                  const [dashboard, positions, orders, featureSnap, posterior, state, security, license] = await Promise.all([
+                      apiClient.getDashboard(),
+                      apiClient.getPositions(),
+                      apiClient.getOrders(),
+                      apiClient.getFeatures(),
+                      apiClient.getPosterior(),
+                      apiClient.getState(),
+                      apiClient.getRiskSecurity().catch(() => null),
+                      apiClient.getLicense().catch(() => { licenseErr = true; return null; })
+                  ]);
 
                 // Update state
                 dashboardState.dashboard = dashboard;
@@ -2928,8 +2930,7 @@
                 dashboardState.state = state;
                 dashboardState.security = security;
                 dashboardState.licenseError = licenseErr;
-                dashboardState.license = license;
-                dashboardState.catalysts = catalysts;
+                  dashboardState.license = license;
                 if (state && state.settings) {
                     applySettings(state.settings);
                 }
@@ -2958,8 +2959,7 @@
                 updateRegimeAnalysis();
                 updateMarketStats();
                 updateLicenseInfo();
-                updateCatalystList(catalysts);
-                updateLicenseMode(dashboardState.isDemo);
+                  updateLicenseMode(dashboardState.isDemo);
                 
             } catch (error) {
                 console.error('Error updating dashboard data:', error);
@@ -3382,56 +3382,57 @@
             container.appendChild(tsDiv);
         }
 
-        function updateCatalystList(list) {
-            const container = document.getElementById('catalystList');
-            if (!container) return;
-            container.innerHTML = '';
-            if (!Array.isArray(list) || list.length === 0) {
-                container.innerHTML = '<div class="hologram-text text-white">None</div>';
-                return;
-            }
-            const frag = document.createDocumentFragment();
-            const colorMap = {
-                high: ['bg-blade-orange', 'text-blade-orange'],
-                medium: ['bg-cyan-glow', 'text-cyan-glow'],
-                low: ['bg-blade-amber', 'text-blade-amber']
-            };
-            list.forEach(item => {
-                const [bg, text] = colorMap[item.severity] || colorMap.low;
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center';
-                const left = document.createElement('div');
-                left.className = 'flex items-center space-x-2';
-                const dot = document.createElement('div');
-                dot.className = `w-2 h-2 rounded-full ${bg}${item.severity === 'high' ? ' animate-pulse' : ''}`;
-                left.appendChild(dot);
-                const name = document.createElement('span');
-                name.className = 'hologram-text text-white';
-                name.textContent = item.event;
-                left.appendChild(name);
-                row.appendChild(left);
-                const time = document.createElement('span');
-                time.className = `hologram-text ${text}`;
-                time.textContent = formatTimeDiff(item.timestamp);
-                row.appendChild(time);
-                frag.appendChild(row);
-            });
-            container.appendChild(frag);
-        }
+          function updateCatalystList(list) {
+              const container = document.getElementById('catalystList');
+              if (!container) return;
+              container.innerHTML = '';
+              if (!Array.isArray(list) || list.length === 0) {
+                  container.innerHTML = '<div class="hologram-text text-white">None</div>';
+                  return;
+              }
+              const frag = document.createDocumentFragment();
+              const colorMap = {
+                  high: ['bg-blade-orange', 'text-blade-orange'],
+                  medium: ['bg-cyan-glow', 'text-cyan-glow'],
+                  low: ['bg-blade-amber', 'text-blade-amber']
+              };
+              list.forEach(item => {
+                  const [bg, text] = colorMap[item.severity] || colorMap.low;
+                  const row = document.createElement('div');
+                  row.className = 'flex justify-between items-center';
+                  const left = document.createElement('div');
+                  left.className = 'flex items-center space-x-2';
+                  const dot = document.createElement('div');
+                  dot.className = `w-2 h-2 rounded-full ${bg}${item.severity === 'high' ? ' animate-pulse' : ''}`;
+                  left.appendChild(dot);
+                  const name = document.createElement('span');
+                  name.className = 'hologram-text text-white';
+                  name.textContent = item.name;
+                  left.appendChild(name);
+                  row.appendChild(left);
+                  const time = document.createElement('span');
+                  time.className = `hologram-text ${text}`;
+                  time.textContent = formatTimeDiff(item.eta);
+                  row.appendChild(time);
+                  frag.appendChild(row);
+              });
+              container.appendChild(frag);
+          }
 
-        function formatTimeDiff(ts) {
-            const diff = ts * 1000 - Date.now();
-            if (diff <= 0) return 'soon';
-            const mins = Math.floor(diff / 60000);
-            const days = Math.floor(mins / 1440);
-            const hours = Math.floor((mins % 1440) / 60);
-            const minutes = mins % 60;
-            const parts = [];
-            if (days) parts.push(`${days}D`);
-            if (hours) parts.push(`${hours}H`);
-            parts.push(`${minutes}M`);
-            return parts.join(' ');
-        }
+          function formatTimeDiff(eta) {
+              const ts = typeof eta === 'number' ? eta * 1000 : new Date(eta).getTime();
+              const diff = ts - Date.now();
+              if (diff <= 0) return 'soon';
+              const mins = Math.floor(diff / 60000);
+              const days = Math.floor(mins / 1440);
+              const hours = Math.floor((mins % 1440) / 60);
+              const minutes = mins % 60;
+              const parts = [];
+              if (days) parts.push(`${days}D`);
+              if (hours) parts.push(`${hours}H`);
+              parts.push(`${minutes}M`);
+              return parts.join(' ');
+          }
 
         function updateFeatureStream(features) {
             const container = document.getElementById('featureStream');
@@ -3680,9 +3681,9 @@
           }
 
           let socialPollDelay = 60000;
-          async function loadSocialFeeds() {
-              if (document.hidden) return;
-              try {
+            async function loadSocialFeeds() {
+                if (document.hidden) return;
+                try {
                   const [trending, influencers, pulse, news] = await Promise.all([
                       apiClient.get('/sentiment/trending').catch(() => null),
                       apiClient.get('/sentiment/influencers').catch(() => null),
@@ -3702,7 +3703,20 @@
               }
           }
 
-          function updateTrending(tokens) {
+            async function loadCatalysts() {
+                if (document.hidden) return;
+                try {
+                    const list = await apiClient.getCatalysts().catch(() => null);
+                    if (list) {
+                        dashboardState.catalysts = list;
+                        updateCatalystList(list);
+                    }
+                } catch (err) {
+                    console.error('Catalyst load failed', err);
+                }
+            }
+
+            function updateTrending(tokens) {
               const container = document.getElementById('trendingTokens');
               if (!container) return;
               container.innerHTML = '';
@@ -3713,60 +3727,102 @@
               tokens.forEach(t => {
                   const row = document.createElement('div');
                   row.className = 'flex items-center justify-between';
-                  row.innerHTML = `<div class="flex items-center space-x-3"><div class="w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold">🔥</div><div><div class="hologram-text text-white font-bold">${t.symbol}</div><div class="hologram-text text-xs text-blade-amber/60">${t.mentions} mentions</div></div></div><div class="text-right"><div class="hologram-text text-cyan-glow font-bold">${t.sentiment}</div><div class="hologram-text text-xs text-blade-amber/60">SENTIMENT</div></div>`;
+                  const sentimentClass = t.sentiment && t.sentiment.toUpperCase().includes('BEAR')
+                      ? 'text-blade-orange'
+                      : 'text-cyan-glow';
+                  row.innerHTML = `<div class="flex items-center space-x-3"><div class="w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold">🔥</div><div><div class="hologram-text text-white font-bold">${t.symbol}</div><div class="hologram-text text-xs text-blade-amber/60">${t.mentions} mentions • ${t.change_pct}%</div></div></div><div class="text-right"><div class="hologram-text ${sentimentClass} font-bold">${t.sentiment}</div><div class="hologram-text text-xs text-blade-amber/60">SENTIMENT</div></div>`;
                   container.appendChild(row);
               });
           }
 
-          function updateInfluencers(list) {
-              const container = document.getElementById('influencerAlerts');
-              if (!container) return;
-              container.innerHTML = '';
-              if (!Array.isArray(list) || list.length === 0) {
-                  container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
-                  return;
-              }
-              list.forEach(i => {
-                  const row = document.createElement('div');
-                  row.className = 'flex items-center justify-between text-xs';
-                  row.innerHTML = `<div class="flex items-center space-x-2"><span class="hologram-text text-white">${i.handle}</span></div><div class="text-right"><div class="hologram-text text-cyan-glow">${i.message}</div><div class="hologram-text text-blade-amber/60">${i.followers} followers</div></div>`;
-                  container.appendChild(row);
-              });
-          }
+         function updateInfluencers(list) {
+             const container = document.getElementById('influencerAlerts');
+             if (!container) return;
+             const now = Date.now();
+             const ONE_HOUR = 3600000;
 
-          function updatePulse(p) {
-              const fg = document.getElementById('fearGreedValue');
-              const fgBar = document.getElementById('fearGreedBar');
-              if (fg && p.fear_greed !== undefined) fg.textContent = p.fear_greed;
-              if (fgBar && p.fear_greed_pct !== undefined) fgBar.style.width = `${p.fear_greed_pct}%`;
-              const sv = document.getElementById('socialVolumeValue');
-              const svBar = document.getElementById('socialVolumeBar');
-              if (sv && p.social_volume !== undefined) sv.textContent = p.social_volume;
-              if (svBar && p.social_volume_pct !== undefined) svBar.style.width = `${p.social_volume_pct}%`;
-              const fomo = document.getElementById('fomoValue');
-              const fomoBar = document.getElementById('fomoBar');
-              if (fomo && p.fomo !== undefined) fomo.textContent = p.fomo;
-              if (fomoBar && p.fomo_pct !== undefined) fomoBar.style.width = `${p.fomo_pct}%`;
-          }
+             if (Array.isArray(list) && list.length > 0) {
+                 if (container.textContent.includes('DATA UNAVAILABLE')) {
+                     container.innerHTML = '';
+                 }
+                 list.forEach(a => {
+                     const key = `${a.handle}|${a.message}`;
+                     const existing = influencerState.get(key);
+                     if (existing) {
+                         existing.timestamp = now;
+                         return;
+                     }
+                     const row = document.createElement('div');
+                     row.className = 'flex items-center space-x-3 cursor-pointer';
+                     const stanceClass = a.stance && a.stance.toUpperCase().includes('BEAR')
+                         ? 'text-blade-orange'
+                         : 'text-cyan-glow';
+                     const avatar = `https://unavatar.io/${encodeURIComponent(a.handle.replace(/^@/, ''))}`;
+                     row.innerHTML = `<img src="${avatar}" class="w-6 h-6 rounded-full" alt=""><div class="flex-1"><div class="hologram-text text-white font-bold">${a.handle}</div><div class="hologram-text text-xs text-blade-amber/60">${a.message}</div></div><div class="text-right"><div class="hologram-text text-xs text-blade-amber/60">${a.followers} followers</div><div class="hologram-text text-xs font-bold ${stanceClass}">${a.stance}</div></div>`;
+                     if (a.url) row.addEventListener('click', () => window.open(a.url, '_blank'));
+                     container.appendChild(row);
+                     influencerState.set(key, { element: row, timestamp: now });
+                 });
+             }
 
-          function updateNews(list) {
-              const container = document.getElementById('newsFeed');
-              if (!container) return;
-              container.innerHTML = '';
-              if (!Array.isArray(list) || list.length === 0) {
-                  container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
-                  return;
-              }
-              let lastId = parseInt(localStorage.getItem('last_news_id') || '0', 10);
-              list.forEach(item => {
-                  if (item.id && item.id > lastId) lastId = item.id;
-                  const row = document.createElement('div');
-                  row.className = 'flex items-start space-x-2';
-                  row.innerHTML = `<div class="w-2 h-2 bg-blade-orange rounded-full mt-1"></div><div><div class="hologram-text text-white">${item.title}</div><div class="hologram-text text-blade-amber/60">Source: ${item.source} • Confidence: ${item.confidence}%</div></div>`;
-                  container.appendChild(row);
-              });
-              localStorage.setItem('last_news_id', String(lastId));
-          }
+             for (const [key, entry] of influencerState.entries()) {
+                 if (now - entry.timestamp > ONE_HOUR) {
+                     entry.element.remove();
+                     influencerState.delete(key);
+                 }
+             }
+
+             if (container.children.length === 0) {
+                 container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
+             }
+         }
+
+         function updatePulse(p) {
+             const fg = document.getElementById('fearGreedValue');
+             const fgBar = document.getElementById('fearGreedBar');
+             if (fg && p.fear_greed !== undefined) fg.textContent = p.fear_greed;
+             if (fgBar && p.fear_greed_pct !== undefined) fgBar.style.width = `${p.fear_greed_pct}%`;
+             const sv = document.getElementById('socialVolumeValue');
+             const svBar = document.getElementById('socialVolumeBar');
+             if (sv && p.social_volume !== undefined) sv.textContent = p.social_volume;
+             if (svBar && p.social_volume_pct !== undefined) svBar.style.width = `${p.social_volume_pct}%`;
+             const fomo = document.getElementById('fomoValue');
+             const fomoBar = document.getElementById('fomoBar');
+             if (fomo && p.fomo !== undefined) fomo.textContent = p.fomo;
+             if (fomoBar && p.fomo_pct !== undefined) fomoBar.style.width = `${p.fomo_pct}%`;
+             const ts = document.getElementById('pulseTimestamp');
+             if (ts && p.timestamp) ts.textContent = new Date(p.timestamp).toLocaleString();
+         }
+
+         function updateNews(list) {
+             const container = document.getElementById('newsFeed');
+             if (!container) return;
+             if (!Array.isArray(list) || list.length === 0) {
+                 if (container.children.length === 0) {
+                     container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+                 }
+                 return;
+             }
+             let lastId = parseInt(localStorage.getItem('last_news_id') || '0', 10);
+             const fresh = list
+                 .filter(item => item.id && item.id > lastId)
+                 .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+             fresh.forEach(item => {
+                 const row = document.createElement('div');
+                 row.className = 'flex items-start space-x-2';
+                 row.dataset.timestamp = item.timestamp;
+                 const ts = new Date(item.timestamp).toLocaleString();
+                 const meta = `Source: ${item.source}${item.confidence !== undefined ? ` • Confidence: ${item.confidence}%` : ''} • ${ts}`;
+                 row.innerHTML = `<div class="w-2 h-2 bg-blade-orange rounded-full mt-1"></div><div><div class="hologram-text text-white">${item.title}</div><div class="hologram-text text-blade-amber/60">${meta}</div></div>`;
+                 container.insertBefore(row, container.firstChild);
+                 if (item.id > lastId) lastId = item.id;
+             });
+             if (fresh.length > 0) {
+                 localStorage.setItem('last_news_id', String(lastId));
+             } else if (container.children.length === 0) {
+                 container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+             }
+         }
 
         let equityChartInstance = null;
         async function loadEquityChart(tf = '1H') {
@@ -3774,29 +3830,33 @@
             if (!container) return;
             try {
                 const limit = 1000;
-                const res = await fetch(`${apiClient.baseURL}/chart/portfolio?tf=${tf}&limit=${limit}`, {
-                    headers: apiClient.apiKey ? { 'X-API-Key': apiClient.apiKey } : {}
-                });
-                if (!res.ok) {
-                    container.innerHTML = '<div class="hologram-text text-center text-blade-amber">DATA UNAVAILABLE</div>';
-                    return;
+                let offset = 0;
+                let allSeries = [];
+                while (true) {
+                    const res = await fetch(`${apiClient.baseURL}/chart/portfolio?tf=${tf}&offset=${offset}&limit=${limit}`, {
+                        headers: apiClient.apiKey ? { 'X-API-Key': apiClient.apiKey } : {}
+                    });
+                    if (!res.ok) {
+                        container.innerHTML = '<div class="hologram-text text-center text-blade-amber">DATA UNAVAILABLE</div>';
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data.series || data.series.length === 0) break;
+                    allSeries = allSeries.concat(data.series);
+                    if (data.series.length < limit) break;
+                    offset += limit;
                 }
-                const data = await res.json();
-                if (data.url) {
-                    container.innerHTML = `<iframe src="${data.url}" class="w-full h-full"></iframe>`;
-                    return;
-                }
-                if (data.series) {
+                if (allSeries.length) {
                     container.innerHTML = '<canvas id="equityCanvas" class="w-full h-full"></canvas>';
                     const ctx = document.getElementById('equityCanvas').getContext('2d');
                     if (equityChartInstance) equityChartInstance.destroy();
                     equityChartInstance = new Chart(ctx, {
                         type: 'line',
                         data: {
-                            labels: data.series.map(p => new Date(p[0] * 1000)),
+                            labels: allSeries.map(p => new Date(p[0] * 1000)),
                             datasets: [{
                                 label: 'Equity',
-                                data: data.series.map(p => p[1]),
+                                data: allSeries.map(p => p[1]),
                                 borderColor: '#00e5ff',
                                 backgroundColor: 'rgba(0,229,255,0.2)',
                                 fill: true,
@@ -3811,8 +3871,8 @@
                         }
                     });
                     const equity = dashboardState.dashboard?.risk?.equity;
-                    if (equity !== undefined && data.series.length && data.series[0][1] !== equity) {
-                        console.warn('Equity chart first point mismatch', data.series[0][1], equity);
+                    if (equity !== undefined && allSeries.length && allSeries[allSeries.length - 1][1] !== equity) {
+                        console.warn('Equity chart last point mismatch', allSeries[allSeries.length - 1][1], equity);
                     }
                     return;
                 }
@@ -3821,6 +3881,7 @@
                 console.error('Failed to load equity chart', err);
                 container.innerHTML = '<div class="hologram-text text-center text-blade-amber">DATA UNAVAILABLE</div>';
             }
+
         }
 
         document.querySelectorAll('#equityChart [data-tf]').forEach(btn => {
@@ -4055,14 +4116,16 @@
                 initializeWebSockets();
 
                 // Initial data fetch
-                  await updateDashboardData();
-                  await loadEquityChart('1H');
-                  await loadAnalytics();
-                  loadSocialFeeds();
+                    await updateDashboardData();
+                    await loadEquityChart('1H');
+                    await loadAnalytics();
+                    loadSocialFeeds();
+                    loadCatalysts();
 
                 // Set up periodic updates (less frequent since we have WebSockets)
-                  pollingIntervals.push(setInterval(updateDashboardData, 10000)); // Update every 10 seconds
-                  pollingIntervals.push(setInterval(loadAnalytics, 60000));
+                    pollingIntervals.push(setInterval(updateDashboardData, 10000)); // Update every 10 seconds
+                    pollingIntervals.push(setInterval(loadAnalytics, 60000));
+                    pollingIntervals.push(setInterval(loadCatalysts, 60000));
                 pollRpcLatency();
                 pollingIntervals.push(setInterval(pollRpcLatency, 5000));
                 pollSystemStatus();
