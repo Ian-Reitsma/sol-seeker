@@ -27,6 +27,7 @@ import tempfile
 from solbot.exchange import PaperConnector
 from solbot.oracle.coingecko import PriceOracle
 from solbot.schema import SCHEMA_HASH
+from collections import deque
 
 
 class DummyLM:
@@ -890,6 +891,47 @@ def test_chart_portfolio_pagination():
         assert [p[1] for p in page2] == [5.0, 6.0, 7.0, 8.0, 9.0]
 
 
+def test_chart_portfolio_cursor_pagination():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    risk.equity_history = deque(( (i, float(i)) for i in range(20) ), maxlen=10_000)
+    trade = TradeEngine(risk, connector, dal)
+    bootstrap = BootstrapCoordinator()
+
+    class DummyAssets(AssetService):
+        def refresh(self):
+            return self.list_assets()
+
+    assets = DummyAssets(dal)
+    assets.dal.save_assets([{"symbol": "SOL"}])
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    with TestClient(app) as client:
+        series = client.get("/chart/portfolio?cursor=4&limit=5").json()["series"]
+        assert [p[1] for p in series] == [5.0, 6.0, 7.0, 8.0, 9.0]
+
+
 def test_chart_portfolio_invalid_limit():
     for collector in list(REGISTRY._collector_to_names.keys()):
         REGISTRY.unregister(collector)
@@ -973,4 +1015,52 @@ def test_chart_portfolio_start_after_end():
     with TestClient(app) as client:
         resp = client.get("/chart/portfolio?start=10&end=5")
         assert resp.status_code == 400
+
+
+def test_demo_defaults_sol_asset():
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        REGISTRY.unregister(collector)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+
+    class DemoLM:
+        def license_mode(self, wallet: str) -> str:
+            return "demo"
+
+    lm = DemoLM()
+    dal = DAL(cfg.db_path)
+
+    class DummyOracle(PriceOracle):
+        async def price(self, token: str) -> float:  # type: ignore[override]
+            return 1.0
+
+        async def volume(self, token: str) -> float:  # type: ignore[override]
+            return 1_000.0
+
+    oracle = DummyOracle()
+    connector = PaperConnector(dal, oracle)
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    bootstrap = BootstrapCoordinator()
+
+    class DemoAssets(AssetService):
+        def refresh(self):
+            return self.list_assets()
+
+    assets = DemoAssets(dal)
+    assets.dal.save_assets([{ "symbol": "SOL" }])
+
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap)
+    with TestClient(app) as client:
+        state = client.get("/state").json()
+        assert state["mode"] == "demo"
+        assert state["paper"]["assets"] == ["SOL"]
+        assert state["paper"]["capital"] == 1000.0
 

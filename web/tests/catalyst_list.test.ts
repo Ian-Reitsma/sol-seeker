@@ -77,6 +77,7 @@ test('catalyst list refreshes and clears when empty', async () => {
   const container = document.getElementById('catalystList')!;
   expect(container.children.length).toBe(2);
   expect(container.textContent).toContain('Upgrade');
+  expect(container.textContent).not.toContain('$NOVA');
 
   await loadCatalysts();
   expect(container.textContent).toBe('None');

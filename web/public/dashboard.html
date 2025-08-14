@@ -88,7 +88,7 @@
                     <div class="w-2 h-2 bg-cyan-glow rounded-full status-online"></div>
                     <span class="text-xs hologram-text cyan-glow">RPC</span>
                     <span id="rpcLatency" class="text-xs hologram-text text-blade-amber">--ms</span>
-                    <div id="rpcTooltip" class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded">
+                    <div id="rpcTooltip" class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded">
                         Solana RPC Connection: Active<br/>
                         Latency: --ms<br/>
                         Last Update: --
@@ -100,7 +100,7 @@
                         <span class="w-2 h-2 bg-cyan-glow rounded-full"></span>
                         <span class="text-xs hologram-text cyan-glow">LIVE</span>
                     </span>
-                    <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded">
+                    <div class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded">
                         WebSocket Connection: Streaming<br/>
                         Slot Updates: Live
                     </div>
@@ -111,19 +111,19 @@
             <div class="flex items-center space-x-4">
                 <button class="control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative" id="tradingToggle">
                     ▶ START
-                    <div id="tradingTooltip" class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0">
+                    <div id="tradingTooltip" class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
                         Start/Pause Trading Engine
                     </div>
                 </button>
                 <button class="emergency-stop px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative">
                     ⏹ STOP
-                    <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0">
+                    <div class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
                         Emergency Stop - Close All Positions
                     </div>
                 </button>
                 <button class="control-button px-3 py-2 rounded text-xs hologram-text tooltip-trigger relative" id="settingsToggle">
                     ⚙
-                    <div class="tooltip absolute bottom-full mb-2 px-3 py-2 text-xs rounded right-0">
+                    <div class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
                         System Health & Settings
                     </div>
                 </button>
@@ -2900,67 +2900,70 @@
         // Update dashboard data from API
         async function updateDashboardData() {
             if (document.hidden) return; // Don't update when tab is hidden
-            
-            try {
-                // Fetch core dashboard data
-                let licenseErr = false;
-                  const [dashboard, positions, orders, featureSnap, posterior, state, security, license] = await Promise.all([
-                      apiClient.getDashboard(),
-                      apiClient.getPositions(),
-                      apiClient.getOrders(),
-                      apiClient.getFeatures(),
-                      apiClient.getPosterior(),
-                      apiClient.getState(),
-                      apiClient.getRiskSecurity().catch(() => null),
-                      apiClient.getLicense().catch(() => { licenseErr = true; return null; })
-                  ]);
 
-                // Update state
+            try {
+                const [dashboard, positions, orders, featureSnap, posterior, state, security] = await Promise.all([
+                    apiClient.getDashboard(),
+                    apiClient.getPositions(),
+                    apiClient.getOrders(),
+                    apiClient.getFeatures(),
+                    apiClient.getPosterior(),
+                    apiClient.getState(),
+                    apiClient.getRiskSecurity().catch(() => null)
+                ]);
+
                 dashboardState.dashboard = dashboard;
                 dashboardState.positions = positions;
                 dashboardState.orders = orders;
                 dashboardState.features = featureSnap?.features;
-                const featureTs = featureSnap?.timestamp;
-                if (Array.isArray(dashboardState.features)) {
-                    updateFeatureStream(dashboardState.features);
-                    renderFeatureSnapshot(dashboardState.features, featureTs);
-                }
                 dashboardState.posterior = posterior;
                 dashboardState.lastUpdate = new Date();
                 dashboardState.state = state;
                 dashboardState.security = security;
-                dashboardState.licenseError = licenseErr;
-                  dashboardState.license = license;
+
                 if (state && state.settings) {
                     applySettings(state.settings);
                 }
-                const mode = state?.mode || license?.mode;
-                dashboardState.isDemo = mode === 'demo';
-                updateLicenseMode(dashboardState.isDemo);
                 tradingActive = !!state?.running;
-                updateTradingButton();
 
+                let assets = null;
                 if (!dashboardState.assets) {
-                    dashboardState.assets = await apiClient.getAssets().catch(() => null);
-                    if (dashboardState.assets) populateAssetSelect(dashboardState.assets);
+                    assets = await apiClient.getAssets().catch(() => null);
+                    if (assets) dashboardState.assets = assets;
                 }
-                updateModePanel();
+                let featureSchema = null;
                 if (!dashboardState.featureSchema) {
-                    dashboardState.featureSchema = await apiClient.getFeaturesSchema().catch(() => null);
-                    if (dashboardState.featureSchema) renderFeatureSchema(dashboardState.featureSchema);
+                    featureSchema = await apiClient.getFeaturesSchema().catch(() => null);
+                    if (featureSchema) dashboardState.featureSchema = featureSchema;
+                }
+                const featureTs = featureSnap?.timestamp;
+
+                const render = () => {
+                    if (assets) populateAssetSelect(assets);
+                    updateModePanel();
+                    if (featureSchema) renderFeatureSchema(featureSchema);
+                    if (Array.isArray(dashboardState.features)) {
+                        updateFeatureStream(dashboardState.features);
+                        renderFeatureSnapshot(dashboardState.features, featureTs);
+                    }
+                    updatePortfolioMetrics();
+                    updateRiskMetrics();
+                    updateSecurityPanel();
+                    void updatePositionsDisplay(positions);
+                    updateSystemHealth();
+                    updateRegimeAnalysis();
+                    updateMarketStats();
+                    const mode = state?.mode || dashboardState.license?.mode;
+                    dashboardState.isDemo = mode === 'demo';
+                    updateLicenseMode(dashboardState.isDemo);
+                    updateTradingButton();
+                };
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(render);
+                } else {
+                    render();
                 }
 
-                // Update UI components
-                updatePortfolioMetrics();
-                updateRiskMetrics();
-                updateSecurityPanel();
-                await updatePositionsDisplay(positions);
-                updateSystemHealth();
-                updateRegimeAnalysis();
-                updateMarketStats();
-                updateLicenseInfo();
-                  updateLicenseMode(dashboardState.isDemo);
-                
             } catch (error) {
                 console.error('Error updating dashboard data:', error);
                 dashboardState.isDemo = true;
@@ -3717,6 +3720,29 @@
                 }
             }
 
+            async function loadLicense() {
+                if (document.hidden) return;
+                try {
+                    dashboardState.license = await apiClient.getLicense();
+                    dashboardState.licenseError = false;
+                } catch (err) {
+                    console.error('License load failed', err);
+                    dashboardState.license = null;
+                    dashboardState.licenseError = true;
+                }
+                const render = () => {
+                    updateLicenseInfo();
+                    const mode = dashboardState.license?.mode;
+                    dashboardState.isDemo = mode === 'demo';
+                    updateLicenseMode(dashboardState.isDemo);
+                };
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(render);
+                } else {
+                    render();
+                }
+            }
+
             function updateTrending(tokens) {
               const container = document.getElementById('trendingTokens');
               if (!container) return;
@@ -3917,10 +3943,12 @@
             if (!container) return;
             try {
                 const limit = 1000;
-                let offset = 0;
+                let cursor = null;
                 let allSeries = [];
                 while (true) {
-                    const res = await fetch(`${apiClient.baseURL}/chart/portfolio?tf=${tf}&offset=${offset}&limit=${limit}`, {
+                    const url = new URL(`${apiClient.baseURL}/chart/portfolio?tf=${tf}&limit=${limit}`);
+                    if (cursor !== null) url.searchParams.set('cursor', String(cursor));
+                    const res = await fetch(url.toString(), {
                         headers: apiClient.apiKey ? { 'X-API-Key': apiClient.apiKey } : {}
                     });
                     if (!res.ok) {
@@ -3931,7 +3959,7 @@
                     if (!data.series || data.series.length === 0) break;
                     allSeries = allSeries.concat(data.series);
                     if (data.series.length < limit) break;
-                    offset += limit;
+                    cursor = data.series[data.series.length - 1][0];
                 }
                 if (allSeries.length) {
                     container.innerHTML = '<canvas id="equityCanvas" class="w-full h-full"></canvas>';
@@ -4203,6 +4231,7 @@
                 initializeWebSockets();
 
                 // Initial data fetch
+                    await loadLicense();
                     await updateDashboardData();
                     await loadEquityChart('1H');
                     await loadAnalytics();
@@ -4213,6 +4242,7 @@
                     pollingIntervals.push(setInterval(updateDashboardData, 10000)); // Update every 10 seconds
                     pollingIntervals.push(setInterval(loadAnalytics, 60000));
                     pollingIntervals.push(setInterval(loadCatalysts, 60000));
+                    pollingIntervals.push(setInterval(loadLicense, 300000));
                 pollRpcLatency();
                 pollingIntervals.push(setInterval(pollRpcLatency, 5000));
                 pollSystemStatus();

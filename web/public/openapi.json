@@ -804,6 +804,15 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "title": "Cursor"
+            },
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
               "title": "Limit",
               "default": 1000
             },
