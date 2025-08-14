@@ -4,26 +4,6 @@
  */
 
 export interface paths {
-    "/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Metrics
-         * @description Endpoint that serves Prometheus metrics.
-         */
-        get: operations["metrics_metrics_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/license": {
         parameters: {
             query?: never;
@@ -133,6 +113,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets": {
         parameters: {
             query?: never;
@@ -142,6 +139,271 @@ export interface paths {
         };
         /** Assets Endpoint */
         get: operations["assets_endpoint_assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/catalysts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalysts Endpoint */
+        get: operations["catalysts_endpoint_events_catalysts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Risk Security Endpoint */
+        get: operations["risk_security_endpoint_risk_security_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sentiment/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sentiment Trending
+         * @description Return currently trending tokens with sentiment data.
+         */
+        get: operations["sentiment_trending_sentiment_trending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sentiment/influencers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sentiment Influencers
+         * @description Return recent influencer messages.
+         */
+        get: operations["sentiment_influencers_sentiment_influencers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sentiment/pulse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sentiment Pulse
+         * @description Return aggregate community sentiment metrics.
+         */
+        get: operations["sentiment_pulse_sentiment_pulse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * News Endpoint
+         * @description Return latest news items.
+         */
+        get: operations["news_endpoint_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whales Endpoint
+         * @description Return basic whale tracking statistics.
+         */
+        get: operations["whales_endpoint_whales_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/smart-money-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Smart Money Flow Endpoint
+         * @description Return net inflow statistics for smart money.
+         */
+        get: operations["smart_money_flow_endpoint_smart_money_flow_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/copy-trading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Copy Trading Endpoint
+         * @description Return recent profitable whale trades being copied.
+         */
+        get: operations["copy_trading_endpoint_copy_trading_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/strategies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Strategies Endpoint
+         * @description Return demo strategy performance statistics.
+         */
+        get: operations["strategies_endpoint_strategies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/arbitrage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Arbitrage Endpoint
+         * @description Return demo arbitrage engine status.
+         */
+        get: operations["arbitrage_endpoint_arbitrage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/strategy/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Strategy Performance */
+        get: operations["strategy_performance_strategy_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/strategy/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Strategy Breakdown */
+        get: operations["strategy_breakdown_strategy_breakdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/strategy/risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Strategy Risk */
+        get: operations["strategy_risk_strategy_risk_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -273,6 +535,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chart/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Chart Portfolio
+         * @description Return portfolio equity history with pagination and downsampling.
+         */
+        get: operations["chart_portfolio_chart_portfolio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chart/{symbol}": {
         parameters: {
             query?: never;
@@ -328,34 +610,50 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** BacktestRequest */
-        BacktestRequest: {
-            /** Source */
-            source: string;
-            /**
-             * Fee
-             * @default 0
-             */
-            fee: number;
-            /**
-             * Slippage
-             * @default 0
-             */
-            slippage: number;
-            /**
-             * Initial Cash
-             * @default 0
-             */
-            initial_cash: number;
-        };
-        /** BacktestResponse */
-        BacktestResponse: {
+        /** ArbitrageStat */
+        ArbitrageStat: {
+            /** Status */
+            status: string;
+            /** Trades */
+            trades: number;
             /** Pnl */
             pnl: number;
-            /** Drawdown */
-            drawdown: number;
-            /** Sharpe */
-            sharpe: number;
+            /** Spread */
+            spread: number;
+            /** Opportunities */
+            opportunities: number;
+            /** Latency */
+            latency: number;
+        };
+        /** BacktestJobRequest */
+        BacktestJobRequest: {
+            /** Period */
+            period: string;
+            /** Capital */
+            capital: number;
+            /** Strategy Mix */
+            strategy_mix: string;
+        };
+        /** BacktestJobResponse */
+        BacktestJobResponse: {
+            /** Id */
+            id: string;
+        };
+        /** Catalyst */
+        Catalyst: {
+            /** Name */
+            name: string;
+            /** Eta */
+            eta: number;
+            /** Severity */
+            severity: string;
+        };
+        /** CopyTrade */
+        CopyTrade: {
+            /** Whale */
+            whale: string;
+            /** Profit */
+            profit?: number;
         };
         /** EndpointMap */
         EndpointMap: {
@@ -379,6 +677,8 @@ export interface components {
             backtest: string;
             /** Chart */
             chart: string;
+            /** Chart Portfolio */
+            chart_portfolio: string;
             /** Version */
             version: string;
             /** Docs */
@@ -411,6 +711,34 @@ export interface components {
             license: string;
             /** State */
             state: string;
+            /** Events Catalysts */
+            events_catalysts: string;
+            /** Risk Security */
+            risk_security: string;
+            /** Whales */
+            whales: string;
+            /** Smart Money Flow */
+            smart_money_flow: string;
+            /** Copy Trading */
+            copy_trading: string;
+            /** Strategies */
+            strategies: string;
+            /** Arbitrage */
+            arbitrage: string;
+            /** Sentiment Trending */
+            sentiment_trending: string;
+            /** Sentiment Influencers */
+            sentiment_influencers: string;
+            /** Sentiment Pulse */
+            sentiment_pulse: string;
+            /** News */
+            news: string;
+            /** Strategy Performance */
+            strategy_performance: string;
+            /** Strategy Breakdown */
+            strategy_breakdown: string;
+            /** Strategy Risk */
+            strategy_risk: string;
         };
         /** FeatureInfo */
         FeatureInfo: {
@@ -450,6 +778,26 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InfluencerAlert */
+        InfluencerAlert: {
+            /** Handle */
+            handle: string;
+            /** Message */
+            message: string;
+            /** Followers */
+            followers: number;
+            /** Stance */
+            stance: string;
+        };
+        /** LicenseInfo */
+        LicenseInfo: {
+            /** Wallet */
+            wallet: string;
+            /** Mode */
+            mode: string;
+            /** Issued At */
+            issued_at: number;
+        };
         /** Manifest */
         Manifest: {
             /** Version */
@@ -460,6 +808,32 @@ export interface components {
             websocket: string[];
             /** Timestamp */
             timestamp: number;
+        };
+        /** Metrics */
+        Metrics: {
+            /** Cpu */
+            cpu?: number;
+            /** Memory */
+            memory?: number;
+            network?: components["schemas"]["NetworkStats"];
+        };
+        /** NetworkStats */
+        NetworkStats: {
+            /** Tps */
+            tps?: number;
+            /** Fee */
+            fee?: number;
+        };
+        /** NewsItem */
+        NewsItem: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Source */
+            source: string;
+            /** Confidence */
+            confidence: number;
         };
         /** OrderRequest */
         OrderRequest: {
@@ -504,6 +878,21 @@ export interface components {
             /** Timestamp */
             timestamp: number;
         };
+        /** PulseMetrics */
+        PulseMetrics: {
+            /** Fear Greed */
+            fear_greed: number;
+            /** Fear Greed Pct */
+            fear_greed_pct: number;
+            /** Social Volume */
+            social_volume: number;
+            /** Social Volume Pct */
+            social_volume_pct: number;
+            /** Fomo */
+            fomo: number;
+            /** Fomo Pct */
+            fomo_pct: number;
+        };
         /** RouteInfo */
         RouteInfo: {
             /** Path */
@@ -511,13 +900,27 @@ export interface components {
             /** Methods */
             methods: string[];
         };
+        /** SecurityFlag */
+        SecurityFlag: {
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: string;
+        };
+        /** SecurityReport */
+        SecurityReport: {
+            rug_pull: components["schemas"]["SecurityFlag"];
+            liquidity: components["schemas"]["SecurityFlag"];
+            contract_verified: components["schemas"]["SecurityFlag"];
+            holder_distribution: components["schemas"]["SecurityFlag"];
+            trading_patterns: components["schemas"]["SecurityFlag"];
+        };
         /** ServiceMap */
         ServiceMap: {
             /** Tradingview */
             tradingview: string;
             endpoints: components["schemas"]["EndpointMap"];
-            /** License */
-            license: Record<string, never>;
+            license: components["schemas"]["LicenseInfo"];
             /** Timestamp */
             timestamp: number;
             /** Schema */
@@ -529,6 +932,13 @@ export interface components {
          * @enum {unknown}
          */
         Side: "buy" | "sell";
+        /** SmartMoneyFlow */
+        SmartMoneyFlow: {
+            /** Net Inflow */
+            net_inflow: number;
+            /** Trend */
+            trend: string;
+        };
         /** StateUpdate */
         StateUpdate: {
             /** Running */
@@ -537,6 +947,67 @@ export interface components {
             emergency_stop?: boolean;
             /** Settings */
             settings?: Record<string, never>;
+            /** Mode */
+            mode?: string;
+            /** Paper Assets */
+            paper_assets?: string[];
+            /** Paper Capital */
+            paper_capital?: number;
+        };
+        /** StrategyBreakdownItem */
+        StrategyBreakdownItem: {
+            /** Name */
+            name: string;
+            /** Pnl */
+            pnl: number;
+            /** Win Rate */
+            win_rate: number;
+        };
+        /** StrategyPerf */
+        StrategyPerf: {
+            /** Name */
+            name: string;
+            /** Pnl */
+            pnl: number;
+            /** Win Rate */
+            win_rate: number;
+        };
+        /** StrategyRisk */
+        StrategyRisk: {
+            /** Sharpe */
+            sharpe: number;
+            /** Max Drawdown */
+            max_drawdown: number;
+            /** Volatility */
+            volatility: number;
+            /** Calmar */
+            calmar: number;
+        };
+        /** StrategyStat */
+        StrategyStat: {
+            /** Name */
+            name: string;
+            /** Trades */
+            trades: number;
+            /** Pnl */
+            pnl: number;
+            /** Confidence */
+            confidence: number;
+            /** Targets */
+            targets: number;
+            /** Success */
+            success: number;
+        };
+        /** TrendingToken */
+        TrendingToken: {
+            /** Symbol */
+            symbol: string;
+            /** Mentions */
+            mentions: number;
+            /** Change Pct */
+            change_pct: number;
+            /** Sentiment */
+            sentiment: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -547,6 +1018,17 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WhaleStats */
+        WhaleStats: {
+            /** Following */
+            following: number;
+            /** Success Rate */
+            success_rate: number;
+            /** Copied Today */
+            copied_today: number;
+            /** Profit */
+            profit: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -556,26 +1038,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    metrics_metrics_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     license_info_license_get: {
         parameters: {
             query?: never;
@@ -591,7 +1053,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["LicenseInfo"];
                 };
             };
         };
@@ -691,7 +1153,9 @@ export interface operations {
     };
     tradingview_page_tv_get: {
         parameters: {
-            query?: never;
+            query?: {
+                symbol?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -705,6 +1169,15 @@ export interface operations {
                 };
                 content: {
                     "text/html": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -729,6 +1202,26 @@ export interface operations {
             };
         };
     };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Metrics"];
+                };
+            };
+        };
+    };
     assets_endpoint_assets_get: {
         parameters: {
             query?: never;
@@ -744,7 +1237,298 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    catalysts_endpoint_events_catalysts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalyst"][];
+                };
+            };
+        };
+    };
+    risk_security_endpoint_risk_security_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecurityReport"];
+                };
+            };
+        };
+    };
+    sentiment_trending_sentiment_trending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendingToken"][];
+                };
+            };
+        };
+    };
+    sentiment_influencers_sentiment_influencers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InfluencerAlert"][];
+                };
+            };
+        };
+    };
+    sentiment_pulse_sentiment_pulse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PulseMetrics"];
+                };
+            };
+        };
+    };
+    news_endpoint_news_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsItem"][];
+                };
+            };
+        };
+    };
+    whales_endpoint_whales_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhaleStats"];
+                };
+            };
+        };
+    };
+    smart_money_flow_endpoint_smart_money_flow_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartMoneyFlow"];
+                };
+            };
+        };
+    };
+    copy_trading_endpoint_copy_trading_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyTrade"][];
+                };
+            };
+        };
+    };
+    strategies_endpoint_strategies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyStat"][];
+                };
+            };
+        };
+    };
+    arbitrage_endpoint_arbitrage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArbitrageStat"];
+                };
+            };
+        };
+    };
+    strategy_performance_strategy_performance_get: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyPerf"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    strategy_breakdown_strategy_breakdown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyBreakdownItem"][];
+                };
+            };
+        };
+    };
+    strategy_risk_strategy_risk_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyRisk"];
                 };
             };
         };
@@ -818,7 +1602,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BacktestRequest"];
+                "application/json": components["schemas"]["BacktestJobRequest"];
             };
         };
         responses: {
@@ -828,7 +1612,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BacktestResponse"];
+                    "application/json": components["schemas"]["BacktestJobResponse"];
                 };
             };
             /** @description Validation Error */
@@ -933,6 +1717,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chart_portfolio_chart_portfolio_get: {
+        parameters: {
+            query?: {
+                tf?: string;
+                start?: number;
+                end?: number;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
             /** @description Validation Error */

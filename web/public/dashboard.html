@@ -3385,9 +3385,12 @@
           function updateCatalystList(list) {
               const container = document.getElementById('catalystList');
               if (!container) return;
-              container.innerHTML = '';
+              container.replaceChildren();
               if (!Array.isArray(list) || list.length === 0) {
-                  container.innerHTML = '<div class="hologram-text text-white">None</div>';
+                  const msg = document.createElement('div');
+                  msg.className = 'hologram-text text-white';
+                  msg.textContent = 'None';
+                  container.appendChild(msg);
                   return;
               }
               const frag = document.createDocumentFragment();
@@ -3706,11 +3709,9 @@
             async function loadCatalysts() {
                 if (document.hidden) return;
                 try {
-                    const list = await apiClient.getCatalysts().catch(() => null);
-                    if (list) {
-                        dashboardState.catalysts = list;
-                        updateCatalystList(list);
-                    }
+                    const list = await apiClient.getCatalysts().catch(() => []);
+                    dashboardState.catalysts = list;
+                    updateCatalystList(list);
                 } catch (err) {
                     console.error('Catalyst load failed', err);
                 }
@@ -3719,18 +3720,52 @@
             function updateTrending(tokens) {
               const container = document.getElementById('trendingTokens');
               if (!container) return;
-              container.innerHTML = '';
+              container.replaceChildren();
               if (!Array.isArray(tokens) || tokens.length === 0) {
-                  container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
+                  const msg = document.createElement('div');
+                  msg.className = 'hologram-text text-blade-amber/60';
+                  msg.textContent = 'DATA UNAVAILABLE';
+                  container.appendChild(msg);
                   return;
               }
               tokens.forEach(t => {
                   const row = document.createElement('div');
                   row.className = 'flex items-center justify-between';
-                  const sentimentClass = t.sentiment && t.sentiment.toUpperCase().includes('BEAR')
-                      ? 'text-blade-orange'
-                      : 'text-cyan-glow';
-                  row.innerHTML = `<div class="flex items-center space-x-3"><div class="w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold">🔥</div><div><div class="hologram-text text-white font-bold">${t.symbol}</div><div class="hologram-text text-xs text-blade-amber/60">${t.mentions} mentions • ${t.change_pct}%</div></div></div><div class="text-right"><div class="hologram-text ${sentimentClass} font-bold">${t.sentiment}</div><div class="hologram-text text-xs text-blade-amber/60">SENTIMENT</div></div>`;
+                  const isNegative = typeof t.sentiment === 'number'
+                      ? t.sentiment < 0
+                      : t.sentiment && t.sentiment.toUpperCase().includes('BEAR');
+                  const sentimentClass = isNegative ? 'text-blade-orange' : 'text-cyan-glow';
+                  const sentimentValue = typeof t.sentiment === 'number'
+                      ? t.sentiment.toFixed(2)
+                      : t.sentiment;
+                  const left = document.createElement('div');
+                  left.className = 'flex items-center space-x-3';
+                  const icon = document.createElement('div');
+                  icon.className = 'w-6 h-6 bg-gradient-to-r from-cyan-glow to-blade-cyan rounded-full flex items-center justify-center text-xs font-bold';
+                  icon.textContent = '🔥';
+                  left.appendChild(icon);
+                  const info = document.createElement('div');
+                  const sym = document.createElement('div');
+                  sym.className = 'hologram-text text-white font-bold';
+                  sym.textContent = t.symbol;
+                  info.appendChild(sym);
+                  const mentions = document.createElement('div');
+                  mentions.className = 'hologram-text text-xs text-blade-amber/60';
+                  mentions.textContent = `${t.mentions} mentions • ${t.change_pct}%`;
+                  info.appendChild(mentions);
+                  left.appendChild(info);
+                  row.appendChild(left);
+                  const right = document.createElement('div');
+                  right.className = 'text-right';
+                  const val = document.createElement('div');
+                  val.className = `hologram-text ${sentimentClass} font-bold`;
+                  val.textContent = String(sentimentValue);
+                  right.appendChild(val);
+                  const label = document.createElement('div');
+                  label.className = 'hologram-text text-xs text-blade-amber/60';
+                  label.textContent = 'SENTIMENT';
+                  right.appendChild(label);
+                  row.appendChild(right);
                   container.appendChild(row);
               });
           }
@@ -3743,26 +3778,54 @@
 
              if (Array.isArray(list) && list.length > 0) {
                  if (container.textContent.includes('DATA UNAVAILABLE')) {
-                     container.innerHTML = '';
+                     container.replaceChildren();
                  }
-                 list.forEach(a => {
-                     const key = `${a.handle}|${a.message}`;
-                     const existing = influencerState.get(key);
-                     if (existing) {
-                         existing.timestamp = now;
-                         return;
-                     }
-                     const row = document.createElement('div');
-                     row.className = 'flex items-center space-x-3 cursor-pointer';
-                     const stanceClass = a.stance && a.stance.toUpperCase().includes('BEAR')
-                         ? 'text-blade-orange'
-                         : 'text-cyan-glow';
-                     const avatar = `https://unavatar.io/${encodeURIComponent(a.handle.replace(/^@/, ''))}`;
-                     row.innerHTML = `<img src="${avatar}" class="w-6 h-6 rounded-full" alt=""><div class="flex-1"><div class="hologram-text text-white font-bold">${a.handle}</div><div class="hologram-text text-xs text-blade-amber/60">${a.message}</div></div><div class="text-right"><div class="hologram-text text-xs text-blade-amber/60">${a.followers} followers</div><div class="hologram-text text-xs font-bold ${stanceClass}">${a.stance}</div></div>`;
-                     if (a.url) row.addEventListener('click', () => window.open(a.url, '_blank'));
-                     container.appendChild(row);
-                     influencerState.set(key, { element: row, timestamp: now });
-                 });
+                list.forEach(a => {
+                    const itemTime = a.timestamp ? new Date(a.timestamp).getTime() : now;
+                    if (now - itemTime > ONE_HOUR) return;
+                    const key = `${a.handle}|${a.message}`;
+                    const existing = influencerState.get(key);
+                    if (existing) {
+                        existing.timestamp = itemTime;
+                        return;
+                    }
+                    const stanceBear = a.stance && a.stance.toUpperCase().includes('BEAR');
+                    const stanceClass = stanceBear ? 'text-blade-orange' : 'text-cyan-glow';
+                    const stanceIcon = stanceBear ? '🐻' : '🐂';
+                    const avatar = a.avatar || `https://unavatar.io/${encodeURIComponent(a.handle.replace(/^@/, ''))}`;
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center space-x-3 cursor-pointer';
+                    const img = document.createElement('img');
+                    img.src = avatar;
+                    img.className = 'w-6 h-6 rounded-full';
+                    img.alt = '';
+                    row.appendChild(img);
+                    const center = document.createElement('div');
+                    center.className = 'flex-1';
+                    const handle = document.createElement('div');
+                    handle.className = 'hologram-text text-white font-bold';
+                    handle.textContent = a.handle;
+                    center.appendChild(handle);
+                    const msg = document.createElement('div');
+                    msg.className = 'hologram-text text-xs text-blade-amber/60';
+                    msg.textContent = a.message;
+                    center.appendChild(msg);
+                    row.appendChild(center);
+                    const right = document.createElement('div');
+                    right.className = 'text-right';
+                    const followers = document.createElement('div');
+                    followers.className = 'hologram-text text-xs text-blade-amber/60';
+                    followers.textContent = `${a.followers} followers`;
+                    right.appendChild(followers);
+                    const stance = document.createElement('div');
+                    stance.className = `hologram-text text-xs font-bold ${stanceClass}`;
+                    stance.textContent = `${stanceIcon} ${a.stance}`;
+                    right.appendChild(stance);
+                    row.appendChild(right);
+                    if (a.url) row.addEventListener('click', () => window.open(a.url, '_blank'));
+                    container.appendChild(row);
+                    influencerState.set(key, { element: row, timestamp: itemTime });
+                });
              }
 
              for (const [key, entry] of influencerState.entries()) {
@@ -3773,7 +3836,10 @@
              }
 
              if (container.children.length === 0) {
-                 container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
+                 const msg = document.createElement('div');
+                 msg.className = 'hologram-text text-blade-amber/60';
+                 msg.textContent = 'DATA UNAVAILABLE';
+                 container.appendChild(msg);
              }
          }
 
@@ -3799,9 +3865,15 @@
              if (!container) return;
              if (!Array.isArray(list) || list.length === 0) {
                  if (container.children.length === 0) {
-                     container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+                     const msg = document.createElement('div');
+                     msg.className = 'hologram-text text-blade-amber/60';
+                     msg.textContent = 'NO NEWS';
+                     container.appendChild(msg);
                  }
                  return;
+             }
+             if (container.textContent && container.textContent.includes('NO NEWS')) {
+                 container.replaceChildren();
              }
              let lastId = parseInt(localStorage.getItem('last_news_id') || '0', 10);
              const fresh = list
@@ -3813,14 +3885,29 @@
                  row.dataset.timestamp = item.timestamp;
                  const ts = new Date(item.timestamp).toLocaleString();
                  const meta = `Source: ${item.source}${item.confidence !== undefined ? ` • Confidence: ${item.confidence}%` : ''} • ${ts}`;
-                 row.innerHTML = `<div class="w-2 h-2 bg-blade-orange rounded-full mt-1"></div><div><div class="hologram-text text-white">${item.title}</div><div class="hologram-text text-blade-amber/60">${meta}</div></div>`;
+                 const dot = document.createElement('div');
+                 dot.className = 'w-2 h-2 bg-blade-orange rounded-full mt-1';
+                 row.appendChild(dot);
+                 const wrap = document.createElement('div');
+                 const title = document.createElement('div');
+                 title.className = 'hologram-text text-white';
+                 title.textContent = item.title;
+                 wrap.appendChild(title);
+                 const metaDiv = document.createElement('div');
+                 metaDiv.className = 'hologram-text text-blade-amber/60';
+                 metaDiv.textContent = meta;
+                 wrap.appendChild(metaDiv);
+                 row.appendChild(wrap);
                  container.insertBefore(row, container.firstChild);
                  if (item.id > lastId) lastId = item.id;
              });
              if (fresh.length > 0) {
                  localStorage.setItem('last_news_id', String(lastId));
              } else if (container.children.length === 0) {
-                 container.innerHTML = '<div class="hologram-text text-blade-amber/60">NO NEWS</div>';
+                 const msg = document.createElement('div');
+                 msg.className = 'hologram-text text-blade-amber/60';
+                 msg.textContent = 'NO NEWS';
+                 container.appendChild(msg);
              }
          }
 

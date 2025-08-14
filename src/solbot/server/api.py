@@ -613,7 +613,7 @@ def create_app(
     async def catalysts_endpoint() -> list[Catalyst]:
         now = int(time.time())
         return [
-            Catalyst(name="$NOVA Token Burn", eta=now + 2 * 3600 + 15 * 60, severity="high"),
+            Catalyst(name="Firedancer Testnet", eta=now + 2 * 3600 + 15 * 60, severity="high"),
             Catalyst(name="Jupiter V2 Launch", eta=now + 6 * 3600 + 42 * 60, severity="medium"),
             Catalyst(name="Solana Breakpoint", eta=now + 2 * 24 * 3600 + 14 * 3600, severity="low"),
         ]

@@ -33,7 +33,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "type": "object",
+                  "title": "Response State State Get"
                 }
               }
             }
@@ -59,7 +60,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/State"
+                  "type": "object",
+                  "title": "Response Update State State Post"
                 }
               }
             }
@@ -454,8 +456,9 @@
           {
             "required": false,
             "schema": {
+              "type": "string",
               "title": "Period",
-              "type": "string"
+              "default": "7d"
             },
             "name": "period",
             "in": "query"
@@ -471,7 +474,17 @@
                     "$ref": "#/components/schemas/StrategyPerf"
                   },
                   "type": "array",
-                  "title": "Response Strategy Performance"
+                  "title": "Response Strategy Performance Strategy Performance Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -493,7 +506,7 @@
                     "$ref": "#/components/schemas/StrategyBreakdownItem"
                   },
                   "type": "array",
-                  "title": "Response Strategy Breakdown"
+                  "title": "Response Strategy Breakdown Strategy Breakdown Get"
                 }
               }
             }
@@ -746,8 +759,8 @@
     },
     "/chart/portfolio": {
       "get": {
-        "summary": "Portfolio Equity Chart",
-        "description": "Return recorded equity history for the full portfolio.",
+        "summary": "Chart Portfolio",
+        "description": "Return portfolio equity history with pagination and downsampling.",
         "operationId": "chart_portfolio_chart_portfolio_get",
         "parameters": [
           {
@@ -759,6 +772,43 @@
             },
             "name": "tf",
             "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "title": "Start"
+            },
+            "name": "start",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "title": "End"
+            },
+            "name": "end",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "title": "Offset"
+            },
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "title": "Limit",
+              "default": 1000
+            },
+            "name": "limit",
+            "in": "query"
           }
         ],
         "responses": {
@@ -768,22 +818,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {
-                    "series": {
-                      "type": "array",
-                      "items": {
-                        "type": "array",
-                        "items": [
-                          {"type": "integer"},
-                          {"type": "number"}
-                        ],
-                        "minItems": 2,
-                        "maxItems": 2
-                      }
-                    }
-                  },
-                  "required": ["series"],
-                  "title": "PortfolioChart"
+                  "title": "Response Chart Portfolio Chart Portfolio Get"
                 }
               }
             }
@@ -1105,9 +1140,9 @@
             "type": "string",
             "title": "State"
           },
-          "catalysts": {
+          "events_catalysts": {
             "type": "string",
-            "title": "Catalysts"
+            "title": "Events Catalysts"
           },
           "risk_security": {
             "type": "string",
@@ -1148,6 +1183,18 @@
           "news": {
             "type": "string",
             "title": "News"
+          },
+          "strategy_performance": {
+            "type": "string",
+            "title": "Strategy Performance"
+          },
+          "strategy_breakdown": {
+            "type": "string",
+            "title": "Strategy Breakdown"
+          },
+          "strategy_risk": {
+            "type": "string",
+            "title": "Strategy Risk"
           }
         },
         "type": "object",
@@ -1179,7 +1226,7 @@
           "tv",
           "license",
           "state",
-          "catalysts",
+          "events_catalysts",
           "risk_security",
           "whales",
           "smart_money_flow",
@@ -1189,7 +1236,10 @@
           "sentiment_trending",
           "sentiment_influencers",
           "sentiment_pulse",
-          "news"
+          "news",
+          "strategy_performance",
+          "strategy_breakdown",
+          "strategy_risk"
         ],
         "title": "EndpointMap"
       },
@@ -1732,13 +1782,14 @@
           },
           "mode": {
             "type": "string",
+            "pattern": "^(live|demo)$",
             "title": "Mode"
           },
           "paper_assets": {
-            "type": "array",
             "items": {
               "type": "string"
             },
+            "type": "array",
             "title": "Paper Assets"
           },
           "paper_capital": {
@@ -1749,68 +1800,79 @@
         "type": "object",
         "title": "StateUpdate"
       },
-      "PaperConfig": {
+      "StrategyBreakdownItem": {
         "properties": {
-          "assets": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Assets"
-          },
-          "capital": {
-            "type": "number",
-            "title": "Capital"
-          }
-        },
-        "type": "object",
-        "title": "PaperConfig"
-      },
-      "State": {
-        "properties": {
-          "running": {
-            "type": "boolean",
-            "title": "Running"
-          },
-          "emergency_stop": {
-            "type": "boolean",
-            "title": "Emergency Stop"
-          },
-          "settings": {
-            "type": "object",
-            "title": "Settings"
-          },
-          "mode": {
+          "name": {
             "type": "string",
-            "title": "Mode"
+            "title": "Name"
           },
-          "paper": {
-            "$ref": "#/components/schemas/PaperConfig"
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
           },
-          "license": {
-            "$ref": "#/components/schemas/LicenseInfo"
-          },
-          "status": {
-            "type": "object",
-            "title": "Status"
-          },
-          "timestamp": {
-            "type": "integer",
-            "title": "Timestamp"
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate"
           }
         },
-        "required": [
-          "running",
-          "emergency_stop",
-          "settings",
-          "mode",
-          "paper",
-          "license",
-          "status",
-          "timestamp"
-        ],
         "type": "object",
-        "title": "State"
+        "required": [
+          "name",
+          "pnl",
+          "win_rate"
+        ],
+        "title": "StrategyBreakdownItem"
+      },
+      "StrategyPerf": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pnl",
+          "win_rate"
+        ],
+        "title": "StrategyPerf"
+      },
+      "StrategyRisk": {
+        "properties": {
+          "sharpe": {
+            "type": "number",
+            "title": "Sharpe"
+          },
+          "max_drawdown": {
+            "type": "number",
+            "title": "Max Drawdown"
+          },
+          "volatility": {
+            "type": "number",
+            "title": "Volatility"
+          },
+          "calmar": {
+            "type": "number",
+            "title": "Calmar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sharpe",
+          "max_drawdown",
+          "volatility",
+          "calmar"
+        ],
+        "title": "StrategyRisk"
       },
       "StrategyStat": {
         "properties": {
@@ -1849,67 +1911,6 @@
           "success"
         ],
         "title": "StrategyStat"
-      },
-      "StrategyPerf": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "pnl": {
-            "type": "number",
-            "title": "Pnl"
-          },
-          "win_rate": {
-            "type": "number",
-            "title": "Win Rate"
-          }
-        },
-        "type": "object",
-        "required": ["name", "pnl", "win_rate"],
-        "title": "StrategyPerf"
-      },
-      "StrategyBreakdownItem": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "pnl": {
-            "type": "number",
-            "title": "Pnl"
-          },
-          "win_rate": {
-            "type": "number",
-            "title": "Win Rate"
-          }
-        },
-        "type": "object",
-        "required": ["name", "pnl", "win_rate"],
-        "title": "StrategyBreakdownItem"
-      },
-      "StrategyRisk": {
-        "properties": {
-          "sharpe": {
-            "type": "number",
-            "title": "Sharpe"
-          },
-          "max_drawdown": {
-            "type": "number",
-            "title": "Max Drawdown"
-          },
-          "volatility": {
-            "type": "number",
-            "title": "Volatility"
-          },
-          "calmar": {
-            "type": "number",
-            "title": "Calmar"
-          }
-        },
-        "type": "object",
-        "required": ["sharpe", "max_drawdown", "volatility", "calmar"],
-        "title": "StrategyRisk"
       },
       "TrendingToken": {
         "properties": {

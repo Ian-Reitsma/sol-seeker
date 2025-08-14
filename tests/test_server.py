@@ -245,6 +245,7 @@ def test_api_order_flow():
         cats = resp.json()
         assert isinstance(cats, list)
         assert {"name", "eta", "severity"} <= set(cats[0].keys())
+        assert all("$NOVA" not in c["name"] for c in cats)
 
         resp = client.get("/state")
         assert resp.status_code == 200

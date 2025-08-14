@@ -33,8 +33,8 @@ test('influencer alerts render, dedupe, open links, and purge stale', async () =
     const ONE_HOUR = 3600000;
 
     if (Array.isArray(list) && list.length > 0) {
-      if (container.textContent.includes('DATA UNAVAILABLE')) {
-        container.innerHTML = '';
+      if (container.textContent && container.textContent.includes('DATA UNAVAILABLE')) {
+        container.replaceChildren();
       }
       list.forEach(a => {
         const key = `${a.handle}|${a.message}`;
@@ -49,7 +49,33 @@ test('influencer alerts render, dedupe, open links, and purge stale', async () =
           ? 'text-blade-orange'
           : 'text-cyan-glow';
         const avatar = `https://unavatar.io/${encodeURIComponent(a.handle.replace(/^@/, ''))}`;
-        row.innerHTML = `<img src="${avatar}" class="w-6 h-6 rounded-full" alt=""><div class="flex-1"><div class="hologram-text text-white font-bold">${a.handle}</div><div class="hologram-text text-xs text-blade-amber/60">${a.message}</div></div><div class="text-right"><div class="hologram-text text-xs text-blade-amber/60">${a.followers} followers</div><div class="hologram-text text-xs font-bold ${stanceClass}">${a.stance}</div></div>`;
+        const img = document.createElement('img');
+        img.src = avatar;
+        img.className = 'w-6 h-6 rounded-full';
+        img.alt = '';
+        row.appendChild(img);
+        const center = document.createElement('div');
+        center.className = 'flex-1';
+        const handle = document.createElement('div');
+        handle.className = 'hologram-text text-white font-bold';
+        handle.textContent = a.handle;
+        center.appendChild(handle);
+        const msg = document.createElement('div');
+        msg.className = 'hologram-text text-xs text-blade-amber/60';
+        msg.textContent = a.message;
+        center.appendChild(msg);
+        row.appendChild(center);
+        const right = document.createElement('div');
+        right.className = 'text-right';
+        const followers = document.createElement('div');
+        followers.className = 'hologram-text text-xs text-blade-amber/60';
+        followers.textContent = `${a.followers} followers`;
+        right.appendChild(followers);
+        const stance = document.createElement('div');
+        stance.className = `hologram-text text-xs font-bold ${stanceClass}`;
+        stance.textContent = a.stance;
+        right.appendChild(stance);
+        row.appendChild(right);
         if (a.url) row.addEventListener('click', () => window.open(a.url, '_blank'));
         container.appendChild(row);
         influencerState.set(key, { element: row, timestamp: now });
@@ -64,7 +90,10 @@ test('influencer alerts render, dedupe, open links, and purge stale', async () =
     }
 
     if (container.children.length === 0) {
-      container.innerHTML = '<div class="hologram-text text-blade-amber/60">DATA UNAVAILABLE</div>';
+      const msg = document.createElement('div');
+      msg.className = 'hologram-text text-blade-amber/60';
+      msg.textContent = 'DATA UNAVAILABLE';
+      container.appendChild(msg);
     }
   }
 

@@ -190,15 +190,13 @@ server routes are implemented, the panels will remain ornamental.
     price}`.
 
 ### 2.5 Upcoming Catalysts List
-* **Management Summary**: Time‑sensitive catalysts remain hard‑coded, risking stale information.
+* **Management Summary**: Catalysts panel now pulls live data and auto-refreshes.
 * **Developer Notes**:
-  - Static markup at lines 948‑971 lists `$NOVA Token Burn`, `Jupiter V2 Launch`, and `Solana Breakpoint`【F:web/public/dashboard.html†L948-L971】.
-  - No API call exists; design a new `GET /catalysts` returning `{event, timestamp, severity}` and refresh panel via
-    `updateCatalystList()`.
+  - Items load from `GET /catalysts` returning `{name, eta, severity}` and refresh every minute via `updateCatalystList()`.
 * **Agent Notes (2025-08-07)**:
-  - Implemented a typed `Catalyst` model and exposed `GET /catalysts` returning `{ event, timestamp, severity }`.
+  - Implemented a typed `Catalyst` model and exposed `GET /catalysts` returning `{ name, eta, severity }`.
   - Added an **Upcoming Catalysts** panel driven by `apiClient.getCatalysts()`; items are color‑coded by severity and show relative times.
-  - Server test cases ensure the service map advertises the new route and that responses match the schema.
+  - Server test cases ensure the service map advertises the route and that responses match the schema.
   - **Status**: Completed. Future optimization might sort events chronologically and poll periodically for updates.
 
 ### 2.6 Backtest Progress WebSocket
@@ -216,7 +214,7 @@ server routes are implemented, the panels will remain ornamental.
 ### 2.7 Portfolio Equity Chart Endpoint
 * **Management Summary**: Equity curve is a key KPI yet the chart never renders.
 * **Developer Notes**:
-  - `loadEquityChart()` fetches `/chart/portfolio?tf=...` at lines 3187‑3193【F:web/public/dashboard.html†L3187-L3193】.
+  - `loadEquityChart()` fetches `/chart/portfolio?tf=...` at lines 3828‑3847【F:web/public/dashboard.html†L3828-L3847】.
   - Backend only supports `/chart/{symbol}`; either add `/chart/portfolio` or adapt the frontend to call `/chart/SOL` (or
     whichever symbol represents equity).
   - Query constraints: `limit` must be positive and when both `start` and `end` are supplied `start` must not exceed `end`; otherwise the server returns HTTP 400.
@@ -272,7 +270,7 @@ In these cases both sides ship partial implementations, but mismatched expectati
 * **Management Summary**: Portfolio chart never displays because UI and API disagree on path structure.
 * **Developer Notes**:
   - API exposes `/chart/{symbol}` at lines 832‑837【F:src/solbot/server/api.py†L832-L837】.
-  - Dashboard requests `/chart/portfolio?tf=1H|4H|1D` (lines 3187‑3193)【F:web/public/dashboard.html†L3187-L3193】.
+  - Dashboard requests `/chart/portfolio?tf=1H|4H|1D` (lines 3828‑3847)【F:web/public/dashboard.html†L3828-L3847】.
   - Align by either implementing `/chart/portfolio` or using `/chart/${symbol}` consistently.
 
 * **Agent Notes (2025-08-09)**:

@@ -45,9 +45,12 @@ test('catalyst list refreshes and clears when empty', async () => {
   function updateCatalystList(list: any[]) {
     const container = document.getElementById('catalystList');
     if (!container) return;
-    container.innerHTML = '';
+    container.replaceChildren();
     if (!Array.isArray(list) || list.length === 0) {
-      container.innerHTML = '<div class="hologram-text text-white">None</div>';
+      const msg = document.createElement('div');
+      msg.className = 'hologram-text text-white';
+      msg.textContent = 'None';
+      container.appendChild(msg);
       return;
     }
     const frag = document.createDocumentFragment();
