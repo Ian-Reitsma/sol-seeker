@@ -31,6 +31,7 @@ VITE_API_URL=http://localhost:8000
 - WebSocket client tracks reconnect attempts per endpoint and pauses polling when the tab is hidden.
 - Added backtest form posting to `/backtest` and rendering PnL, drawdown, and Sharpe metrics.
 - Positions list now diffs DOM nodes instead of rebuilding the entire list.
+- WebSocket client buffers messages while offline and replays them once connections are restored.
 
 ## Next Steps
 

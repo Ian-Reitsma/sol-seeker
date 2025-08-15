@@ -46,6 +46,7 @@ included only to demonstrate that the entire codebase was surveyed.
 | `GET /positions`, `GET /orders`, `POST /orders` | Position list, order history and placement | Called in initialization and trade modal【F:web/public/dashboard.html†L2666-L2670】【F:web/public/dashboard.html†L2390-L2390】 |
 | WebSockets `/dashboard/ws`, `/positions/ws`, `/posterior/ws`, `/logs/ws` | Real‑time risk, positions, regime probabilities and debug logs | `initializeWebSockets()` connects and updates UI【F:web/public/dashboard.html†L3334-L3378】 |
 
+`/status` supports optional `start`/`end`/`limit` parameters validated via the shared query schemas; malformed values yield HTTP 400.
 All other modules fall into one of the three gap categories below.
 
 ---
@@ -58,12 +59,12 @@ lack UI triggers until they are exposed.
 ### 1.1 `/license` – Wallet License Diagnostics
 * **Management Summary**: Without a direct license view, operators cannot audit token expiry or distribution records from the UI.
 * **Developer Notes**:
-  - Endpoint defined at `src/solbot/server/api.py` lines 417‑424 returning `{wallet, mode, issued_at}`【F:src/solbot/server/api.py†L417-L424】.
+  - Endpoint defined at `src/solbot/server/api.py` lines 466‑474 returning `{wallet, mode, issued_at, expires_at}`【F:src/solbot/server/api.py†L466-L474】.
   - `SolSeekerAPI.getLicense()` fetches this endpoint and `updateLicenseInfo()` renders the panel during `updateDashboardData()`【F:web/public/dashboard.html†L2902-L2973】【F:web/public/dashboard.html†L3271-L3284】.
-* **Agent Notes (2025-08-10)**:
-  - Added a visible `<div id="licenseInfo">` in the settings section showing wallet, mode and issued time.
-  - `updateLicenseInfo()` populates the fields and hides the panel when the endpoint returns null.
-  - **Status**: Completed for existing fields. Further optimization could include displaying an expiration date once `/license` exposes `expires_at`.
+* **Agent Notes (2025-08-15)**:
+  - Added a visible `<div id="licenseInfo">` in the settings section showing wallet, mode, issued time and expiry.
+  - `updateDashboardData()` polls `/license` daily, storing `expires_at` in `dashboardState.licenseExpiry` and calling `updateLicenseExpiryBanner()` to show a yellow banner when fewer than seven days remain【F:web/public/dashboard.html†L2934-L2975】【F:web/public/dashboard.html†L3790-L3814】.
+  - **Status**: Completed with proactive expiry warnings.
 
 
 ### 1.2 `/api` – Service Map & Discovery
@@ -93,11 +94,13 @@ lack UI triggers until they are exposed.
 * **Developer Notes**:
   - Implemented at lines 357‑359 returning `["SOL", "ETH", ...]`【F:src/solbot/server/api.py†L357-L359】.
   - `SolSeekerAPI.getAssets()` exists at line 2534 but no UI calls it【F:web/public/dashboard.html†L2534-L2534】.
+  - Accepts `limit`/`offset` query parameters validated via shared `LimitParams`; invalid values return `400`.
   - Populate dropdowns such as the order ticket or strategy matrix validator with this list and cache it client‑side.
 * **Agent Notes (2025-08-07)**:
   - Extended `updateDashboardData()` to call `apiClient.getAssets()` once and cache the result in `dashboardState.assets`.
   - Added a **supported-assets dropdown** in the settings panel that lists every symbol returned by `/assets`.
   - The dropdown doubles as input validation for order placement; subsequent refreshes reuse the cached list to minimize network chatter.
+  - Demo mode settings now validate selected assets against this list before saving, disabling the save button and showing a toast on unknown symbols【F:web/public/dashboard.html†L2163-L2225】【F:web/public/dashboard.html†L3356-L3380】.
   - **Status**: Completed. Future work could include refreshing the cache periodically to pick up newly listed tokens.
 
 ### 1.5 `/features/schema` – Feature Index Metadata
@@ -217,7 +220,7 @@ server routes are implemented, the panels will remain ornamental.
   - `loadEquityChart()` fetches `/chart/portfolio?tf=...` at lines 3828‑3847【F:web/public/dashboard.html†L3828-L3847】.
   - Backend only supports `/chart/{symbol}`; either add `/chart/portfolio` or adapt the frontend to call `/chart/SOL` (or
     whichever symbol represents equity).
-  - Query constraints: `limit` must be positive and when both `start` and `end` are supplied `start` must not exceed `end`; otherwise the server returns HTTP 400.
+  - Supports `start`/`end`/`cursor`/`limit` via shared `RangeParams` and `LimitParams`; invalid values trigger a uniform HTTP 400 response.
 
 * **Agent Notes (2025-08-09)**:
   - Added `/chart/portfolio` powered by `RiskManager.equity_history` and advertised in service map.

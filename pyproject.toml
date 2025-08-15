@@ -24,3 +24,9 @@ dependencies = [
     "numpy>=1.21",
     "PyJWT>=2.8.0",
 ]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+ignore = ["E501", "F401", "F841", "E402", "F821"]

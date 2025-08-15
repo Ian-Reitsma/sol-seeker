@@ -22,6 +22,10 @@ jobs:
           node-version: '20'
       - name: Install Node dependencies
         run: npm ci
+      - name: Run linters
+        run: |
+          ruff check .
+          npm run lint
       - name: Run tests
         run: |
           pytest -q

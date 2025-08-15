@@ -29,15 +29,25 @@ import time
 import logging
 import contextlib
 import secrets
+import json
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+    Query,
+    Request,
+)
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator, ValidationError
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
 from typing import Optional, List
@@ -55,7 +65,7 @@ from ..types import Side
 from ..persistence.assets import AssetService
 from ..bootstrap import BootstrapCoordinator
 from ..schema import SCHEMA_HASH, PositionState, PnLState
-from ..service import start_network_poller
+from ..service import start_network_poller, publisher
 
 
 MAX_PORTFOLIO_POINTS = 1_000
@@ -146,6 +156,31 @@ class Metrics(BaseModel):
     cpu: Optional[float] = None
     memory: Optional[float] = None
     network: Optional[NetworkStats] = None
+
+
+class LimitParams(BaseModel):
+    limit: int = Field(MAX_PORTFOLIO_POINTS, ge=1, le=MAX_PORTFOLIO_POINTS)
+    offset: Optional[int] = Field(None, ge=0)
+    cursor: Optional[int] = Field(None, ge=0)
+
+    @root_validator
+    def _check_offset_cursor(cls, values: dict) -> dict:
+        offset, cursor = values.get("offset"), values.get("cursor")
+        if offset is not None and cursor is not None:
+            raise ValueError("offset and cursor are mutually exclusive")
+        return values
+
+
+class RangeParams(BaseModel):
+    start: Optional[int] = Field(None, ge=0)
+    end: Optional[int] = Field(None, ge=0)
+
+    @root_validator
+    def _check_range(cls, values: dict) -> dict:
+        start, end = values.get("start"), values.get("end")
+        if start is not None and end is not None and start > end:
+            raise ValueError("start must be <= end")
+        return values
 
 
 class RouteInfo(BaseModel):
@@ -311,6 +346,7 @@ class LicenseInfo(BaseModel):
     wallet: str
     mode: str
     issued_at: int
+    expires_at: int
 
 
 class ServiceMap(BaseModel):
@@ -337,7 +373,11 @@ def create_app(
     features: Optional[FeatureEngine] = None,
     posterior: Optional[PosteriorEngine] = None,
     metrics_interval: float = 0.0,
+    publisher_queue_size: int = 0,
+    publisher_overflow: str = "drop_new",
     ) -> FastAPI:
+    publisher.configure(maxsize=publisher_queue_size, overflow=publisher_overflow)
+
     app = FastAPI(title="sol-bot API")
     app.add_middleware(
         CORSMiddleware,
@@ -346,6 +386,12 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"detail": exc.errors()})
+
+    app.add_exception_handler(RequestValidationError, validation_error_handler)
+    app.add_exception_handler(ValidationError, validation_error_handler)
     Instrumentator().instrument(app).expose(
         app, endpoint="/metrics/prometheus", include_in_schema=False
     )
@@ -399,7 +445,8 @@ def create_app(
     def check_key(key: Optional[str] = Depends(api_key_header)) -> None:
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
-            import hashlib, hmac
+            import hashlib
+            import hmac
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
@@ -420,10 +467,12 @@ def create_app(
 
     @app.get("/license", response_model=LicenseInfo)
     def license_info() -> LicenseInfo:
+        now = int(time.time())
         return LicenseInfo(
             wallet=cfg.wallet or "",
             mode=lm.license_mode(cfg.wallet) if cfg.wallet else "none",
-            issued_at=int(time.time()),
+            issued_at=now,
+            expires_at=now + 30 * 24 * 3600,
         )
 
     @app.get("/state")
@@ -582,7 +631,10 @@ def create_app(
         )
 
     @app.get("/status")
-    async def status() -> dict:
+    async def status(
+        _: RangeParams = Depends(),
+        __: LimitParams = Depends(),
+    ) -> dict:
         return bootstrap.status()
 
     @app.get("/metrics", response_model=Metrics)
@@ -612,8 +664,11 @@ def create_app(
         return Metrics(cpu=cpu, memory=mem, network=net)
 
     @app.get("/assets", response_model=list[str])
-    async def assets_endpoint() -> list[str]:
-        return [a["symbol"] for a in assets.list_assets()]
+    async def assets_endpoint(limits: LimitParams = Depends()) -> list[str]:
+        symbols = [a["symbol"] for a in assets.list_assets()]
+        if limits.offset:
+            symbols = symbols[limits.offset :]
+        return symbols[: limits.limit]
 
     @app.get("/events/catalysts", response_model=list[Catalyst])
     async def catalysts_endpoint() -> list[Catalyst]:
@@ -801,14 +856,19 @@ def create_app(
 
                 strat_fn = select_strategy(req.strategy_mix)
                 res = await run_backtest(trade, cfg, strat_fn)
-                await q.put(
-                    {
-                        "progress": 100,
-                        "pnl": res.pnl,
-                        "drawdown": res.drawdown,
-                        "sharpe": res.sharpe,
-                    }
+                record = {
+                    "id": job_id,
+                    "pnl": res.pnl,
+                    "drawdown": res.drawdown,
+                    "sharpe": res.sharpe,
+                    "timestamp": int(time.time()),
+                }
+                bt_dir = (
+                    Path(__file__).resolve().parents[3] / "persistence" / "backtests"
                 )
+                bt_dir.mkdir(parents=True, exist_ok=True)
+                (bt_dir / f"{job_id}.json").write_text(json.dumps(record))
+                await q.put({"progress": 100, **record})
             except asyncio.CancelledError:
                 await q.put({"progress": 100, "cancelled": True})
                 raise
@@ -856,6 +916,28 @@ def create_app(
             with contextlib.suppress(asyncio.CancelledError):
                 await task
             await ws.close()
+
+    backtest_dir = Path(__file__).resolve().parents[3] / "persistence" / "backtests"
+
+    @app.get("/backtest/history", name="backtest_history")
+    async def backtest_history() -> list[dict]:
+        if not backtest_dir.exists():
+            return []
+        out = []
+        for p in backtest_dir.glob("*.json"):
+            try:
+                out.append(json.loads(p.read_text()))
+            except Exception:
+                continue
+        out.sort(key=lambda r: r.get("timestamp", 0), reverse=True)
+        return out
+
+    @app.get("/backtest/{job_id}", name="get_backtest")
+    async def get_backtest(job_id: str) -> dict:
+        path = backtest_dir / f"{job_id}.json"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="backtest not found")
+        return json.loads(path.read_text())
 
     @app.get("/dashboard")
     async def dashboard() -> dict:
@@ -970,7 +1052,8 @@ def create_app(
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
-            import hashlib, hmac
+            import hashlib
+            import hmac
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
@@ -997,7 +1080,8 @@ def create_app(
         key = ws_conn.headers.get("X-API-Key") or ws_conn.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
-            import hashlib, hmac
+            import hashlib
+            import hmac
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
@@ -1074,7 +1158,8 @@ def create_app(
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
-            import hashlib, hmac
+            import hashlib
+            import hmac
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
@@ -1149,7 +1234,8 @@ def create_app(
         key = ws.headers.get("X-API-Key") or ws.query_params.get("key")
         expected_hash = os.getenv("API_KEY_HASH")
         if expected_hash:
-            import hashlib, hmac
+            import hashlib
+            import hmac
             if not key or not hmac.compare_digest(
                 hashlib.sha256(key.encode()).hexdigest(), expected_hash
             ):
@@ -1315,27 +1401,15 @@ def create_app(
     @app.get("/chart/portfolio")
     async def chart_portfolio(
         tf: str = Query("1H"),
-        start: Optional[int] = Query(None),
-        end: Optional[int] = Query(None),
-        offset: Optional[int] = Query(None),
-        cursor: Optional[int] = Query(None),
-        limit: int = Query(MAX_PORTFOLIO_POINTS),
+        r: RangeParams = Depends(),
+        limits: LimitParams = Depends(),
     ) -> dict:
         """Return portfolio equity history with pagination and downsampling."""
 
-        if limit <= 0 or limit > MAX_PORTFOLIO_POINTS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"limit must be between 1 and {MAX_PORTFOLIO_POINTS}",
-            )
-        if offset is not None and offset < 0:
-            raise HTTPException(status_code=400, detail="offset must be >= 0")
-        if offset is not None and cursor is not None:
-            raise HTTPException(status_code=400, detail="offset and cursor are mutually exclusive")
-        if start is not None and end is not None and start > end:
-            raise HTTPException(status_code=400, detail="start must be <= end")
-
         series = list(risk.equity_history)
+        start, end = r.start, r.end
+        offset, cursor, limit = limits.offset, limits.cursor, limits.limit
+
         if start is not None or end is not None:
             times = [p[0] for p in series]
             left = bisect_left(times, start) if start is not None else 0

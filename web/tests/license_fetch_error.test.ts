@@ -19,6 +19,7 @@ test('shows license error when fetch fails', async () => {
       getLicense: () => Promise.reject(new Error('fail'))
     },
     updateLicenseMode: () => {},
+    updateLicenseExpiryBanner: () => {},
     licenseInfoTemplate: document.getElementById('licenseInfo')!.innerHTML,
     requestAnimationFrame: (cb: any) => cb()
   };
