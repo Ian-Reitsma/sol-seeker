@@ -66,6 +66,8 @@
     <!-- Atmospheric Background -->
     <div class="atmospheric-glow"></div>
     <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
+    <div id="wsReconnectBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-blade-orange/80 text-white px-4 py-1 rounded text-xs z-50">Reconnecting…</div>
+    <div id="licenseExpiryBanner" class="hidden fixed top-24 left-1/2 -translate-x-1/2 bg-blade-amber/80 text-black px-4 py-1 rounded text-xs z-50">LICENSE EXPIRES SOON</div>
 
     <!-- Fixed Header -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-glass-black border-b border-blade-amber/30 backdrop-filter backdrop-blur-lg">
@@ -1690,6 +1692,9 @@
                             <button class="flex-1 bg-blade-orange/20 text-blade-orange border border-blade-orange/50 px-4 py-2 rounded hologram-text text-sm hover:bg-blade-orange/30 transition-all hidden" id="cancelBacktest">
                                 CANCEL
                             </button>
+                            <button class="flex-1 bg-void-black/50 text-blade-amber border border-blade-amber/50 px-4 py-2 rounded hologram-text text-sm hover:bg-void-black/70 transition-all" id="btHistoryBtn">
+                                HISTORY
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1788,6 +1793,17 @@
         </div>
     </div>
 
+    <!-- Backtest History Modal -->
+    <div class="position-details-modal" id="btHistoryModal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-white hologram-text tracking-wider">BACKTEST HISTORY</h3>
+                <button class="text-blade-amber hover:text-white text-2xl" id="btHistoryClose">&times;</button>
+            </div>
+            <div id="btHistoryList" class="text-xs hologram-text text-white max-h-96 overflow-y-auto space-y-1"></div>
+        </div>
+    </div>
+
     <script>
         const pollingIntervals = [];
         let lastRpcSample = 0;
@@ -1839,6 +1855,9 @@
             el.innerHTML = isLive
                 ? `<span class="w-2 h-2 bg-cyan-glow rounded-full"></span><span class="text-xs hologram-text cyan-glow">LIVE</span>`
                 : `<span class="w-2 h-2 bg-blade-orange rounded-full"></span><span class="text-xs hologram-text text-blade-orange">DISCONNECTED</span>`;
+            if (typeof wsClient !== 'undefined') wsClient.connections.forEach((_, ep) => wsClient.flush(ep));
+            const banner = typeof wsClient !== 'undefined' ? document.getElementById('wsReconnectBanner') : null;
+            if (banner) banner.classList.toggle('hidden', !wsClient.hasPending());
         }
 
         async function pollSystemStatus() {
@@ -2176,6 +2195,10 @@
             demoOptions.classList.toggle('hidden', mode !== 'demo');
             const payload = { mode };
             if (mode === 'demo') {
+                if (!validateDemoAssets()) {
+                    showToast('Unknown asset selected');
+                    return;
+                }
                 const cash = parseFloat(demoCashInput.value) || 0;
                 const assets = Array.from(demoAssetsSelect.selectedOptions).map(o => o.value);
                 payload.paper_capital = cash;
@@ -2200,7 +2223,9 @@
         }
         if (modeSelect) modeSelect.addEventListener('change', saveMode);
         [demoCashInput, demoAssetsSelect].forEach(el => {
-            el && el.addEventListener('change', () => {
+            if (!el) return;
+            el.addEventListener('change', () => {
+                validateDemoAssets();
                 if (modeSelect.value === 'demo') saveMode();
             });
         });
@@ -2542,6 +2567,31 @@
 
         document.getElementById('runBacktest').addEventListener('click', runBacktest);
 
+        const btHistoryBtn = document.getElementById('btHistoryBtn');
+        const btHistoryModal = document.getElementById('btHistoryModal');
+        const btHistoryClose = document.getElementById('btHistoryClose');
+        btHistoryBtn.addEventListener('click', async () => {
+            const list = document.getElementById('btHistoryList');
+            list.innerHTML = '';
+            try {
+                const hist = await apiClient.getBacktestHistory();
+                hist.forEach(h => {
+                    const div = document.createElement('div');
+                    div.textContent = `${h.id} • PnL $${h.pnl.toFixed(2)}`;
+                    list.appendChild(div);
+                });
+            } catch {
+                const div = document.createElement('div');
+                div.textContent = 'Failed to load history';
+                list.appendChild(div);
+            }
+            btHistoryModal.classList.add('show');
+        });
+        btHistoryClose.addEventListener('click', () => btHistoryModal.classList.remove('show'));
+        btHistoryModal.addEventListener('click', (e) => {
+            if (e.target === btHistoryModal) btHistoryModal.classList.remove('show');
+        });
+
         // Emergency stop functionality
         document.querySelector('.emergency-stop').addEventListener('click', async function() {
             if (!confirm('EMERGENCY STOP: This will immediately close all positions and halt trading. Continue?')) return;
@@ -2729,6 +2779,14 @@
             async runBacktest(config) {
                 return this.post('/backtest', config);
             }
+
+            async getBacktest(id) {
+                return this.get(`/backtest/${id}`);
+            }
+
+            async getBacktestHistory() {
+                return this.get('/backtest/history');
+            }
             
             async getAssets() {
                 return this.get('/assets');
@@ -2890,7 +2948,9 @@
             catalysts: null,
             lastUpdate: null,
             isDemo: false,
-            licenseError: false
+            licenseError: false,
+            licenseExpiry: null,
+            licenseChecked: 0
         };
 
         const licenseInfoTemplate = document.getElementById('licenseInfo')?.innerHTML;
@@ -2938,6 +2998,18 @@
                 }
                 const featureTs = featureSnap?.timestamp;
 
+                if (!dashboardState.licenseChecked || Date.now() - dashboardState.licenseChecked > 86400000) {
+                    try {
+                        const lic = await apiClient.getLicense();
+                        dashboardState.license = lic;
+                        dashboardState.licenseExpiry = lic.expires_at;
+                        dashboardState.licenseError = false;
+                    } catch {
+                        dashboardState.licenseError = true;
+                    }
+                    dashboardState.licenseChecked = Date.now();
+                }
+
                 const render = () => {
                     if (assets) populateAssetSelect(assets);
                     updateModePanel();
@@ -2957,6 +3029,8 @@
                     dashboardState.isDemo = mode === 'demo';
                     updateLicenseMode(dashboardState.isDemo);
                     updateTradingButton();
+                    updateLicenseInfo();
+                    updateLicenseExpiryBanner();
                 };
                 if (typeof requestAnimationFrame === 'function') {
                     requestAnimationFrame(render);
@@ -3324,6 +3398,18 @@
                 if (saved.includes(tok)) opt.selected = true;
                 sel.appendChild(opt);
             });
+            validateDemoAssets();
+        }
+
+        function validateDemoAssets() {
+            const sel = document.getElementById('demoAssets');
+            const saveBtn = document.getElementById('saveSettings');
+            if (!sel) return true;
+            const selected = Array.from(sel.selectedOptions).map(o => o.value);
+            const known = new Set(dashboardState.assets || []);
+            const invalid = selected.filter(a => !known.has(a));
+            if (saveBtn) saveBtn.disabled = invalid.length > 0;
+            return invalid.length === 0;
         }
 
         function updateModePanel() {
@@ -3345,6 +3431,7 @@
                         o.selected = paper.assets && paper.assets.includes(o.value);
                     });
                 }
+                validateDemoAssets();
             } else {
                 cfg && cfg.classList.add('hidden');
             }
@@ -3725,6 +3812,7 @@
                 try {
                     dashboardState.license = await apiClient.getLicense();
                     dashboardState.licenseError = false;
+                    dashboardState.licenseExpiry = dashboardState.license?.expires_at || null;
                 } catch (err) {
                     console.error('License load failed', err);
                     dashboardState.license = null;
@@ -3735,11 +3823,23 @@
                     const mode = dashboardState.license?.mode;
                     dashboardState.isDemo = mode === 'demo';
                     updateLicenseMode(dashboardState.isDemo);
+                    updateLicenseExpiryBanner();
                 };
                 if (typeof requestAnimationFrame === 'function') {
                     requestAnimationFrame(render);
                 } else {
                     render();
+                }
+            }
+
+            function updateLicenseExpiryBanner() {
+                const banner = document.getElementById('licenseExpiryBanner');
+                if (!banner) return;
+                const exp = dashboardState.licenseExpiry;
+                if (typeof exp === 'number' && exp * 1000 - Date.now() < 7 * 86400000) {
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
                 }
             }
 
@@ -4017,6 +4117,7 @@
                 this.connections = new Map();
                 this.reconnectAttempts = new Map();
                 this.maxReconnectAttempts = 5;
+                this.queues = new Map();
             }
 
             connect(endpoint, onMessage, onError = null) {
@@ -4082,7 +4183,30 @@
                 const ws = this.connections.get(endpoint);
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify(data));
+                } else {
+                    const q = this.queues.get(endpoint) || [];
+                    q.push(data);
+                    this.queues.set(endpoint, q);
+                    const banner = document.getElementById('wsReconnectBanner');
+                    if (banner) banner.classList.remove('hidden');
                 }
+            }
+
+            flush(endpoint) {
+                const ws = this.connections.get(endpoint);
+                const q = this.queues.get(endpoint);
+                if (ws && ws.readyState === WebSocket.OPEN && q && q.length) {
+                    while (q.length) {
+                        ws.send(JSON.stringify(q.shift()));
+                    }
+                }
+            }
+
+            hasPending() {
+                for (const q of this.queues.values()) {
+                    if (q.length) return true;
+                }
+                return false;
             }
 
             disconnect(endpoint) {

@@ -21,6 +21,7 @@ test('renders license diagnostics panel', async () => {
       getLicense: () => Promise.resolve(mockLicense)
     },
     updateLicenseMode: () => {},
+    updateLicenseExpiryBanner: () => {},
     licenseInfoTemplate: document.getElementById('licenseInfo')!.innerHTML,
     requestAnimationFrame: (cb: any) => cb()
   };

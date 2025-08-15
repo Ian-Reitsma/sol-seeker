@@ -24,6 +24,9 @@ class RiskManager:
         self.equity: float = 0.0
         self.price_history: Dict[str, List[float]] = {}
         self.equity_history: deque[tuple[int, float]] = deque(maxlen=10_000)
+        self.token_peak: Dict[str, float] = {}
+        self.token_equity: Dict[str, float] = {}
+        self.token_drawdown_limits: Dict[str, float] = {}
 
     # ------------------------------------------------------------------
     # Compatibility helpers
@@ -51,6 +54,9 @@ class RiskManager:
         self.market_prices.clear()
         self.price_history.clear()
         self.max_exposure.clear()
+        self.token_peak.clear()
+        self.token_equity.clear()
+        self.token_drawdown_limits.clear()
         self.peak_equity = 0.0
         self.equity_history.clear()
         self.update_equity(0.0)
@@ -60,6 +66,16 @@ class RiskManager:
     # ------------------------------------------------------------------
     def set_max_exposure(self, token: str, notional: float) -> None:
         self.max_exposure[token] = notional
+
+    def set_token_drawdown_limit(self, token: str, limit: float) -> None:
+        self.token_drawdown_limits[token] = limit
+
+    def token_drawdown(self, token: str) -> float:
+        peak = self.token_peak.get(token, 0.0)
+        equity = self.token_equity.get(token, 0.0)
+        if peak == 0:
+            return 0.0
+        return (peak - equity) / peak
 
     def _enforce_exposure(self, token: str, qty: float, price: float) -> None:
         limit = self.max_exposure.get(token)
@@ -72,6 +88,9 @@ class RiskManager:
 
     def record_trade(self, token: str, qty: float, price: float, side: Side, fee: float = 0.0) -> None:
         """Record a filled order and update PnL and exposure."""
+        limit = self.token_drawdown_limits.get(token)
+        if limit is not None and self.token_drawdown(token) >= limit:
+            raise ValueError("token drawdown limit exceeded")
 
         if side is Side.BUY:
             self.add_position(token, qty, price, fee)
@@ -128,8 +147,22 @@ class RiskManager:
         for token, pos in self.positions.items():
             price = self.market_prices.get(token, pos.cost)
             value += pos.qty * price
+            self._update_token_equity(token)
+        for token in self.pnl:
+            if token not in self.positions:
+                self._update_token_equity(token)
         realized = sum(p.realized for p in self.pnl.values())
         self.update_equity(value + realized)
+
+    def _update_token_equity(self, token: str) -> None:
+        pnl = self.pnl.get(token, PnLState(realized=0.0, unrealized=0.0))
+        pos = self.positions.get(token)
+        price = self.market_prices.get(token, pos.cost if pos else 0.0)
+        equity = pnl.realized + (pos.qty * price if pos else 0.0)
+        self.token_equity[token] = equity
+        peak = self.token_peak.get(token, 0.0)
+        if equity > peak:
+            self.token_peak[token] = equity
 
     # ------------------------------------------------------------------
     # Portfolio metrics
