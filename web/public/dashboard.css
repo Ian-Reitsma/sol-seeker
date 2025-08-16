@@ -1,11 +1,32 @@
          /* TODO[AGENTS-AUDIT §10]: Replace retro fonts with `Inter` for modern look */
          /* TODO[AGENTS-AUDIT §1]: include side-menu transition classes */
-         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Share+Tech+Mono&display=swap');
         
-         body {
-             /* TODO[AGENTS-AUDIT §1]: ensure responsive single-column layout below 1280px */
-             background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
-         }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        @media (max-width:1279px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Simple slide-out menu */
+        #side-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        #side-menu.open {
+            transform: translateX(0);
+        }
         
         .hologram-panel {
             background: rgba(17, 17, 17, 0.9);
@@ -186,25 +207,6 @@ footer {
             opacity: 1;
         }
         
-        .atmospheric-glow {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-            background: radial-gradient(
-                circle at 20% 80%,
-                rgba(255, 140, 0, 0.1) 0%,
-                transparent 50%
-            ),
-            radial-gradient(
-                circle at 80% 20%,
-                rgba(0, 229, 255, 0.05) 0%,
-                transparent 50%
-            );
-        }
         
         .sparkline {
             stroke-width: 2;

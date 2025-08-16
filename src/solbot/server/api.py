@@ -298,6 +298,13 @@ class StrategyRisk(BaseModel):
     calmar: float
 
 
+class StrategyMatrixItem(BaseModel):
+    name: str
+    status: str
+    last_update: int
+    latency_ms: int
+
+
 class EndpointMap(BaseModel):
     health: str
     status: str
@@ -411,13 +418,16 @@ def create_app(
     log_lock = asyncio.Lock()
     poller_task: Optional[asyncio.Task] = None
     backtest_jobs: dict[str, BacktestJob] = {}
-    initial_mode = "live" if lm.license_mode(cfg.wallet) == "full" else "demo"
+    # Always default to demo mode and keep the engine paused until an explicit
+    # start command is issued. The paper account begins with 10 SOL which the
+    # frontend converts to USD on load.
+    initial_mode = "demo"
     runtime_state = {
-        "running": True,
+        "running": False,
         "emergency_stop": False,
         "settings": {},
         "mode": initial_mode,
-        "paper": {"assets": ["SOL"], "capital": 1000.0},
+        "paper": {"assets": ["SOL"], "capital": 10.0},
     }
 
     def subscribe_orders() -> asyncio.Queue[dict]:
@@ -551,6 +561,22 @@ def create_app(
                 seed_demo_positions(tokens, capital)
         return state()
 
+    @app.post("/engine/start")
+    async def engine_start() -> dict:
+        """Explicitly start the trading engine."""
+        if runtime_state["running"]:
+            raise HTTPException(status_code=409, detail="engine already running")
+        runtime_state["running"] = True
+        return {"running": True}
+
+    @app.post("/engine/stop")
+    async def engine_stop() -> dict:
+        """Pause all trading engine activity."""
+        if not runtime_state["running"]:
+            raise HTTPException(status_code=409, detail="engine already stopped")
+        runtime_state["running"] = False
+        return {"running": False}
+
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
         return RedirectResponse("/static/dashboard.html")
@@ -662,6 +688,29 @@ def create_app(
             except Exception:
                 pass
         return Metrics(cpu=cpu, memory=mem, network=net)
+
+    @app.get("/price/sol")
+    async def price_sol() -> dict:
+        """Return the current SOL price in USD."""
+        price = await oracle.price("SOL")
+        return {"price": price}
+
+    @app.get("/pnl/realized")
+    async def pnl_realized() -> dict:
+        """Return aggregate realized PnL."""
+        total = sum(p.realized for p in risk.pnl.values())
+        return {"total": total, "today": 0.0}
+
+    @app.get("/risk/portfolio")
+    async def risk_portfolio() -> dict:
+        """Return portfolio-level risk metrics."""
+
+        return {
+            "drawdown": risk.drawdown,
+            "max_drawdown": risk.max_drawdown(),
+            "leverage": risk.leverage,
+            "exposure": risk.exposure,
+        }
 
     @app.get("/assets", response_model=list[str])
     async def assets_endpoint(limits: LimitParams = Depends()) -> list[str]:
@@ -782,11 +831,25 @@ def create_app(
         return [
             StrategyBreakdownItem(name="Scalper", pnl=120.0, win_rate=0.58),
             StrategyBreakdownItem(name="Trend", pnl=240.0, win_rate=0.61),
+            StrategyBreakdownItem(name="Liquidity", pnl=80.0, win_rate=0.55),
+            StrategyBreakdownItem(name="Other", pnl=20.0, win_rate=0.5),
         ]
 
     @app.get("/strategy/risk", response_model=StrategyRisk)
     async def strategy_risk() -> StrategyRisk:
         return StrategyRisk(sharpe=1.4, max_drawdown=0.12, volatility=0.18, calmar=1.2)
+
+    @app.get("/strategy/matrix", response_model=list[StrategyMatrixItem])
+    async def strategy_matrix() -> list[StrategyMatrixItem]:
+        now = int(time.time() * 1000)
+        return [
+            StrategyMatrixItem(
+                name="Listing Sniper",
+                status="syncing",
+                last_update=now,
+                latency_ms=42,
+            )
+        ]
 
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:
@@ -1170,6 +1233,9 @@ def create_app(
             pos_connections.append(ws)
         try:
             while True:
+                if not runtime_state["running"]:
+                    await asyncio.sleep(0.5)
+                    continue
                 await ws.receive_text()
         except WebSocketDisconnect:
             async with pos_lock:
@@ -1246,6 +1312,9 @@ def create_app(
         order_q = subscribe_orders()
         try:
             while True:
+                if not runtime_state["running"]:
+                    await asyncio.sleep(0.5)
+                    continue
                 vec_task = asyncio.create_task(asyncio.to_thread(feat_q.get))
                 order_task = asyncio.create_task(order_q.get())
                 recv_task = asyncio.create_task(ws.receive_text())

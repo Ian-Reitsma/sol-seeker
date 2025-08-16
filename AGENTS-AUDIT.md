@@ -2,6 +2,34 @@
 
 This file defines the immediate and near-term directives for the next development agent. The items are ordered by criticality and expected impact. Implement each item completely before moving to the next.
 
+**Reference:** All agent docs live at the repository root.
+- Project log: `AGENTS.md`
+- Frontend ↔ API map: `web/public/dashboard_api_audit.md`
+- Ops runbook: `OPERATIONS.md`
+
+## Progress 2025-08-10
+- Portfolio risk metrics wired via `src/solbot/engine/risk.py` and `/risk/portfolio`; dashboard polls in `web/public/js/portfolio.js`.
+- Added `/strategy/matrix` endpoint (`src/solbot/server/api.py`) feeding Neural Strategy Matrix.
+- Analytics tabs now toggle with `aria-selected` and loaders (`web/public/js/analytics.js`).
+- Branding switched to “SOL SEEKER” with Inter font and footer (`web/public/dashboard.html`, `dashboard.css`, `settings.html`).
+
+## Progress 2025-08-16
+- Hardened SOL/USD formatting helpers in `web/public/js/utils.js` to standardize currency display.
+
+## Progress 2025-08-17
+- Normalized portfolio exposure to an equity ratio and added unit tests for risk and price endpoints.
+- Trading toggle now reflects engine state via `/state` polling and `/engine/start|stop` endpoints.
+- Replaced open positions counters with a websocket-driven canvas map and implemented Chart.js loaders for P&L, market data, and regime analysis.
+
+## Progress 2025-08-18
+- Expanded `settings.html` with ordered sections (Time/Zone, System Health, Config, Trading Parameters, Backtest, Strategy Modules, Module Status, Network Config, API Connection) and localStorage + `/state` persistence.
+- Removed WebSocket status indicator from `dashboard.html` header and migrated clock to settings.
+- Improved side-menu accessibility with overlay, ARIA labels, and keyboard dismissal.
+- Applied shared SOL/USD formatting helpers across dashboard modules and documented usage.
+
+## Progress 2025-08-19
+- Removed atmospheric background from dashboard to reduce CPU usage and added shared footer/disclaimer includes.
+
 ## User Vision & Dashboard Overhaul Backlog (2025-08-09)
 
 The following directives capture a comprehensive UX and functionality review from the project owner. Treat every bullet as a blocking issue. Remove placeholder data and wire all modules to real-time backend or hide them. Default everything to Solana-centric metrics with live SOL→USD conversions.
@@ -29,11 +57,13 @@ The following directives capture a comprehensive UX and functionality review fro
   - Replace placeholder spans `#realizedPnl` and `#realizedPnlToday` with data from `GET /pnl/realized`.
   - Convert SOL→USD using cached price and update every 5 s.
 - **Portfolio Value card:** Align the equity curve to draw left→right; if a % change line is shown, label it clearly.
-  - Use `/chart/portfolio?limit=50` to draw sparkline via `Chart.js`.
+- Use `/chart/portfolio?limit=50` to draw sparkline via `Chart.js`.
+  <!-- Completed: `loadMiniEquity()` renders sparkline from `/chart/portfolio` every 30 s -->
   - Overlay `% Δ` line in muted colour with legend “Change”.
 - **Open Positions mini‑map:** Replace static counters with a scalable left→right visual of each open trade. Must handle dozens of trades; consider horizontal scroll or mini‑cards.
   - Render `div#openPositionMap` with child cards from `/positions` and `/positions/ws`.
   - Each card shows token, size, PnL, and auto-removes when closed. Enable horizontal scroll with Tailwind `overflow-x-auto`.
+  <!-- Completed: canvas mini-map subscribes to `/positions/ws` and draws bar per trade -->
 
 ### 3. Module Ordering & Removal
 - Remove **Backtest P&L** and **System Status** from main dashboard. Surface uptime/resource usage within Settings instead.
@@ -53,12 +83,14 @@ The following directives capture a comprehensive UX and functionality review fro
 - **Equity Curve:** Replace “Data Unavailable” with live equity history. Handle empty history gracefully.
   - Fetch `/chart/portfolio?limit=500` and plot via `Chart.js` line chart; show “No trades yet” if array empty.
 - **P&L Breakdown:** Replace static bar chart and pie chart. Bar chart shows real daily P&L for last 14 days. Pie chart includes at least five strategies (`Sniping`, `Arbitrage`, `Market Making`, plus two additional categories) so the donut fills space.
+  <!-- Completed: backend now returns Liquidity & Other segments; frontend builds donut dynamically -->
   - Endpoints: `GET /pnl/daily?days=14` and `GET /strategy/breakdown`.
   - Render bar chart with `Chart.js` and donut with categories `Sniping`, `Arbitrage`, `Market Making`, `Liquidity`, `Other`.
 - **Market Data:** Feed live metrics for any token pair surfaced by the engine, not just major pairs. Include new coin launches and trending tokens with volume/liquidity/volatility/spread.
   - Poll `/market/active` every 10 s; each row links to `/chart/{symbol}` for full TradingView embed.
   - Include columns for `24hVolume`, `volatility`, `liquidity`, `spread`.
 - **Regime Analysis:** Populate with posterior outputs when available; otherwise show clear “No data yet”.
+  <!-- Completed: `loadRegimeAnalysis()` reconnects with exponential backoff and hides panel after final failure -->
   - Consume `/posterior` stream via WebSocket; show regime probabilities and rug probability.
 
 ### 5. Missing/Static Modules
@@ -172,9 +204,11 @@ The following pointers map exact file locations requiring attention. Line number
 - **L189–199:** System Status card to be removed; uptime and status will live in settings (`#resourceUsage`).
 - **L203–210:** Backtest P&L card to be deleted from dashboard; backtesting moves entirely to settings/strategies page.
 - **L217–300:** Portfolio & Positions module—verify tabs switch and tables populate from `/positions` and `/orders`. Empty states should clearly show "No data".
+  <!-- Completed: `loadPositions()` and `loadHistory()` populate respective lists -->
 - **L301–470:** Equity Curve / P&L Breakdown / Market Data / Regime Analysis tabs. Ensure active tab is unhighlighted and others highlighted. Fetch data per AGENTS-AUDIT §4.
 - **L471–620:** Portfolio & Positions full module. Left table lists open positions (live updates), right shows history with pagination.
 - **L621–690:** Portfolio Risk card; hook to `/risk/portfolio`. Each metric (drawdown, leverage, exposure) must reflect real backend data.
+  <!-- Completed: `pollRisk()` formats drawdown, leverage, and exposure from `/risk/portfolio` -->
 - **L700–790:** Whale Tracker placeholder—implement separate `whales.html` or dynamic panel fed by `/whales` and `/whales/ws`.
 - **L807–831:** Neural Strategy Matrix header and container. Replace "DATA UNAVAILABLE" with model sync status (`/neural/status`) or hide if endpoint missing.
 - **L833–865:** Arbitrage Quantum card. Metrics (`arbTrades`, `arbPnL`, `arbSpread`, `arbOpps`, `arbLatency`) must poll `/arbitrage`. Remove card when `opportunities=0`.
@@ -193,6 +227,7 @@ The following pointers map exact file locations requiring attention. Line number
 ### `web/public/dashboard.css`
 - **L1:** Add comment about replacing fonts with `Inter`.
 - **L5–7:** Enforce responsive single-column layout below 1280 px; only top metrics remain side-by-side on large screens.
+  <!-- Completed: `.dashboard-grid` CSS forces single column under 1280px -->
 - **L40–77:** Existing `hologram-panel` and animation definitions remain but ensure they don't cause high CPU usage.
 - **L121–150:** `.metric-card` hover effects; verify accessibility for colour contrast.
 - **L197–214:** `.tooltip` styles; confirm they are keyboard-focus accessible.

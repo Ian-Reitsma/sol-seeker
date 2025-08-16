@@ -2,24 +2,82 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>System Health & Settings</title>
-    <!-- TODO[AGENTS-AUDIT §7]: Flesh out settings page extracted from dashboard panel.
-         - Order sections: Time & Zone, System Health, Configuration, Trading Parameters,
-           Backtesting, Strategy Modules, Module Status, Network Config, API Connection.
-         - Demo mode default, starting capital input, asset dropdown with top 15 tokens plus search for others.
-         - Max drawdown slider 0–100% with warning >25%; position size toggle %/SOL; concurrent trades logarithmic slider.
-         - Backtest block removes ellipsis, keeps buttons fixed width.
-         - Strategy toggles must call backend to enable/disable modules.
-         - Network config custom endpoint reveals text box; API connection at bottom.
-         - Add Basic vs Advanced mode toggle above Trading Mode; Basic hides advanced controls and triggers first-use walkthrough.
-         - Remove legacy Supported Assets panel from dashboard; asset selector here handles top 15 tokens plus searchable "other".
-         - Backtest strategy mix uses numeric percentage fields (no sliders) and inherits Trading Parameters. -->
+    <title>SOL SEEKER Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
 </head>
 <body class="text-white font-display min-h-screen">
-    <!-- TODO: Shared header/side menu and footer with repo link and © IJR Enterprises Inc. disclaimer. -->
-    <!-- TODO: Implement form persistence via localStorage and `/state` endpoint. -->
-    <!-- TODO: Hook system health card to `/health` (uptime, cpu_pct, mem_pct) and `/metrics` for resource usage. -->
-    <!-- TODO: Provide timezone selector prefilled from `Intl.DateTimeFormat().resolvedOptions().timeZone`. -->
+    <!-- TODO: Shared header/side menu and footer with repo link and © IJR Enterprises Inc. disclaimer. -->
+
+    <section class="p-6" id="timeSection">
+        <h2 class="text-xl mb-4">Time & Time Zone</h2>
+        <label class="block mb-2">Time Zone:
+            <input id="timeZone" class="text-black" type="text">
+        </label>
+        <div>Current Time: <span id="currentTime">--:--:--</span></div>
+    </section>
+
+    <section class="p-6" id="systemHealthSection">
+        <h2 class="text-xl mb-4">System Health</h2>
+        <div>CPU: <span id="metricCpu">--%</span></div>
+        <div>RAM: <span id="metricMem">--%</span></div>
+        <div>RPC Latency: <span id="metricRpc">--ms</span></div>
+    </section>
+
+    <section class="p-6" id="configSection">
+        <h2 class="text-xl mb-4">Config</h2>
+        <label class="block mb-2">
+            <input type="checkbox" id="advancedToggle"> Advanced Mode
+        </label>
+        <label class="block">Trading Mode:
+            <select id="tradingMode" class="text-black">
+                <option value="demo">Demo</option>
+                <option value="live">Live</option>
+            </select>
+        </label>
+    </section>
+
+    <section class="p-6 advanced hidden" id="tradingParamsSection">
+        <h2 class="text-xl mb-4">Trading Parameters</h2>
+        <label class="block">Starting Capital (SOL):
+            <input type="number" id="startingCapital" class="text-black" min="0" step="0.01">
+        </label>
+    </section>
+
+    <section class="p-6 advanced hidden" id="backtestSection">
+        <h2 class="text-xl mb-4">Backtest</h2>
+        <label class="block">Date Range:
+            <input type="text" id="btRange" class="text-black" placeholder="YYYY-MM-DD - YYYY-MM-DD">
+        </label>
+    </section>
+
+    <section class="p-6 advanced hidden" id="strategyModulesSection">
+        <h2 class="text-xl mb-4">Strategy Modules</h2>
+        <label class="block"><input type="checkbox" id="stratMomentum"> Momentum</label>
+        <label class="block"><input type="checkbox" id="stratMean"> Mean Reversion</label>
+    </section>
+
+    <section class="p-6 advanced hidden" id="moduleStatusSection">
+        <h2 class="text-xl mb-4">Module Status</h2>
+        <div id="moduleStatus">--</div>
+    </section>
+
+    <section class="p-6 advanced hidden" id="networkConfigSection">
+        <h2 class="text-xl mb-4">Network Config</h2>
+        <label class="block">RPC Endpoint:
+            <input type="text" id="rpcEndpoint" class="text-black">
+        </label>
+    </section>
+
+    <section class="p-6 advanced hidden" id="apiConnectionSection">
+        <h2 class="text-xl mb-4">API Connection</h2>
+        <label class="block">API Key:
+            <input type="password" id="apiKey" class="text-black">
+        </label>
+    </section>
+
+    <script src="js/utils.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/footer.js"></script>
 </body>
 </html>

@@ -79,6 +79,46 @@
         }
       }
     },
+    "/engine/start": {
+      "post": {
+        "summary": "Engine Start",
+        "description": "Explicitly start the trading engine.",
+        "operationId": "engine_start_engine_start_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Engine Start Engine Start Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/engine/stop": {
+      "post": {
+        "summary": "Engine Stop",
+        "description": "Pause all trading engine activity.",
+        "operationId": "engine_stop_engine_stop_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Engine Stop Engine Stop Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api": {
       "get": {
         "summary": "Api Index",
@@ -162,6 +202,60 @@
       "get": {
         "summary": "Status",
         "operationId": "status_status_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "Start"
+            },
+            "name": "start",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "End"
+            },
+            "name": "end",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "title": "Limit",
+              "default": 1000
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "Offset"
+            },
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "Cursor"
+            },
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -170,6 +264,16 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Status Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -195,10 +299,104 @@
         }
       }
     },
+    "/price/sol": {
+      "get": {
+        "summary": "Price Sol",
+        "description": "Return the current SOL price in USD.",
+        "operationId": "price_sol_price_sol_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Price Sol Price Sol Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pnl/realized": {
+      "get": {
+        "summary": "Pnl Realized",
+        "description": "Return aggregate realized PnL.",
+        "operationId": "pnl_realized_pnl_realized_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Pnl Realized Pnl Realized Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/risk/portfolio": {
+      "get": {
+        "summary": "Risk Portfolio",
+        "description": "Return portfolio-level risk metrics.",
+        "operationId": "risk_portfolio_risk_portfolio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Risk Portfolio Risk Portfolio Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/assets": {
       "get": {
         "summary": "Assets Endpoint",
         "operationId": "assets_endpoint_assets_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "title": "Limit",
+              "default": 1000
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "Offset"
+            },
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
+              "title": "Cursor"
+            },
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -210,6 +408,16 @@
                   },
                   "type": "array",
                   "title": "Response Assets Endpoint Assets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -532,6 +740,28 @@
         }
       }
     },
+    "/strategy/matrix": {
+      "get": {
+        "summary": "Strategy Matrix",
+        "operationId": "strategy_matrix_strategy_matrix_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyMatrixItem"
+                  },
+                  "type": "array",
+                  "title": "Response Strategy Matrix Strategy Matrix Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/features": {
       "get": {
         "summary": "Features Endpoint",
@@ -608,6 +838,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BacktestJobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backtest/history": {
+      "get": {
+        "summary": "Backtest History",
+        "operationId": "backtest_history_backtest_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Backtest History Backtest History Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backtest/{job_id}": {
+      "get": {
+        "summary": "Get Backtest",
+        "operationId": "get_backtest_backtest__job_id__get",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            },
+            "name": "job_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Backtest Backtest  Job Id  Get"
                 }
               }
             }
@@ -777,6 +1069,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "minimum": 0.0,
               "title": "Start"
             },
             "name": "start",
@@ -786,6 +1079,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "minimum": 0.0,
               "title": "End"
             },
             "name": "end",
@@ -795,6 +1089,19 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "title": "Limit",
+              "default": 1000
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0.0,
               "title": "Offset"
             },
             "name": "offset",
@@ -804,19 +1111,10 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "minimum": 0.0,
               "title": "Cursor"
             },
             "name": "cursor",
-            "in": "query"
-          },
-          {
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "title": "Limit",
-              "default": 1000
-            },
-            "name": "limit",
             "in": "query"
           }
         ],
@@ -1399,13 +1697,18 @@
           "issued_at": {
             "type": "integer",
             "title": "Issued At"
+          },
+          "expires_at": {
+            "type": "integer",
+            "title": "Expires At"
           }
         },
         "type": "object",
         "required": [
           "wallet",
           "mode",
-          "issued_at"
+          "issued_at",
+          "expires_at"
         ],
         "title": "LicenseInfo"
       },
@@ -1831,6 +2134,34 @@
           "win_rate"
         ],
         "title": "StrategyBreakdownItem"
+      },
+      "StrategyMatrixItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "last_update": {
+            "type": "integer",
+            "title": "Last Update"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "status",
+          "last_update",
+          "latency_ms"
+        ],
+        "title": "StrategyMatrixItem"
       },
       "StrategyPerf": {
         "properties": {

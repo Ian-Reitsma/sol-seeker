@@ -4,6 +4,8 @@
 `src/solbot/server/api.py` and auxiliary licensing services.  The objective is to ensure every interactive widget on the
 dashboard is wired to a live REST or WebSocket endpoint and that every backend capability has a corresponding UI hook.
 
+See also the root-level `AGENTS.md` and `AGENTS-AUDIT.md` for project logs and the full task backlog.
+
 For each gap, the audit provides:
 
 * **Management Summary** – why the feature matters for product readiness.
@@ -27,6 +29,19 @@ context.
 5. **OpenAPI**: `web/public/openapi.json` mirrors the backend schema.  Regenerate via `uvicorn`’s `/openapi.json` if endpoints change and keep this file in sync.
 
 Only after this setup should the following gap analysis be executed.
+
+---
+
+## Formatting
+
+`web/public/js/utils.js` exports helpers `formatSol(amount, price)`, `formatSolChange(amount, price)`, and `formatPercent(value)` to render SOL amounts alongside their USD equivalents. Use them as:
+
+```js
+import { formatSol, formatSolChange } from './js/utils.js';
+el.textContent = formatSol(balanceSol, solPrice);
+```
+
+Modules still pending conversion: backtest overlays and strategy performance panels.
 
 ---
 
