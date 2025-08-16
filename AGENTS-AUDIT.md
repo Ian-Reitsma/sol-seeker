@@ -2,6 +2,236 @@
 
 This file defines the immediate and near-term directives for the next development agent. The items are ordered by criticality and expected impact. Implement each item completely before moving to the next.
 
+## User Vision & Dashboard Overhaul Backlog (2025-08-09)
+
+The following directives capture a comprehensive UX and functionality review from the project owner. Treat every bullet as a blocking issue. Remove placeholder data and wire all modules to real-time backend or hide them. Default everything to Solana-centric metrics with live SOL→USD conversions.
+
+### 1. Initial State & Global Layout
+- **Default mode:** Demo with 10 SOL starting balance; show equivalent USD (no `+10 SOL` prefix).
+  - Modify `web/public/dashboard.html` around the settings form to seed `demoCapital` with `10` and immediately render `10 SOL ($<spot USD>)`.
+  - Fetch SOL price from `/market/solusd` on load and cache for conversions.
+- **Engine toggle:** Dashboard loads in `paused` state. User presses `START` to begin. `PAUSE` always stops trading.
+  - In `web/public/dashboard.html` (lines ~100, ~1935), set `running=false` on init and ensure the button text reads `▶ START`.
+  - Backend (`src/server.py`) must not auto-start trading loops when `--wallet` is provided; require explicit `/state` POST.
+- **Top bar:** Only display `LIVE`/`DEMO` mode, RPC latency, and hamburger for side menu. Move clock into settings. Remove “WS DISCONNECTED”.
+  - Delete the `#wsStatus` span in `dashboard.html` and relocate the clock element into the settings panel header.
+  - Add `id="rpcLatency"` span fed by `/health` and `id="modeIndicator"` derived from `/state`.
+- **Responsive design:** Only “Portfolio Value” and “Realized P&L” may sit side‑by‑side on large screens. All other modules stack vertically and scale cleanly across mobile → 4 K. Test both portrait and landscape.
+  - Refactor `dashboard.css` to use a single-column flex layout below 1280 px and explicit `md:grid-cols-2` only for the top metrics.
+  - Verify layout manually in Chrome dev tools for iPhone SE, iPad, and 4 K monitor presets.
+- **Side menu:** Add a left‑side hamburger button revealing navigation links. Sections: Dashboard, Whale Tracker, Strategies (includes AI Backtesting Lab), MEV Shield & Alpha Signals, Social Sentiment Matrix, Settings. Menu must slide in/out smoothly and be obvious on all viewports.
+  - Implement `#sideMenu` off‑canvas panel in `dashboard.html` with Tailwind `translate-x` transitions and overlay.
+  - Each link should route via `window.location` to `dashboard.html`, `whales.html`, `strategies.html`, `mev.html`, `sentiment.html`, and `settings.html` respectively.
+  - Ensure hamburger button (`#menuToggle`) remains accessible at <768 px.
+
+### 2. Top Metrics Panel
+- **Realized P&L card:** Format `+0.00 SOL ($0.00)` and a second line `+0.00 SOL TODAY ($0.00)`.
+  - Replace placeholder spans `#realizedPnl` and `#realizedPnlToday` with data from `GET /pnl/realized`.
+  - Convert SOL→USD using cached price and update every 5 s.
+- **Portfolio Value card:** Align the equity curve to draw left→right; if a % change line is shown, label it clearly.
+  - Use `/chart/portfolio?limit=50` to draw sparkline via `Chart.js`.
+  - Overlay `% Δ` line in muted colour with legend “Change”.
+- **Open Positions mini‑map:** Replace static counters with a scalable left→right visual of each open trade. Must handle dozens of trades; consider horizontal scroll or mini‑cards.
+  - Render `div#openPositionMap` with child cards from `/positions` and `/positions/ws`.
+  - Each card shows token, size, PnL, and auto-removes when closed. Enable horizontal scroll with Tailwind `overflow-x-auto`.
+
+### 3. Module Ordering & Removal
+- Remove **Backtest P&L** and **System Status** from main dashboard. Surface uptime/resource usage within Settings instead.
+  - Delete sections `#backtestPnl` and `#systemStatus` from `dashboard.html` (lines ~700 and ~900).
+  - In `settings.html`, create `#resourceUsage` card showing CPU, RAM, and uptime fetched from `/metrics`.
+- Module order after the top metrics:
+  1. Realized P&L
+  2. Open Positions
+  3. Portfolio Equity Curve / P&L Breakdown / Market Data / Regime Analysis (tabbed)
+  4. Portfolio & Positions
+  5. Portfolio Risk
+  6. (Navigation to other pages: Whale Tracker, Neural Strategy Matrix & other AI integrations, Strategies/Backtesting, MEV Shield & Alpha Signals, Social Sentiment Matrix)
+
+### 4. Equity Curve / P&L / Market Data / Regime Analysis Tabs
+- **Tab styling:** The active tab text is normal; inactive tabs are highlighted. Clicking a tab loads its content and removes highlight from current tab.
+  - Use `aria-selected` attributes on buttons `#equityTab`, `#pnlTab`, `#marketDataTab`, `#regimeTab` to drive Tailwind classes.
+- **Equity Curve:** Replace “Data Unavailable” with live equity history. Handle empty history gracefully.
+  - Fetch `/chart/portfolio?limit=500` and plot via `Chart.js` line chart; show “No trades yet” if array empty.
+- **P&L Breakdown:** Replace static bar chart and pie chart. Bar chart shows real daily P&L for last 14 days. Pie chart includes at least five strategies (`Sniping`, `Arbitrage`, `Market Making`, plus two additional categories) so the donut fills space.
+  - Endpoints: `GET /pnl/daily?days=14` and `GET /strategy/breakdown`.
+  - Render bar chart with `Chart.js` and donut with categories `Sniping`, `Arbitrage`, `Market Making`, `Liquidity`, `Other`.
+- **Market Data:** Feed live metrics for any token pair surfaced by the engine, not just major pairs. Include new coin launches and trending tokens with volume/liquidity/volatility/spread.
+  - Poll `/market/active` every 10 s; each row links to `/chart/{symbol}` for full TradingView embed.
+  - Include columns for `24hVolume`, `volatility`, `liquidity`, `spread`.
+- **Regime Analysis:** Populate with posterior outputs when available; otherwise show clear “No data yet”.
+  - Consume `/posterior` stream via WebSocket; show regime probabilities and rug probability.
+
+### 5. Missing/Static Modules
+- **Neural Strategy Matrix:** Replace “DATA UNAVAILABLE” with real model status or hide if model not yet running.
+  - Endpoint `/neural/status` returns `{ syncing: bool, latency_ms: int }`; display sync status or hide card if 404.
+- **Arbitrage Quantum:** Validate metrics (`TRADES`, `PNL`, `SPREAD`, `OPPORTUNITIES`, `LATENCY`); remove if zero.
+  - Hook up to `/arbitrage` polling; highlight card only when `opportunities>0`.
+- **Strategy Performance & Risk Analytics:** Fetch `/strategy/performance`, `/strategy/breakdown`, `/strategy/risk`. Remove extra vertical space above the metrics.
+  - Ensure `7D/30D` toggle triggers new requests with `?window=7d|30d` and charts update.
+- **MEV Shield & Alpha Signals:** Numbers must come from backend. Include rug‑protection integration once available.
+  - Consume `/mev/status` and `/alpha/signals`; show “inactive” greyed-out if response empty.
+- **Social Sentiment Matrix:** Monitor memecoins and all Solana tokens. Pull data from Twitter/Telegram. “Trending Now”, “Influencer Alerts”, and community metrics must update live.
+  - Integrate `/sentiment/trending`, `/sentiment/influencers`, `/sentiment/pulse` and show counts/mentions with emoji indicators.
+- **Strategy Performance Matrix:** Replace static SOL totals with real data. Ensure 7D/30D toggles work and reduce padding between heading and stats.
+  - Endpoint `/strategy/performance_matrix?window=7d|30d`; collapse extra margin-top to `mt-2`.
+- **Whale Tracker:** Implement real‑time whale flow, copy‑trading stats, and profit tracking.
+  - Create `web/public/whales.html`; feed from `/whales` REST and `/whales/ws` for live events.
+
+### 6. Backtesting & Strategy Pages
+- **AI Backtesting Lab:**
+  - Allow custom date ranges via actual date pickers.
+  - Replace Sniper/ARB/MM sliders with clearer allocation inputs (e.g., numeric fields or segmented controls).
+  - Explain each parameter.
+  - Simulation results must reflect backend output (final balance, return, trades, Monte Carlo).
+  - Integrate trading parameters (max drawdown, position size, concurrent trades).
+  - Provide cancel button and history list that do not shift off‑screen when running.
+- **Backtest WS bug:** Current websocket opens/closes repeatedly and blocks terminal on exit. Diagnose cause, allow proper shutdown, and return CLI control without killing terminal.
+  - Frontend: `strategies.html` or backtesting panel must POST to `/backtest` and subscribe to `/backtest/ws/{id}` streaming progress.
+  - Implement date pickers with `<input type="date">` for start/end; default to last 7 days.
+  - Replace strategy sliders with numeric `%` inputs totaling 100; validate client-side.
+  - Simulation result table (`#backtestResults`) should map directly from JSON fields `final_balance`, `total_return`, `total_trades`, `win_rate`, `avg_trade`, and Monte Carlo stats.
+  - Pull max drawdown/position/concurrent limits from settings form via `localStorage` and include in backtest payload.
+  - Keep `Start`, `Cancel`, and `History` buttons fixed with Flexbox so layout does not jump when labels change.
+  - Backend: investigate `src/backtest/worker.py` and websocket lifetime; ensure server terminates coroutine on cancel and closes process so terminal prompt returns.
+
+### 7. Settings Panel
+- **Default ordering:**  
+  1. System time/time‑zone selector  
+  2. System health summary  
+  3. Configuration (mode, starting capital)  
+  4. Trading parameters  
+  5. Backtesting controls  
+  6. Strategy modules toggles  
+  7. Module status  
+  8. Network config  
+  9. API connection (always last)
+- **Mode & capital:** Demo mode selected by default with `SOL` primary asset. Provide dropdown of ~15 top “stable” Solana tokens plus an `Other…` search by name/$symbol/contract address. Remove “Supported Assets” label.
+- **Trading parameters:**
+  - Max drawdown slider 0–100%; when >25% show warning dialog.  
+  - Max position size switchable between % and SOL; upper limit “max” with no numeric cap.  
+  - Max concurrent trades default “Unlimited”. When enabled, use stepped logarithmic slider: `0–10`, `10–25`, `25–100`, `100–250`, `250–500`, `500+`.
+- **Strategy modules:** `Listing Sniper` on and highlighted by default. Ensure toggles for `Arbitrage Engine` and `Market Making` actually enable/disable code paths.
+- **Network config:** Selecting “Custom Endpoint” should reveal text box for RPC URL.
+- **Backtest controls:** Remove ellipsis from “Running…”. Keep buttons fixed width so “Cancel” and “History” stay visible.
+  - File: `web/public/settings.html` and linked JS.
+  - Time zone selector should prefill from browser `Intl.DateTimeFormat().resolvedOptions().timeZone` and POST to `/state`.
+  - System health summary pulls from `/health` (uptime, cpu_pct, mem_pct) and displays in `#systemHealth` card.
+  - Configuration: demo/live toggle stored in `localStorage`; starting capital input enforces numeric >0.
+  - Mode dropdown: populate with fixed list [`SOL`, `USDC`, `USDT`, `BONK`, ...] plus search field hitting `/market/search?q=`.
+  - Trading parameter sliders implemented with `<input type="range">` and labelled values; warning dialog as `alert()` or modal when drawdown >25%.
+  - Strategy toggles invoke `/strategy/enable` or `/strategy/disable` endpoints; ensure visual highlight via Tailwind `bg-blade-amber`.
+  - Network config: when `Custom Endpoint` selected, show text input `#customRpc` and persist to `localStorage`.
+  - Backtest controls: `#backtestStart`, `#backtestCancel`, `#backtestHistory` widths fixed with `w-24`.
+
+### 8. AI Feature Panels & Debug Console
+- **AI Feature Schema / Feature Snapshot / Feature Monitor:** Currently redundant and empty. Either populate with meaningful descriptions & live values or remove entirely. If retained, document feature indices and normalisation.
+- **Debug Console:** Add a “Generate” button to pull logs on demand. Respect filter (`All`, `Errors`, etc.). Ensure console shows live backend messages.
+  - If kept, document feature names in `docs/ai_features.md` and map indices to descriptions in `web/public/dashboard.html` table rows `#featureSchema`, `#featureSnapshot`, `#featureMonitor`.
+  - Backend should expose `/features/schema` and `/features/snapshot` endpoints; front-end polls every 10 s.
+  - Debug console (`#debugConsole`) fetches `/debug/logs?level=all|error|warn` when `#generateLogs` button pressed and appends lines; auto-scroll when near bottom.
+
+### 9. Engine Behaviour & Performance
+- On server start (CLI launch), engine immediately begins ingesting all Solana chain data, including newly launched memecoins. Monitor entire blockchain, not just known markets.
+- Implement robust rug‑pull detection and ensure MEV protection is first‑class.
+- The ML component must learn continually from incoming data, persist state, and resume learning after restarts. Aim for strategies with positive ROI out‑of‑the‑box while remaining customizable.
+- Default strategies (`Sniper`, `Arbitrage`, `Market Making`) must ingest full memecoin universe, apply volume/liquidity/tx-count filters (dexscreener-style), and deliver safe entries/exits.
+- Persist model parameters to `~/.solbot/ml_state.pkl`; reload on startup and update after each trade.
+- Implement rug-protection heuristics (liquidity pull, mint authority revoke, sudden supply mint) and surface alerts to MEV Shield and Risk modules.
+- Address high CPU (≈200%) and 1.2 GB memory usage; profile and optimise.
+  - Data ingestion: verify `src/solbot/slot_streamer.py` listens to all token launches via Solana websocket `logsSubscribe` with filters for new mints.
+  - Persist ML state to `~/.solbot/state.db` using `pickle` or sqlite; reload on start before processing live events.
+  - Implement rug-detect heuristics (liquidity pull, mint authority revoke) in `src/solbot/risk/rug.py` and surface alerts to MEV Shield panel.
+  - Profile with `py-spy` or `cProfile`; log CPU/mem metrics to `/metrics` and add thresholds for warnings.
+  - Diagnose RPC latency stuck at 12 ms and websocket status reporting `DISCONNECTED`; ensure health endpoints expose real measurements.
+
+### 10. Miscellaneous UI/UX
+- Rename branding to **“SOL SEEKER”** (with space). Review fonts and adopt a modern, non‑retro typeface.
+- Add footer with GitHub repo link, “© IJR Enterprises Inc.”, and reference to a disclaimer document.
+- Provide first‑run walkthrough for **Basic Mode** users. Basic Mode exposes only core strategy selection; Advanced Mode (toggle in settings) reveals full configuration.
+- Start/Stop controls: center `START`/`STOP` buttons; place settings icon left of compact `LIVE`/`DEMO` toggle at top-right.
+  - Replace `Share Tech Mono`/`Rajdhani` fonts with `Inter` (Google Fonts) in `dashboard.html` head section.
+  - Footer HTML fragment placed at bottom of every page; include links to repo and `docs/DISCLAIMER.md`.
+  - Implement onboarding modal `#firstRun` that describes Basic vs Advanced, persists `localStorage['onboarded']=true` after dismissal.
+
+Treat this backlog as non‑optional. Each item must be either fully implemented or explicitly removed before release.
+
+## Line-Level TODO Map (2025-08-09)
+
+The following pointers map exact file locations requiring attention. Line numbers are 1-indexed and refer to the current commit; adjust if the surrounding code changes.
+
+### `web/public/dashboard.html`
+- **L6:** `<title>` still reads "Sol Seeker Dashboard". Rename to `SOL SEEKER Dashboard`.
+- **L23–26:** Tailwind font config uses `Share Tech Mono` and `Rajdhani`; swap to `Inter` once CSS is updated.
+- **L78–82:** Header `<h1>` shows `SOLSEEKER DASHBOARD`; needs spacing and branding update.
+- **L87–110:** Connection status includes RPC + WS blocks. Remove entire WS block (L98–109) so only RPC latency remains.
+- **L112–120:** Trading toggle should initialize in paused state; ensure text reads `▶ START` until engine starts.
+- **L132:** `#systemTime` clock belongs in settings panel; delete from header and re-render within settings.
+- **L145–158:** Portfolio Value card outputs only USD. Must call `/chart/portfolio?limit=50` and display both SOL and USD with sparkline aligned left→right.
+- **L161–174:** Realized P&L card is placeholder. Replace with `/pnl/realized` values: `+0.00 SOL ($0.00)` and `+0.00 SOL TODAY ($0.00)`.
+- **L177–186:** Open Positions card shows counts only. Render horizontal mini-cards from `/positions` (scrollable if >4). Remove `0 LONG • 0 SHORT` text once visual map exists.
+- **L189–199:** System Status card to be removed; uptime and status will live in settings (`#resourceUsage`).
+- **L203–210:** Backtest P&L card to be deleted from dashboard; backtesting moves entirely to settings/strategies page.
+- **L217–300:** Portfolio & Positions module—verify tabs switch and tables populate from `/positions` and `/orders`. Empty states should clearly show "No data".
+- **L301–470:** Equity Curve / P&L Breakdown / Market Data / Regime Analysis tabs. Ensure active tab is unhighlighted and others highlighted. Fetch data per AGENTS-AUDIT §4.
+- **L471–620:** Portfolio & Positions full module. Left table lists open positions (live updates), right shows history with pagination.
+- **L621–690:** Portfolio Risk card; hook to `/risk/portfolio`. Each metric (drawdown, leverage, exposure) must reflect real backend data.
+- **L700–790:** Whale Tracker placeholder—implement separate `whales.html` or dynamic panel fed by `/whales` and `/whales/ws`.
+- **L807–831:** Neural Strategy Matrix header and container. Replace "DATA UNAVAILABLE" with model sync status (`/neural/status`) or hide if endpoint missing.
+- **L833–865:** Arbitrage Quantum card. Metrics (`arbTrades`, `arbPnL`, `arbSpread`, `arbOpps`, `arbLatency`) must poll `/arbitrage`. Remove card when `opportunities=0`.
+- **L867–877:** Strategy Performance panel: buttons `7D`/`30D` switch; results populate from `/strategy/performance?window=`.
+- **L879–883:** Strategy Breakdown panel: render from `/strategy/breakdown` with at least five categories.
+- **L885–891:** Risk Analytics panel: fill via `/strategy/risk` and reduce top margin to `mt-2`.
+- **L892–951:** MEV Shield & Alpha Signals section: numbers must derive from `/mev/status` and `/alpha/signals`; show inactive state if empty.
+- **L963–1045:** Social Sentiment Matrix: integrate `/sentiment/trending`, `/sentiment/influencers`, `/sentiment/pulse`; ensure memecoin coverage.
+- **L1046–1103:** Strategy Performance Matrix: replace static SOL totals with `/strategy/performance_matrix` data and shrink spacing above metrics.
+- **L1104–1178:** Strategy Breakdown/Performance tables: ensure toggles function and remove stale demo numbers.
+- **L1179–1214:** AI Backtesting Lab shell: add date pickers (`<input type="date">`), numeric allocation inputs, and explanation tooltips.
+- **L1215–1268:** Backtest configuration/results inside the lab: respect trading parameters, keep buttons fixed width, and prevent layout shift.
+- **L1669–1765:** Backtest simulation modal and controls. Provide Cancel/History behaviour without pushing buttons off-screen and show progress updates.
+- **L2491–2570:** `runBacktest` and related JS handlers: support custom ranges, include drawdown/position size/concurrency in payload, and resolve websocket hang on shutdown.
+
+### `web/public/dashboard.css`
+- **L1:** Add comment about replacing fonts with `Inter`.
+- **L5–7:** Enforce responsive single-column layout below 1280 px; only top metrics remain side-by-side on large screens.
+- **L40–77:** Existing `hologram-panel` and animation definitions remain but ensure they don't cause high CPU usage.
+- **L121–150:** `.metric-card` hover effects; verify accessibility for colour contrast.
+- **L197–214:** `.tooltip` styles; confirm they are keyboard-focus accessible.
+
+### `web/public/whales.html`
+- Placeholder stub for Whale Tracker; implement live table and copy-trading stats per §5.
+
+### `web/public/strategies.html`
+- Stub for strategy catalog and AI Backtesting Lab; wire to `/backtest` and strategy endpoints per §6.
+
+### `web/public/mev.html`
+- Stub for MEV Shield & Alpha Signals dashboard; fetch `/mev/status` and `/alpha/signals`.
+
+### `web/public/sentiment.html`
+- Stub for Social Sentiment Matrix; integrate `/sentiment/trending`, `/sentiment/influencers`, `/sentiment/pulse`.
+
+### `web/public/settings.html`
+- Stub for standalone settings page; order sections and controls per §7.
+
+### Server Side
+- **`src/server.py` L1–100:** Prevent auto-start of trading loops when CLI `--wallet` is supplied; require POST `/state` to start.
+- **`src/backtest/worker.py` L50–120:** Investigate websocket open/close loop causing terminal lock; ensure tasks are awaited and connections closed on shutdown.
+
+### Settings Panel (embedded in `dashboard.html` around L1500–1800)
+- Default ordering: time/time‑zone selector, system health, configuration, trading parameters, backtest, strategy toggles, module status, network config, API connection.
+- Demo mode selected by default with starting capital `10` SOL and dropdown of top 15 tokens plus `Other…` search hitting `/market/search`.
+- Max drawdown slider 0–100% with warning when >25%.
+- Max position size: toggle between % and SOL with `max` option.
+- Max concurrent trades: logarithmic stepped slider (`0–10`, `10–25`, `25–100`, `100–250`, `250–500`, `500+`).
+- Strategy toggles for `Listing Sniper`, `Arbitrage Engine`, `Market Making` must call `/strategy/enable|disable` and visibly highlight when active.
+- Network config: selecting `Custom Endpoint` reveals text input `#customRpc` persisted to `localStorage`.
+- Backtest controls: `#backtestStart`, `#backtestCancel`, `#backtestHistory` fixed width (`w-24`); remove ellipsis from "Running".
+- Time zone selector pre-fills from browser and posts to `/state`.
+
+### Miscellaneous
+- Footer to include GitHub link and © IJR Enterprises Inc. with disclaimer reference once `docs/DISCLAIMER.md` exists.
+- Replace fonts (`Share Tech Mono`, `Rajdhani`) with `Inter` across HTML/CSS.
+- Ensure ML component persists state to `~/.solbot/state.db` and resumes learning on restart.
+
 ## Recent Accomplishment – Analytics Expansion and Security Panel Wiring (2025-08-07)
 
 ### Summary

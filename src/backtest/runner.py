@@ -11,6 +11,10 @@ from solbot.engine.trade import TradeEngine
 from solbot.types import Side
 from solbot.exchange import ExecutionResult
 
+# TODO[AGENTS-AUDIT §6]: Investigate websocket backtest jobs stalling the
+# server and leaving the terminal stuck. Ensure the runner cooperates with the
+# `/backtest/ws/{id}` stream and terminates cleanly on cancel.
+
 
 @dataclass
 class TradeBar:
@@ -106,6 +110,10 @@ class BacktestRunner:
         self.slippage_model = slippage_model or SlippageModel()
         self.initial_cash = initial_cash
 
+        # TODO[AGENTS-AUDIT §6]: inject trading parameter limits (max drawdown,
+        # position size, concurrent trades) pulled from settings so simulations
+        # mirror live constraints.
+
     async def run(
         self,
         data: Iterable[TradeBar],
@@ -118,6 +126,8 @@ class BacktestRunner:
 
         for bar in data:
             await asyncio.sleep(0)
+            # TODO[AGENTS-AUDIT §6]: stream progress over websocket so dashboard
+            # can display a responsive progress bar and allow cancellation.
             price = bar.price
             equity = cash + position * price
             action = strategy(bar)
@@ -139,6 +149,8 @@ class BacktestRunner:
 
         final_equity = equity_curve[-1]
         pnl = final_equity - self.initial_cash
+        # TODO[AGENTS-AUDIT §6]: surface full equity curve for charting and
+        # persist to history for later review.
 
         peak = equity_curve[0]
         max_dd = 0.0

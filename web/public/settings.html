@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Health & Settings</title>
+    <!-- TODO[AGENTS-AUDIT §7]: Flesh out settings page extracted from dashboard panel.
+         - Order sections: Time & Zone, System Health, Configuration, Trading Parameters,
+           Backtesting, Strategy Modules, Module Status, Network Config, API Connection.
+         - Demo mode default, starting capital input, asset dropdown with top 15 tokens plus search for others.
+         - Max drawdown slider 0–100% with warning >25%; position size toggle %/SOL; concurrent trades logarithmic slider.
+         - Backtest block removes ellipsis, keeps buttons fixed width.
+         - Strategy toggles must call backend to enable/disable modules.
+         - Network config custom endpoint reveals text box; API connection at bottom.
+         - Add Basic vs Advanced mode toggle above Trading Mode; Basic hides advanced controls and triggers first-use walkthrough.
+         - Remove legacy Supported Assets panel from dashboard; asset selector here handles top 15 tokens plus searchable "other".
+         - Backtest strategy mix uses numeric percentage fields (no sliders) and inherits Trading Parameters. -->
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="text-white font-display min-h-screen">
+    <!-- TODO: Shared header/side menu and footer with repo link and © IJR Enterprises Inc. disclaimer. -->
+    <!-- TODO: Implement form persistence via localStorage and `/state` endpoint. -->
+    <!-- TODO: Hook system health card to `/health` (uptime, cpu_pct, mem_pct) and `/metrics` for resource usage. -->
+    <!-- TODO: Provide timezone selector prefilled from `Intl.DateTimeFormat().resolvedOptions().timeZone`. -->
+</body>
+</html>

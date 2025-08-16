@@ -527,3 +527,72 @@
 
 ### Next Steps
 - Replace placeholder strategy stats with live engine outputs and expose historical periods beyond 30D.
+
+## OpenAI Assistant - User Vision Backlog
+
+**Date:** 2025-08-09
+
+### Summary
+- Captured project owner's comprehensive dashboard and engine requirements.
+- Transcribed full UX, settings, backtesting, and performance directives into `AGENTS-AUDIT.md` under "User Vision & Dashboard Overhaul Backlog".
+
+### Next Steps
+- Execute the backlog sequentially, ensuring each module pulls real data or is removed.
+
+## OpenAI Assistant - Vision Backlog Expansion
+
+**Date:** 2025-08-09
+
+### Summary
+- Dramatically expanded `AGENTS-AUDIT.md` with dev-to-dev implementation details for every dashboard module, settings panel,
+  backtesting workflow, and engine behaviour.
+- Added explicit file paths, DOM selectors, API endpoints, and expected UX behaviours so next agents have zero ambiguity.
+
+### Next Steps
+- Follow the audit's numbered sections in order, validating each item against the backend and removing any stub that cannot be
+  wired immediately.
+
+## OpenAI Assistant - Line-Level TODO Map
+
+**Date:** 2025-08-09
+
+### Summary
+- Embedded explicit TODO comments throughout `web/public/dashboard.html` and `dashboard.css` marking every UI component that requires backend wiring or deletion.
+- Added a "Line-Level TODO Map" to `AGENTS-AUDIT.md` referencing precise file/line numbers for rapid navigation by future developers.
+
+### Next Steps
+- Use the map and in-file comments as a checklist; remove each TODO once the corresponding feature is implemented and tested.
+
+## OpenAI Assistant - Vision Implementation Blueprint
+
+**Date:** 2025-08-09
+
+### Summary
+- Injected detailed TODO annotations into `src/server.py`, `src/main.py`, and
+  `src/backtest/runner.py` covering paused engine startup, chain-wide memecoin
+  monitoring, ML persistence, resource metrics, and backtest websocket cleanup.
+- Expanded `web/public/dashboard.html` and `dashboard.css` with directives for
+  sparkline alignment, tab `aria-selected` toggling, market data polling,
+  regime analysis streaming, and footer/disclaimer hooks.
+- Added stub pages (`whales.html`, `strategies.html`, `mev.html`,
+  `sentiment.html`, `settings.html`) containing exhaustive developer notes for
+  Whale Tracker, strategy catalog & AI Backtesting Lab, MEV Shield & Alpha
+  Signals, Social Sentiment Matrix, and full Settings overhaul.
+- Updated `AGENTS-AUDIT.md` with network latency diagnostics so future agents
+  address RPC latency and websocket disconnect anomalies.
+
+### Next Steps
+- Implement the annotated tasks, replacing placeholders with live data and
+  verifying each new page and module against its backend endpoint.
+
+## OpenAI Assistant - Hyper-Detail Vision Clarification
+
+**Date:** 2025-08-09
+
+### Summary
+- Integrated the owner's extended dashboard and engine requirements into `AGENTS-AUDIT.md` with step-by-step directives.
+- Added inline TODOs for default 10 SOL demo balance, portfolio risk wiring, debug console log generation, and footer/disclaimer hooks.
+- Expanded engine notes to cover chain-wide memecoin scanning, persistent ML state, and rug-protection heuristics.
+
+### Next Steps
+- Follow the updated audit and in-file TODOs rigorously, removing placeholders and validating live data, performance, and UX flows.
