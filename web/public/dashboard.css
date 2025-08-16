@@ -1,8 +1,11 @@
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+         /* TODO[AGENTS-AUDIT §10]: Replace retro fonts with `Inter` for modern look */
+         /* TODO[AGENTS-AUDIT §1]: include side-menu transition classes */
+         @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
         
-        body {
-            background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
-        }
+         body {
+             /* TODO[AGENTS-AUDIT §1]: ensure responsive single-column layout below 1280px */
+             background: radial-gradient(ellipse at center, #1a0a00 0%, #000000 70%);
+         }
         
         .hologram-panel {
             background: rgba(17, 17, 17, 0.9);
@@ -114,12 +117,17 @@
             50% { opacity: 0.6; }
         }
         
-        .control-button {
-            background: rgba(255, 140, 0, 0.1);
+.control-button {
+    background: rgba(255, 140, 0, 0.1);
             border: 1px solid rgba(255, 140, 0, 0.3);
             color: #ff8c00;
             transition: all 0.3s ease;
-        }
+}
+
+/* TODO[AGENTS-AUDIT §9]: Footer styling placeholder */
+footer {
+    /* background and text will mirror header; implement when footer added */
+}
         
         .control-button:hover {
             background: rgba(255, 140, 0, 0.2);

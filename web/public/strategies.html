@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Strategies & Backtesting</title>
+    <!-- TODO[AGENTS-AUDIT §6]: Consolidate strategy catalog and AI Backtesting Lab.
+         - Side menu link from dashboard should land here.
+         - Provide tabs for `Strategy Overview`, `AI Backtesting Lab`, and `Performance History`.
+         - Backtesting form needs date pickers, numeric allocation inputs totaling 100%, and integration with trading parameters.
+         - Stream progress via `/backtest/ws/{id}` with cancel support.
+         - Replace Sniper/Arb/MM sliders with numeric percent fields and plain-language descriptions; enforce totals = 100%.
+         - Allow custom date range pickers (start/end) defaulting to last 24h.
+         - Simulation results must apply trading parameters and refresh AI Optimization hints with real data. -->
+        <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="text-white font-display min-h-screen">
+    <!-- TODO: Import shared header and side menu components. -->
+    <!-- TODO: Strategy Overview should list available strategies (Sniper, Arbitrage, Market Making, etc.) with enable/disable toggles and descriptions. -->
+    <!-- TODO: AI Backtesting Lab section will POST to `/backtest` and render results
+         (final balance, total return, win rate, equity curve, Monte Carlo) in a responsive panel. -->
+    <!-- TODO: Performance History should fetch `/strategy/performance_matrix` and `/strategy/risk` for historical analytics. -->
+    <!-- TODO: Include guidance text explaining each setting for beginner (basic mode) vs advanced mode toggle. -->
+    <!-- TODO: Include footer once global footer implemented. -->
+</body>
+</html>

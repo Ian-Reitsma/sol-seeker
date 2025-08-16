@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- TODO[AGENTS-AUDIT §10]: Update branding to "SOL SEEKER" with space and modern font -->
     <title>Sol Seeker Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -75,6 +76,7 @@
             <!-- Left: Title and License -->
             <div class="flex items-center space-x-8">
                 <div class="flex items-center space-x-4">
+                    <!-- TODO[AGENTS-AUDIT §10]: Rename heading to "SOL SEEKER DASHBOARD" -->
                     <h1 class="text-3xl font-bold text-white hologram-text tracking-wider">
                         SOLSEEKER DASHBOARD
                     </h1>
@@ -96,6 +98,7 @@
                         Last Update: --
                     </div>
                 </div>
+                <!-- TODO[AGENTS-AUDIT §1]: Remove WebSocket status block; only RPC latency should remain -->
                 <div class="flex items-center space-x-2 tooltip-trigger relative">
                     <span class="text-xs hologram-text cyan-glow">WS</span>
                     <span id="wsStatus" class="flex items-center space-x-1">
@@ -111,6 +114,7 @@
             
             <!-- Right: Global Controls -->
             <div class="flex items-center space-x-4">
+                <!-- TODO[AGENTS-AUDIT §1]: Engine loads paused; button labeled ▶ START until user activates -->
                 <button class="control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative" id="tradingToggle">
                     ▶ START
                     <div id="tradingTooltip" class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
@@ -129,6 +133,7 @@
                         System Health & Settings
                     </div>
                 </button>
+                <!-- TODO[AGENTS-AUDIT §1]: Move system clock into settings panel -->
                 <div class="text-xs hologram-text text-blade-amber/60" id="systemTime">00:00:00 UTC</div>
             </div>
         </div>
@@ -143,12 +148,15 @@
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Total Portfolio Value -->
+                <!-- TODO[AGENTS-AUDIT §2]: Wire to /chart/portfolio and show 10 SOL demo start with USD conversion -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">PORTFOLIO VALUE</span>
-                        <svg class="w-12 h-6" viewBox="0 0 48 24">
-                            <path class="sparkline stroke-blade-amber" d="M2 20 Q12 16 24 12 T46 8"/>
-                        </svg>
+                          <!-- TODO[AGENTS-AUDIT §2]: Align sparkline left →
+                               right and overlay % change line with legend. -->
+                          <svg class="w-12 h-6" viewBox="0 0 48 24">
+                              <path class="sparkline stroke-blade-amber" d="M2 20 Q12 16 24 12 T46 8"/>
+                          </svg>
                     </div>
                     <div class="text-3xl font-bold amber-glow data-flicker" id="portfolioValue">
                         $0.00
@@ -159,6 +167,7 @@
                 </div>
 
                 <!-- Realized P&L -->
+                <!-- TODO[AGENTS-AUDIT §2]: Fetch /pnl/realized and render "+0.00 SOL ($0.00)" plus daily change -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">REALIZED P&L</span>
@@ -175,6 +184,7 @@
                 </div>
 
                 <!-- Open Positions -->
+                <!-- TODO[AGENTS-AUDIT §2]: Replace counts with horizontal mini-card map sourced from /positions/ws -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">OPEN POSITIONS</span>
@@ -187,6 +197,7 @@
                 </div>
 
                 <!-- System Status -->
+                <!-- TODO[AGENTS-AUDIT §3]: Remove this card; uptime/resource usage live in settings -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">SYSTEM STATUS</span>
@@ -201,6 +212,7 @@
                 </div>
 
                 <!-- Backtest Results -->
+                <!-- TODO[AGENTS-AUDIT §3 & §6]: Delete from dashboard; integrate into settings backtest panel -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">BACKTEST P&L</span>
@@ -318,7 +330,8 @@
                 </div>
 
                 <!-- Risk Metrics -->
-                <div class="hologram-panel p-6 rounded scan-lines" id="riskMetrics">
+                <!-- TODO[AGENTS-AUDIT §5]: Wire to `/risk/portfolio` and replace static placeholders with live drawdown, position size, leverage, exposure -->
+<div class="hologram-panel p-6 rounded scan-lines" id="riskMetrics">
                     <h3 class="text-lg font-semibold text-white hologram-text mb-6 tracking-wider">
                         PORTFOLIO RISK
                     </h3>
@@ -366,10 +379,12 @@
             <!-- Right Column: Charts and Feed -->
             <div class="xl:col-span-2 lg:col-span-1 space-y-8">
                 <!-- Chart Navigation Tabs -->
-                <div class="flex space-x-4 mb-6">
-                    <button class="chart-tab active px-4 py-2 bg-blade-amber/20 text-blade-amber rounded text-sm hologram-text border border-blade-amber/50" data-chart="equity">
-                        EQUITY CURVE
-                    </button>
+                  <!-- TODO[AGENTS-AUDIT §4]: Active tab is unhighlighted; use
+                       `aria-selected` and Tailwind classes to toggle. -->
+                  <div class="flex space-x-4 mb-6">
+                      <button class="chart-tab active px-4 py-2 bg-blade-amber/20 text-blade-amber rounded text-sm hologram-text border border-blade-amber/50" data-chart="equity">
+                          EQUITY CURVE
+                      </button>
                     <button class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="pnl">
                         P&L BREAKDOWN
                     </button>
@@ -406,8 +421,11 @@
                     </div>
                 </div>
 
-                <!-- P&L Breakdown Chart -->
-                <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="pnlChart">
+                  <!-- P&L Breakdown Chart -->
+                  <!-- TODO[AGENTS-AUDIT §4]: Replace static SVG with Chart.js
+                       bar chart from `/pnl/daily?days=14` and donut from
+                       `/strategy/breakdown` including Liquidity & Other segments. -->
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="pnlChart">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             PROFIT & LOSS ANALYSIS
@@ -496,8 +514,11 @@
                     </div>
                 </div>
 
-                <!-- Market Data Chart -->
-                <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="marketChart">
+                  <!-- Market Data Chart -->
+                  <!-- TODO[AGENTS-AUDIT §4]: Poll `/market/active` every 10 s for
+                       new/trending tokens; populate table with volume,
+                       volatility, liquidity, spread and link to TradingView. -->
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="marketChart">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             ACTIVE MARKET DATA
@@ -569,8 +590,11 @@
                     </div>
                 </div>
 
-                <!-- Regime Analysis Chart -->
-                <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="regimeChart">
+                  <!-- Regime Analysis Chart -->
+                  <!-- TODO[AGENTS-AUDIT §4]: Consume `/posterior` websocket to
+                       render regime probabilities and rug risk; hide if
+                       endpoint unavailable. -->
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="regimeChart">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             MARKET REGIME ANALYSIS
@@ -807,9 +831,10 @@
                     <!-- AI Strategy Command Center -->
                     <div class="hologram-panel p-6 rounded scan-lines">
                         <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
-                                NEURAL STRATEGY MATRIX
-                            </h3>
+                    <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
+                        NEURAL STRATEGY MATRIX
+                    </h3>
+                    <!-- TODO[AGENTS-AUDIT §5]: Replace "DATA UNAVAILABLE" with model status from /neural/status or hide card -->
                             <div class="flex items-center space-x-2">
                                 <div class="w-2 h-2 bg-cyan-glow rounded-full animate-pulse"></div>
                                 <span class="hologram-text text-xs cyan-glow">QUANTUM SYNC</span>
@@ -820,7 +845,8 @@
                       </div>
 
                       <!-- Arbitrage Quantum -->
-                      <div class="hologram-panel p-6 rounded scan-lines" id="arbitrageCard">
+                        <div class="hologram-panel p-6 rounded scan-lines" id="arbitrageCard">
+                            <!-- TODO[AGENTS-AUDIT §5]: Hook metrics to /arbitrage; remove card if opportunities=0 -->
                           <div class="flex items-center justify-between mb-6">
                               <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">ARBITRAGE QUANTUM</h3>
                               <div class="flex items-center space-x-2">
@@ -871,13 +897,15 @@
                       </div>
 
                       <!-- Risk Analytics -->
-                      <div class="hologram-panel p-6 rounded scan-lines" id="riskAnalyticsPanel">
+                        <div class="hologram-panel p-6 rounded scan-lines" id="riskAnalyticsPanel">
+                            <!-- TODO[AGENTS-AUDIT §5]: Populate risk analytics via /strategy/risk and tidy padding -->
                           <h3 class="text-lg font-semibold text-white hologram-text tracking-wider mb-6">RISK ANALYTICS</h3>
                           <div id="riskAnalytics" class="grid grid-cols-2 gap-4 text-xs"></div>
                       </div>
 
                       <!-- MEV Protection & Alpha Signals -->
-                    <div class="hologram-panel p-6 rounded scan-lines">
+                      <div class="hologram-panel p-6 rounded scan-lines">
+                          <!-- TODO[AGENTS-AUDIT §5]: Wire MEV Shield & Alpha Signals to /mev/status and /alpha/signals -->
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                                 MEV SHIELD & ALPHA SIGNALS
@@ -1026,6 +1054,8 @@
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                                 SOCIAL SENTIMENT MATRIX
+                                <!-- TODO[AGENTS-AUDIT §5]: Connect to Twitter/Telegram feeds via /sentiment endpoints -->
+                                <!-- TODO[AGENTS-AUDIT §5]: Connect to Twitter/Telegram feeds via /sentiment/* endpoints -->
                             </h3>
                             <div class="flex items-center space-x-2">
                                 <div class="w-2 h-2 bg-blade-amber rounded-full animate-pulse"></div>
@@ -1102,6 +1132,8 @@
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                                 STRATEGY PERFORMANCE MATRIX
+                                <!-- TODO[AGENTS-AUDIT §5]: Replace static sample data with /strategy/performance_matrix and tighten spacing -->
+                                <!-- TODO[AGENTS-AUDIT §5]: Replace static SOL totals with /strategy/performance_matrix data -->
                             </h3>
                             <div class="flex space-x-2">
                                 <button class="px-3 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50">7D</button>
@@ -1213,6 +1245,7 @@
                     </div>
 
                     <!-- AI Backtesting Lab -->
+                    <!-- TODO[AGENTS-AUDIT §6]: Implement date pickers, numeric allocations, and tie into trading parameters -->
                     <div class="hologram-panel p-6 rounded scan-lines">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
@@ -1501,7 +1534,8 @@
                     </select>
                     <div id="demoOptions" class="space-y-3 hidden">
                         <div>
-                            <label class="hologram-text text-blade-amber/80 text-sm block mb-2">INITIAL CASH</label>
+                            <!-- TODO[AGENTS-AUDIT §1]: Default to 10 SOL demo balance and show live USD conversion -->
+<label class="hologram-text text-blade-amber/80 text-sm block mb-2">INITIAL CASH</label>
                             <input type="number" id="demoCash" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm" value="0" />
                         </div>
                         <div>
@@ -1511,7 +1545,8 @@
                     </div>
                 </div>
                 <!-- Supported Assets -->
-                <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4" id="assetPanel">
+                <!-- TODO[AGENTS-AUDIT §7]: Remove supported assets panel; assets handled via demo asset selector -->
+<div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4" id="assetPanel">
                     <h4 class="hologram-text text-blade-amber font-bold mb-3">SUPPORTED ASSETS</h4>
                     <select id="assetSelect" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm"></select>
                 </div>
@@ -1740,7 +1775,8 @@
                     </div>
                 </div>
 
-                <div class="bg-deep-black p-4 rounded border border-blade-amber/30 h-64 overflow-y-auto font-mono text-xs" id="debugConsole"></div>
+                <!-- TODO[AGENTS-AUDIT §13]: Add log level filter and Generate button to dump selected logs -->
+<div class="bg-deep-black p-4 rounded border border-blade-amber/30 h-64 overflow-y-auto font-mono text-xs" id="debugConsole"></div>
             </div>
             
             <!-- Action Buttons -->
@@ -2489,6 +2525,7 @@
         let backtestEndpoint = null;
 
         async function runBacktest() {
+            // TODO[AGENTS-AUDIT §6]: support custom date pickers and integrate trading parameters
             const period = document.getElementById('btPeriod').value.trim();
             const capital = parseFloat(document.getElementById('btCapital').value);
             const strategy_mix = document.getElementById('btStrategyMix').value.trim();
@@ -4509,5 +4546,7 @@
         }
 
     </script>
+    <!-- TODO[AGENTS-AUDIT §9]: Add footer with repo link and IJR Enterprises
+         disclaimer; consider separate disclaimer page for legal text. -->
 </body>
 </html>
