@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = p.qty >= 0 ? '#00e5ff' : '#ff6b35';
         ctx.fillRect(x, 0, barWidth, height);
       });
+      if (canvas.parentElement) {
+        canvas.parentElement.scrollLeft = canvas.width;
+      }
     }
 
     try {
@@ -48,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.className = 'flex items-center justify-between hologram-text text-sm';
         const qty = p.qty || 0;
-        div.innerHTML = `<span>${token}</span><span>${qty.toFixed(2)}</span>`;
+        div.innerHTML = `<span>${token}</span><span>${formatSol(qty, solPrice)}</span>`;
         list.appendChild(div);
       });
     } catch (e) {
@@ -70,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="hologram-text text-xs text-blade-amber/60">${time} • ${order.strategy || ''}</div>
             </div>
             <div class="text-right">
-                <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl} SOL</div>
+                <div class="hologram-text ${color} font-bold">${formatSolChange(pnl, solPrice)}</div>
             </div>
         </div>`;
     return entry;
@@ -98,14 +101,49 @@ document.addEventListener('DOMContentLoaded', () => {
   async function pollRisk() {
     try {
       const data = await fetch(`${API_BASE}/risk/portfolio`).then(r => r.json());
+      const equity = typeof data.equity === 'number' ? data.equity : 10;
+      const change = data.change || 0;
+      const changePct = data.change_pct || 0;
+      const pv = document.getElementById('portfolioValue');
+      if (pv) pv.textContent = formatSol(equity, solPrice);
+      const pc = document.getElementById('portfolioChange');
+      if (pc) pc.textContent = `${formatSolChange(change, solPrice)} (${formatPercent(changePct)})`;
       const dd = document.getElementById('riskMaxDrawdown');
       if (dd) dd.textContent = formatPercent(-data.max_drawdown * 100);
+      const ps = document.getElementById('positionSize');
+      if (ps) ps.textContent = formatSol(data.position_size || 0, solPrice);
       const lev = document.getElementById('leverageRatio');
       if (lev) lev.textContent = `${data.leverage.toFixed(2)}x`;
       const ex = document.getElementById('exposure');
       if (ex) ex.textContent = formatPercent(data.exposure * 100);
     } catch (e) {
       console.warn('risk poll failed', e);
+      const pv = document.getElementById('portfolioValue');
+      if (pv) pv.textContent = formatSol(10, solPrice);
+      const pc = document.getElementById('portfolioChange');
+      if (pc) pc.textContent = `${formatSolChange(0, solPrice)} (${formatPercent(0)})`;
+    }
+  }
+
+  async function pollRug() {
+    try {
+      const res = await fetch(`${API_BASE}/risk/rug`).then(r => r.json());
+      const indicator = document.getElementById('rugPullIndicator');
+      const detail = document.getElementById('rugPullDetail');
+      const status = document.getElementById('rugPull');
+      if (res.alerts && res.alerts.length) {
+        indicator?.classList.remove('status-online');
+        indicator?.classList.add('bg-blade-orange');
+        status.textContent = 'ALERT';
+        detail.textContent = res.alerts[0].reason;
+      } else {
+        indicator?.classList.add('status-online');
+        indicator?.classList.remove('bg-blade-orange');
+        status.textContent = 'SAFE';
+        detail.textContent = 'No threats detected';
+      }
+    } catch (e) {
+      console.warn('rug poll failed', e);
     }
   }
 
@@ -130,5 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStrategyMatrix();
   renderPositionsMap();
   setInterval(pollRisk, 5000);
+  pollRug();
+  setInterval(pollRug, 10000);
   setInterval(loadStrategyMatrix, 10000);
 });

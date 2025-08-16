@@ -14,7 +14,10 @@ try:
     from ..service.license_issuer import app as license_issuer_app
 except Exception:  # pragma: no cover
     license_issuer_app = None
-from ..server import create_app as create_trading_app
+try:  # pragma: no cover - avoid circular import during tests
+    from ..server import create_app as create_trading_app
+except Exception:  # pragma: no cover
+    create_trading_app = None
 
 __all__ = [
     "BotConfig",

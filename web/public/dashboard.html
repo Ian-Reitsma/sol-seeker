@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- TODO[AGENTS-AUDIT §10]: Update branding to "SOL SEEKER" with space and modern font -->
     <title>SOL SEEKER Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -65,14 +64,31 @@
     <script src="js/nav.js"></script>
     <script src="js/portfolio.js"></script>
     <script src="js/analytics.js"></script>
+    <script src="js/debug.js"></script>
+    <script src="js/walkthrough.js"></script>
 
         <link rel="stylesheet" href="dashboard.css">
 </head>
 <body class="text-white font-display min-h-screen relative">
+    <!-- Mode Modal -->
+    <div id="modeModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+        <div class="bg-panel-black p-6 rounded text-center space-y-4">
+            <p class="hologram-text">Select dashboard mode</p>
+            <div class="space-x-4">
+                <button id="modeBasic" class="px-4 py-2 bg-blade-amber/20 text-blade-amber rounded">Basic</button>
+                <button id="modeAdvanced" class="px-4 py-2 bg-blade-amber/20 text-blade-amber rounded">Advanced</button>
+            </div>
+        </div>
+    </div>
     <!-- Atmospheric Background -->
+    <div class="atmospheric-glow"></div>
     <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
     <div id="wsReconnectBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-blade-orange/80 text-white px-4 py-1 rounded text-xs z-50">Reconnecting…</div>
     <div id="licenseExpiryBanner" class="hidden fixed top-24 left-1/2 -translate-x-1/2 bg-blade-amber/80 text-black px-4 py-1 rounded text-xs z-50">LICENSE EXPIRES SOON</div>
+    <div id="walkthroughOverlay" class="hidden fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center text-center p-4">
+        <div id="walkthroughText" class="mb-4"></div>
+        <button id="walkthroughNext" class="px-4 py-2 bg-blade-amber text-black rounded">Next</button>
+    </div>
 
     <!-- Fixed Header -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-glass-black border-b border-blade-amber/30 backdrop-filter backdrop-blur-lg">
@@ -81,7 +97,6 @@
             <div class="flex items-center space-x-8">
                 <button id="nav-toggle" class="text-2xl mr-4" aria-expanded="false" aria-controls="side-menu" aria-label="Open menu">☰</button>
                 <div class="flex items-center space-x-4">
-                    <!-- TODO[AGENTS-AUDIT §10]: Rename heading to "SOL SEEKER DASHBOARD" -->
                     <h1 class="text-3xl font-bold text-white hologram-text tracking-wider">
                         SOL SEEKER DASHBOARD
                     </h1>
@@ -149,20 +164,13 @@
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Total Portfolio Value -->
-                <!-- TODO[AGENTS-AUDIT §2]: Wire to /chart/portfolio and show 10 SOL demo start with USD conversion -->
                 <div class="metric-card p-6 rounded scan-lines">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">PORTFOLIO VALUE</span>
-                          <!-- TODO[AGENTS-AUDIT §2]: Align sparkline left →
-                               right and overlay % change line with legend. -->
-                          <canvas id="portfolioSpark" class="w-12 h-6"></canvas>
+                          <canvas id="sparkline" class="w-12 h-6"></canvas>
                     </div>
-                    <div class="text-3xl font-bold amber-glow data-flicker" id="portfolioValue">
-                        10 SOL ($0.00)
-                    </div>
-                    <div class="text-sm hologram-text text-cyan-glow mt-1" id="portfolioChange">
-                        +0.00 SOL ($0.00) (+0.00%)
-                    </div>
+                    <div class="text-3xl font-bold amber-glow data-flicker" id="portfolioValue"></div>
+                    <div class="text-sm hologram-text text-cyan-glow mt-1" id="portfolioChange"></div>
                 </div>
 
                 <!-- Realized P&L -->
@@ -183,7 +191,6 @@
                 </div>
 
                 <!-- Open Positions -->
-                <!-- TODO[AGENTS-AUDIT §2]: Replace counts with horizontal mini-card map sourced from /positions/ws -->
                 <div class="metric-card p-6 rounded scan-lines overflow-x-auto">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">OPEN POSITIONS</span>
@@ -297,7 +304,6 @@
                 </div>
 
                 <!-- Risk Metrics -->
-                <!-- TODO[AGENTS-AUDIT §5]: Wire to `/risk/portfolio` and replace static placeholders with live drawdown, position size, leverage, exposure -->
 <div class="hologram-panel p-6 rounded scan-lines" id="riskMetrics">
                     <h3 class="text-lg font-semibold text-white hologram-text mb-6 tracking-wider">
                         PORTFOLIO RISK
@@ -346,8 +352,6 @@
             <!-- Right Column: Charts and Feed -->
             <div class="xl:col-span-2 lg:col-span-1 space-y-8">
                 <!-- Chart Navigation Tabs -->
-                  <!-- TODO[AGENTS-AUDIT §4]: Active tab is unhighlighted; use
-                       `aria-selected` and Tailwind classes to toggle. -->
                   <div class="flex space-x-4 mb-6">
                       <button id="equityTab" aria-selected="true" class="chart-tab px-4 py-2 bg-blade-amber/20 text-blade-amber rounded text-sm hologram-text border border-blade-amber/50" data-chart="equity">
                           EQUITY CURVE
@@ -389,9 +393,6 @@
                 </div>
 
                   <!-- P&L Breakdown Chart -->
-                  <!-- TODO[AGENTS-AUDIT §4]: Replace static SVG with Chart.js
-                       bar chart from `/pnl/daily?days=14` and donut from
-                       `/strategy/breakdown` including Liquidity & Other segments. -->
                   <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="pnlChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
@@ -419,9 +420,6 @@
                 </div>
 
                   <!-- Market Data Chart -->
-                  <!-- TODO[AGENTS-AUDIT §4]: Poll `/market/active` every 10 s for
-                       new/trending tokens; populate table with volume,
-                       volatility, liquidity, spread and link to TradingView. -->
                   <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="marketChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
@@ -451,9 +449,6 @@
                 </div>
 
                   <!-- Regime Analysis Chart -->
-                  <!-- TODO[AGENTS-AUDIT §4]: Consume `/posterior` websocket to
-                       render regime probabilities and rug risk; hide if
-                       endpoint unavailable. -->
                   <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="regimeChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
@@ -715,14 +710,12 @@
 
                       <!-- Risk Analytics -->
                         <div class="hologram-panel p-6 rounded scan-lines" id="riskAnalyticsPanel">
-                            <!-- TODO[AGENTS-AUDIT §5]: Populate risk analytics via /strategy/risk and tidy padding -->
                           <h3 class="text-lg font-semibold text-white hologram-text tracking-wider mb-6">RISK ANALYTICS</h3>
                           <div id="riskAnalytics" class="grid grid-cols-2 gap-4 text-xs"></div>
                       </div>
 
                       <!-- MEV Protection & Alpha Signals -->
-                      <div class="hologram-panel p-6 rounded scan-lines">
-                          <!-- TODO[AGENTS-AUDIT §5]: Wire MEV Shield & Alpha Signals to /mev/status and /alpha/signals -->
+                        <div class="hologram-panel p-6 rounded scan-lines advanced" id="mevAlphaPanel">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                                 MEV SHIELD & ALPHA SIGNALS
@@ -759,22 +752,22 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="hologram-text text-cyan-glow font-bold">$2,847</div>
+                                        <div class="hologram-text text-cyan-glow font-bold" id="mevSaved">--</div>
                                         <div class="hologram-text text-xs text-blade-amber/60">SAVED TODAY</div>
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-3 gap-3 text-xs">
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">ATTACKS BLOCKED</div>
-                                        <div class="hologram-text text-cyan-glow font-bold">47</div>
+                                        <div class="hologram-text text-cyan-glow font-bold" id="mevBlocked">0</div>
                                     </div>
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">SUCCESS RATE</div>
-                                        <div class="hologram-text text-cyan-glow font-bold">99.2%</div>
+                                        <div class="hologram-text text-cyan-glow font-bold" id="mevSuccess">0%</div>
                                     </div>
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">LATENCY</div>
-                                        <div class="hologram-text text-cyan-glow font-bold">3ms</div>
+                                        <div class="hologram-text text-cyan-glow font-bold" id="mevLatency">0ms</div>
                                     </div>
                                 </div>
                             </div>
@@ -799,22 +792,22 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="hologram-text text-blade-amber font-bold">STRONG</div>
+                                        <div class="hologram-text text-blade-amber font-bold" id="alphaStrength">--</div>
                                         <div class="hologram-text text-xs text-blade-amber/60">SIGNAL STRENGTH</div>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-xs">
                                         <span class="hologram-text text-blade-amber/80">SOCIAL SENTIMENT</span>
-                                        <span class="hologram-text text-cyan-glow">BULLISH (8.2/10)</span>
+                                        <span class="hologram-text text-cyan-glow" id="alphaSentiment">--</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="hologram-text text-blade-amber/80">ON-CHAIN MOMENTUM</span>
-                                        <span class="hologram-text text-cyan-glow">STRONG (7.8/10)</span>
+                                        <span class="hologram-text text-cyan-glow" id="alphaMomentum">--</span>
                                     </div>
                                     <div class="flex justify-between text-xs">
                                         <span class="hologram-text text-blade-amber/80">WHALE ACTIVITY</span>
-                                        <span class="hologram-text text-blade-yellow">MODERATE (6.1/10)</span>
+                                        <span class="hologram-text text-blade-yellow" id="alphaWhales">--</span>
                                     </div>
                                 </div>
                             </div>
@@ -848,7 +841,7 @@
                 </div>
 
                 <!-- Enhanced Trading Feed with Social Sentiment -->
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-2">
                     <!-- Neural Trading Feed -->
                     <div class="hologram-panel p-6 rounded scan-lines">
                         <div class="flex justify-between items-center mb-6">
@@ -943,118 +936,45 @@
                 </div>
 
                 <!-- Performance Analytics & Backtesting -->
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-2">
                     <!-- Strategy Performance Heatmap -->
                     <div class="hologram-panel p-6 rounded scan-lines">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-2">
                             <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                                 STRATEGY PERFORMANCE MATRIX
-                                <!-- TODO[AGENTS-AUDIT §5]: Replace static sample data with /strategy/performance_matrix and tighten spacing -->
-                                <!-- TODO[AGENTS-AUDIT §5]: Replace static SOL totals with /strategy/performance_matrix data -->
                             </h3>
                             <div class="flex space-x-2">
-                                <button class="px-3 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50">7D</button>
-                                <button class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">30D</button>
+                                <button id="perf7d" class="px-3 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50">7D</button>
+                                <button id="perf30d" class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20">30D</button>
                             </div>
                         </div>
-                        
+
                         <div class="space-y-4">
                             <!-- Performance Heatmap -->
-                            <div class="grid grid-cols-7 gap-1">
-                                <!-- Days of week header -->
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">M</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">T</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">W</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">T</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">F</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">S</div>
-                                <div class="text-xs hologram-text text-blade-amber/60 text-center">S</div>
-                                
-                                <!-- Week 1 -->
-                                <div class="w-8 h-8 bg-cyan-glow/80 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+2.4 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/60 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+1.8 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-blade-orange/40 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">-0.3 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/90 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+3.1 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/70 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+2.0 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-blade-amber/50 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+0.8 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-blade-orange/60 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">-0.5 SOL</div>
-                                </div>
-                                
-                                <!-- Week 2 -->
-                                <div class="w-8 h-8 bg-cyan-glow/50 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+1.2 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/80 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+2.7 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/60 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+1.9 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-blade-amber/40 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+0.4 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/100 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+4.2 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-cyan-glow/70 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+2.1 SOL</div>
-                                </div>
-                                <div class="w-8 h-8 bg-blade-amber/30 rounded tooltip-trigger relative">
-                                    <div class="tooltip absolute bottom-full mb-2 px-2 py-1 text-xs rounded">+0.2 SOL</div>
-                                </div>
-                            </div>
-                            
+                            <div id="perfMatrixGrid" class="grid grid-cols-7 gap-1"></div>
+
                             <!-- Strategy Breakdown -->
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="bg-void-black/50 p-3 rounded border border-blade-cyan/30">
-                                    <div class="hologram-text text-cyan-glow font-bold text-sm">SNIPER</div>
-                                    <div class="hologram-text text-white text-lg">+12.4 SOL</div>
-                                    <div class="hologram-text text-cyan-glow text-xs">94% Win Rate</div>
-                                </div>
-                                <div class="bg-void-black/50 p-3 rounded border border-blade-amber/30">
-                                    <div class="hologram-text text-blade-amber font-bold text-sm">ARBITRAGE</div>
-                                    <div class="hologram-text text-white text-lg">+8.7 SOL</div>
-                                    <div class="hologram-text text-blade-amber text-xs">87% Win Rate</div>
-                                </div>
-                                <div class="bg-void-black/50 p-3 rounded border border-blade-yellow/30">
-                                    <div class="hologram-text text-blade-yellow font-bold text-sm">MARKET MAKING</div>
-                                    <div class="hologram-text text-white text-lg">+3.2 SOL</div>
-                                    <div class="hologram-text text-blade-yellow text-xs">76% Win Rate</div>
-                                </div>
-                            </div>
-                            
+                            <div id="perfStrategyBreakdown" class="grid grid-cols-3 gap-4"></div>
+
                             <!-- Risk Metrics -->
                             <div class="bg-void-black/50 p-4 rounded border border-blade-orange/30">
                                 <div class="hologram-text text-blade-orange font-bold mb-3">RISK ANALYTICS</div>
                                 <div class="grid grid-cols-2 gap-4 text-xs">
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">SHARPE RATIO</div>
-                                        <div class="hologram-text text-cyan-glow font-bold">2.84</div>
+                                        <div id="perfSharpe" class="hologram-text text-cyan-glow font-bold">--</div>
                                     </div>
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">MAX DRAWDOWN</div>
-                                        <div class="hologram-text text-blade-orange font-bold">-5.2%</div>
+                                        <div id="perfDrawdown" class="hologram-text text-blade-orange font-bold">--</div>
                                     </div>
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">VOLATILITY</div>
-                                        <div class="hologram-text text-white font-bold">12.4%</div>
+                                        <div id="perfVol" class="hologram-text text-white font-bold">--</div>
                                     </div>
                                     <div>
                                         <div class="hologram-text text-blade-amber/80">CALMAR RATIO</div>
-                                        <div class="hologram-text text-cyan-glow font-bold">4.67</div>
+                                        <div id="perfCalmar" class="hologram-text text-cyan-glow font-bold">--</div>
                                     </div>
                                 </div>
                             </div>
@@ -1062,116 +982,34 @@
                     </div>
 
                     <!-- AI Backtesting Lab -->
-                    <!-- TODO[AGENTS-AUDIT §6]: Implement date pickers, numeric allocations, and tie into trading parameters -->
                     <div class="hologram-panel p-6 rounded scan-lines">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
-                                AI BACKTESTING LAB
-                            </h3>
-                            <button class="px-3 py-1 bg-blade-cyan/20 text-cyan-glow rounded text-xs hologram-text border border-blade-cyan/50">
-                                RUN TEST
-                            </button>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">AI BACKTESTING LAB</h3>
+                            <button id="runLab" class="px-3 py-1 bg-blade-cyan/20 text-cyan-glow rounded text-xs hologram-text border border-blade-cyan/50">RUN TEST</button>
                         </div>
-                        
                         <div class="space-y-4">
-                            <!-- Backtest Configuration -->
                             <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30">
                                 <div class="hologram-text text-blade-amber font-bold mb-3">TEST PARAMETERS</div>
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="hologram-text text-blade-amber/80 text-xs block mb-1">TIME PERIOD</label>
-                                        <select class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white text-xs">
-                                            <option>Last 30 Days</option>
-                                            <option>Last 90 Days</option>
-                                            <option>Last 6 Months</option>
-                                            <option>Custom Range</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="hologram-text text-blade-amber/80 text-xs block mb-1">INITIAL CAPITAL</label>
-                                        <input type="number" value="100" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white text-xs" placeholder="SOL">
-                                    </div>
-                                    <div>
-                                        <label class="hologram-text text-blade-amber/80 text-xs block mb-1">STRATEGY MIX</label>
-                                        <div class="grid grid-cols-3 gap-2 text-xs">
-                                            <div>
-                                                <div class="hologram-text text-blade-amber/80">SNIPER</div>
-                                                <input type="range" min="0" max="100" value="50" class="w-full h-1 bg-void-black rounded-lg appearance-none cursor-pointer slider">
-                                            </div>
-                                            <div>
-                                                <div class="hologram-text text-blade-amber/80">ARB</div>
-                                                <input type="range" min="0" max="100" value="30" class="w-full h-1 bg-void-black rounded-lg appearance-none cursor-pointer slider">
-                                            </div>
-                                            <div>
-                                                <div class="hologram-text text-blade-amber/80">MM</div>
-                                                <input type="range" min="0" max="100" value="20" class="w-full h-1 bg-void-black rounded-lg appearance-none cursor-pointer slider">
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="grid md:grid-cols-2 gap-3 text-xs">
+                                    <div><label class="hologram-text text-blade-amber/80 block mb-1">START</label><input type="date" id="labStart" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white" /></div>
+                                    <div><label class="hologram-text text-blade-amber/80 block mb-1">END</label><input type="date" id="labEnd" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white" /></div>
+                                    <div><label class="hologram-text text-blade-amber/80 block mb-1">SNIPER %</label><input type="number" id="labSniper" min="0" max="100" value="50" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white" /></div>
+                                    <div><label class="hologram-text text-blade-amber/80 block mb-1">ARB %</label><input type="number" id="labArb" min="0" max="100" value="30" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white" /></div>
+                                    <div><label class="hologram-text text-blade-amber/80 block mb-1">MM %</label><input type="number" id="labMM" min="0" max="100" value="20" class="w-full bg-void-black border border-blade-amber/30 rounded px-2 py-1 hologram-text text-white" /></div>
                                 </div>
                             </div>
-                            
-                            <!-- Backtest Results -->
                             <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30">
                                 <div class="hologram-text text-cyan-glow font-bold mb-3">SIMULATION RESULTS</div>
                                 <div class="space-y-2">
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80 text-xs">FINAL BALANCE</span>
-                                        <span class="hologram-text text-cyan-glow font-bold">247.3 SOL</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80 text-xs">TOTAL RETURN</span>
-                                        <span class="hologram-text text-cyan-glow font-bold">+147.3%</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80 text-xs">TOTAL TRADES</span>
-                                        <span class="hologram-text text-white font-bold">1,247</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80 text-xs">WIN RATE</span>
-                                        <span class="hologram-text text-cyan-glow font-bold">89.2%</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80 text-xs">AVG TRADE</span>
-                                        <span class="hologram-text text-white font-bold">+0.12 SOL</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Monte Carlo Analysis -->
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/30">
-                                <div class="hologram-text text-blade-yellow font-bold mb-3">MONTE CARLO ANALYSIS</div>
-                                <div class="space-y-2 text-xs">
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80">BEST CASE (95%)</span>
-                                        <span class="hologram-text text-cyan-glow font-bold">+284.7 SOL</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80">EXPECTED (50%)</span>
-                                        <span class="hologram-text text-white font-bold">+147.3 SOL</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80">WORST CASE (5%)</span>
-                                        <span class="hologram-text text-blade-orange font-bold">+89.1 SOL</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="hologram-text text-blade-amber/80">PROBABILITY OF PROFIT</span>
-                                        <span class="hologram-text text-cyan-glow font-bold">97.8%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Strategy Optimization -->
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-orange/30">
-                                <div class="hologram-text text-blade-orange font-bold mb-3">AI OPTIMIZATION</div>
-                                <div class="space-y-2 text-xs">
-                                    <div class="hologram-text text-white">🎯 Increase Sniper allocation to 65% for +12% returns</div>
-                                    <div class="hologram-text text-white">⚡ Reduce position size during high volatility periods</div>
-                                    <div class="hologram-text text-white">🛡️ Add stop-loss at -15% for better risk management</div>
-                                    <div class="hologram-text text-white">📊 Consider DCA strategy during market downturns</div>
+                                    <div class="flex justify-between"><span class="hologram-text text-blade-amber/80">FINAL BALANCE</span><span id="labFinal" class="hologram-text text-cyan-glow font-bold">--</span></div>
+                                    <div class="flex justify-between"><span class="hologram-text text-blade-amber/80">TOTAL RETURN</span><span id="labReturn" class="hologram-text text-cyan-glow font-bold">--</span></div>
+                                    <div class="flex justify-between"><span class="hologram-text text-blade-amber/80">TOTAL TRADES</span><span id="labTrades" class="hologram-text text-white font-bold">--</span></div>
+                                    <div class="flex justify-between"><span class="hologram-text text-blade-amber/80">WIN RATE</span><span id="labWin" class="hologram-text text-cyan-glow font-bold">--</span></div>
+                                    <div class="flex justify-between"><span class="hologram-text text-blade-amber/80">AVG TRADE</span><span id="labAvg" class="hologram-text text-white font-bold">--</span></div>
                                 </div>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -1361,12 +1199,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- Supported Assets -->
-                <!-- TODO[AGENTS-AUDIT §7]: Remove supported assets panel; assets handled via demo asset selector -->
-<div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4" id="assetPanel">
-                    <h4 class="hologram-text text-blade-amber font-bold mb-3">SUPPORTED ASSETS</h4>
-                    <select id="assetSelect" class="w-full bg-void-black border border-blade-amber/30 rounded px-3 py-2 hologram-text text-white text-sm"></select>
-                </div>
                 <!-- API Connection -->
                 <div class="bg-void-black/50 p-4 rounded border border-blade-amber/30 mb-4">
                     <h4 class="hologram-text text-blade-amber font-bold mb-3">API CONNECTION</h4>
@@ -1551,40 +1383,23 @@
                     </div>
                 </div>
             </div>
-            <!-- Feature Schema -->
-            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30 mb-4" id="featureSchemaPanel">
-                <h4 class="hologram-text text-white font-bold mb-3">AI FEATURE SCHEMA</h4>
-                <div id="featureSchema" class="max-h-40 overflow-y-auto text-xs hologram-text text-white space-y-1"></div>
-            </div>
-
-            <!-- Feature Snapshot -->
-            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/30 mb-4" id="featureSnapshotPanel">
-                <h4 class="hologram-text text-white font-bold mb-3">CURRENT FEATURE SNAPSHOT</h4>
-                <div id="featureSnapshot" class="max-h-40 overflow-y-auto text-xs hologram-text text-white space-y-1"></div>
-            </div>
-
-            <!-- AI Feature Monitor -->
-            <div class="hologram-panel p-6 rounded scan-lines mt-8" id="featureStreamPanel">
-                <h3 class="text-lg font-semibold text-white hologram-text tracking-wider mb-4">
-                    AI FEATURE MONITOR
-                </h3>
-                <div id="featureStream" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs hologram-text text-white"></div>
-            </div>
+            <!-- AI Diagnostics -->
+            <details class="hologram-panel p-6 rounded scan-lines mt-8 advanced" id="featurePanel">
+                <summary class="text-lg font-semibold text-white hologram-text tracking-wider cursor-pointer">AI DIAGNOSTICS</summary>
+                <div id="featureDiagnostics" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 text-xs hologram-text text-white"></div>
+            </details>
 
             <!-- Debug Console Section -->
-            <div class="mb-8">
+            <div class="mb-8 advanced">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                         DEBUG CONSOLE
                     </h3>
                     <div class="flex space-x-2">
-                        <select class="px-2 py-1 bg-blade-amber/20 text-blade-amber rounded text-xs hologram-text border border-blade-amber/50" id="logFilter">
-                            <option>ALL</option>
-                            <option>INFO</option>
-                            <option>DEBUG</option>
-                            <option>WARN</option>
-                            <option>ERROR</option>
-                        </select>
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="generateLogs">GENERATE</button>
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20 log-filter" data-level="ERROR">ERRORS</button>
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20 log-filter" data-level="INFO">INFO</button>
+                        <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20 log-filter" data-level="ALL">ALL</button>
                         <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="clearLogs">CLEAR</button>
 
                         <button class="px-2 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="apiExplorerBtn">API MAP</button>
@@ -2090,6 +1905,30 @@
                 updateLicenseMode(dashboardState.isDemo);
             }
         }
+
+        // Basic vs advanced display
+        function applyDashboardMode(mode) {
+            localStorage.setItem('dashboard_mode', mode);
+            document.querySelectorAll('.advanced').forEach(el => {
+                el.classList.toggle('hidden', mode === 'basic');
+            });
+        }
+
+        const savedMode = localStorage.getItem('dashboard_mode');
+        if (!savedMode) {
+            document.getElementById('modeModal').classList.remove('hidden');
+        } else {
+            applyDashboardMode(savedMode);
+        }
+
+        document.getElementById('modeBasic').addEventListener('click', () => {
+            applyDashboardMode('basic');
+            document.getElementById('modeModal').classList.add('hidden');
+        });
+        document.getElementById('modeAdvanced').addEventListener('click', () => {
+            applyDashboardMode('advanced');
+            document.getElementById('modeModal').classList.add('hidden');
+        });
         async function saveMode() {
             const mode = modeSelect.value;
             demoOptions.classList.toggle('hidden', mode !== 'demo');
@@ -2130,10 +1969,6 @@
             });
         });
 
-        // Debug console functionality
-        const debugConsole = document.getElementById('debugConsole');
-        const logFilter = document.getElementById('logFilter');
-        const clearLogs = document.getElementById('clearLogs');
         const apiExplorerBtn = document.getElementById('apiExplorerBtn');
         const apiExplorerModal = document.getElementById('apiExplorerModal');
         const apiExplorerContent = document.getElementById('apiExplorerContent');
@@ -2142,43 +1977,6 @@
         const aboutModal = document.getElementById('aboutModal');
         const aboutContent = document.getElementById('aboutContent');
         const closeAboutModal = document.getElementById('closeAboutModal');
-        const logBuffer = [];
-        const MAX_LOGS = 500;
-
-        function levelClass(level) {
-            switch (level) {
-                case 'DEBUG': return 'text-blade-amber';
-                case 'WARN': return 'text-blade-orange';
-                case 'ERROR': return 'text-red-500';
-                case 'INFO': return 'text-white';
-                default: return 'text-white';
-            }
-        }
-
-        function renderLogs() {
-            debugConsole.innerHTML = '';
-            const level = logFilter.value;
-            for (const log of logBuffer) {
-                if (level !== 'ALL' && log.level !== level) continue;
-                const div = document.createElement('div');
-                div.className = levelClass(log.level);
-                div.textContent = `[${new Date(log.timestamp).toLocaleTimeString()}] ${log.level}: ${log.message}`;
-                debugConsole.appendChild(div);
-            }
-            debugConsole.scrollTop = debugConsole.scrollHeight;
-        }
-
-        function appendLog(entry) {
-            logBuffer.push(entry);
-            if (logBuffer.length > MAX_LOGS) logBuffer.shift();
-            renderLogs();
-        }
-
-        logFilter.addEventListener('change', renderLogs);
-        clearLogs.addEventListener('click', () => {
-            logBuffer.length = 0;
-            renderLogs();
-        });
 
         apiExplorerBtn?.addEventListener('click', async () => {
             try {
@@ -2346,7 +2144,6 @@
                 this.disabled = false;
             }
         });
-        let backtestEndpoint = null;
 
         async function runBacktest() {
             // TODO[AGENTS-AUDIT §6]: support custom date pickers and integrate trading parameters
@@ -2383,38 +2180,32 @@
             try {
                 const res = await apiClient.runBacktest(params);
                 if (!res || !res.id) throw new Error('start failed');
-                backtestEndpoint = `/backtest/ws/${res.id}`;
-                wsClient.connect(backtestEndpoint, (msg) => {
-                    if (msg.progress !== undefined) {
-                        bar.style.width = `${msg.progress}%`;
-                    }
-                    if (msg.cancelled) {
-                        wsClient.disconnect(backtestEndpoint);
-                        backtestEndpoint = null;
-                        btn.disabled = false;
-                        btn.textContent = 'RUN BACKTEST';
-                        cancelBtn.classList.add('hidden');
-                        progress.classList.add('hidden');
-                        bar.style.width = '0';
-                        return;
-                    }
-                    if (msg.pnl !== undefined) {
-                        document.getElementById('backtestPnL').textContent = formatSol(msg.pnl, solPrice);
-                        document.getElementById('backtestStats').textContent = `DD ${(msg.drawdown * 100).toFixed(2)}% • SHARPE ${msg.sharpe.toFixed(2)}`;
-                        wsClient.disconnect(backtestEndpoint);
-                        backtestEndpoint = null;
-                        btn.disabled = false;
-                        btn.textContent = 'RUN BACKTEST';
-                        cancelBtn.classList.add('hidden');
-                        progress.classList.add('hidden');
-                        bar.style.width = '0';
-                    }
-                });
-                cancelBtn.onclick = () => {
-                    if (backtestEndpoint) {
-                        wsClient.send(backtestEndpoint, { action: 'cancel' });
+                const ws = new WebSocket(apiClient.getWebSocketURL(`/backtest/ws/${res.id}`));
+                ws.onmessage = (ev) => {
+                    try {
+                        const msg = JSON.parse(ev.data);
+                        if (msg.progress !== undefined) {
+                            bar.style.width = `${msg.progress}%`;
+                        }
+                        if (msg.cancelled) {
+                            ws.close();
+                        }
+                        if (msg.pnl !== undefined) {
+                            document.getElementById('backtestPnL').textContent = formatSol(msg.pnl, solPrice);
+                            document.getElementById('backtestStats').textContent = `DD ${(msg.drawdown * 100).toFixed(2)}% • SHARPE ${msg.sharpe.toFixed(2)}`;
+                        }
+                    } catch (e) {
+                        console.error('backtest ws parse failed', e);
                     }
                 };
+                ws.onclose = () => {
+                    btn.disabled = false;
+                    btn.textContent = 'RUN BACKTEST';
+                    cancelBtn.classList.add('hidden');
+                    progress.classList.add('hidden');
+                    bar.style.width = '0';
+                };
+                cancelBtn.onclick = () => ws.send(JSON.stringify({ action: 'cancel' }));
             } catch (err) {
                 console.error('Backtest failed:', err);
                 showToast('Backtest failed');
@@ -2847,16 +2638,6 @@
                 }
                 tradingActive = !!state?.running;
 
-                let assets = null;
-                if (!dashboardState.assets) {
-                    assets = await apiClient.getAssets().catch(() => null);
-                    if (assets) dashboardState.assets = assets;
-                }
-                let featureSchema = null;
-                if (!dashboardState.featureSchema) {
-                    featureSchema = await apiClient.getFeaturesSchema().catch(() => null);
-                    if (featureSchema) dashboardState.featureSchema = featureSchema;
-                }
                 const featureTs = featureSnap?.timestamp;
 
                 if (!dashboardState.licenseChecked || Date.now() - dashboardState.licenseChecked > 86400000) {
@@ -2874,10 +2655,8 @@
                 const render = () => {
                     if (assets) populateAssetSelect(assets);
                     updateModePanel();
-                    if (featureSchema) renderFeatureSchema(featureSchema);
                     if (Array.isArray(dashboardState.features)) {
-                        updateFeatureStream(dashboardState.features);
-                        renderFeatureSnapshot(dashboardState.features, featureTs);
+                        updateFeatureDiagnostics(dashboardState.features);
                     }
                     updatePortfolioMetrics();
                     updateRiskMetrics();
@@ -3005,16 +2784,8 @@
             }
             if (!map) return;
             dashboardState.positions = map;
-
             const entries = Object.entries(map);
             const qty = (p) => p.quantity ?? p.qty ?? 0;
-            const activePositions = entries.filter(([, p]) => qty(p) !== 0).length;
-            const longPositions = entries.filter(([, p]) => qty(p) > 0).length;
-            const shortPositions = entries.filter(([, p]) => qty(p) < 0).length;
-
-            document.getElementById('openPositionsTotal').textContent = activePositions.toString();
-            document.getElementById('openPositionsActive').textContent = `${activePositions} ACTIVE`;
-            document.getElementById('openPositionsBreakdown').textContent = `${longPositions} LONG • ${shortPositions} SHORT`;
 
             const list = document.getElementById('positionsList');
             if (list) {
@@ -3043,11 +2814,11 @@
                                 <div class="token-icon">${token[0] || '?'}</div>
                                 <div>
                                     <div class="hologram-text text-white font-bold">$${token}</div>
-                                    <div class="hologram-text text-xs text-blade-amber/60">${q}</div>
+                                    <div class="hologram-text text-xs text-blade-amber/60">${formatSol(q, solPrice)}</div>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl}</div>
+                                <div class="hologram-text ${color} font-bold">${formatSolChange(pnl, solPrice)}</div>
                             </div>
                         </div>`;
                     fragment.appendChild(row);
@@ -3231,19 +3002,6 @@
             }
         }
 
-        function populateAssetSelect(assets) {
-            if (!Array.isArray(assets)) return;
-            const sel = document.getElementById('assetSelect');
-            if (!sel) return;
-            sel.innerHTML = '';
-            assets.forEach(tok => {
-                const opt = document.createElement('option');
-                opt.value = tok;
-                opt.textContent = tok;
-                sel.appendChild(opt);
-            });
-        }
-
         function populateDemoAssets(assets) {
             const sel = document.getElementById('demoAssets');
             if (!sel || !Array.isArray(assets)) return;
@@ -3295,39 +3053,49 @@
             }
         }
 
-        function renderFeatureSchema(schema) {
-            const container = document.getElementById('featureSchema');
-            if (!container || !schema || !Array.isArray(schema.features)) return;
-            container.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            schema.features.forEach(f => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between';
-                row.innerHTML = `<span>${f.index}: ${f.name}</span><span class="text-blade-amber/60">${f.category || ''}</span>`;
-                frag.appendChild(row);
-            });
-            container.appendChild(frag);
-        }
-
-        function renderFeatureSnapshot(features, timestamp) {
-            const container = document.getElementById('featureSnapshot');
+        const featureHistory = {};
+        function updateFeatureDiagnostics(features) {
+            const container = document.getElementById('featureDiagnostics');
             if (!container || !Array.isArray(features)) return;
-            container.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            const schema = dashboardState.featureSchema?.features || [];
-            features.forEach((val, i) => {
-                const name = schema[i]?.name || `Feature ${i}`;
-                const row = document.createElement('div');
-                row.className = 'flex justify-between';
-                row.innerHTML = `<span>${name}</span><span class="text-blade-amber/60">${val}</span>`;
-                frag.appendChild(row);
+            features.forEach((val, idx) => {
+                const arr = featureHistory[idx] || (featureHistory[idx] = []);
+                arr.push(Number(val));
+                if (arr.length > 20) arr.shift();
             });
-            container.appendChild(frag);
-            const tsDiv = document.createElement('div');
-            tsDiv.className = 'text-blade-amber/60 mt-2';
-            const ts = timestamp ? new Date(timestamp * 1000) : new Date();
-            tsDiv.textContent = `Snapshot at ${ts.toLocaleTimeString()}`;
-            container.appendChild(tsDiv);
+            const entries = Object.entries(featureHistory).map(([idx, arr]) => {
+                const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+                const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length;
+                return { idx: Number(idx), variance, history: arr.slice() };
+            }).sort((a, b) => b.variance - a.variance).slice(0, 8);
+            container.innerHTML = '';
+            entries.forEach(f => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 60; canvas.height = 20;
+                const ctx = canvas.getContext('2d');
+                const hist = f.history;
+                const min = Math.min(...hist);
+                const max = Math.max(...hist);
+                ctx.strokeStyle = '#00e5ff';
+                ctx.beginPath();
+                hist.forEach((v, i) => {
+                    const x = i / (hist.length - 1) * 60;
+                    const y = 20 - ((v - min) / (max - min || 1)) * 20;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                const wrap = document.createElement('div');
+                wrap.className = 'flex flex-col items-center';
+                wrap.appendChild(canvas);
+                const label = document.createElement('div');
+                label.className = 'hologram-text text-blade-amber/80';
+                label.textContent = f.idx;
+                wrap.appendChild(label);
+                const varDiv = document.createElement('div');
+                varDiv.className = 'hologram-text text-xs';
+                varDiv.textContent = f.variance.toFixed(4);
+                wrap.appendChild(varDiv);
+                container.appendChild(wrap);
+            });
         }
 
           function updateCatalystList(list) {
@@ -3384,18 +3152,6 @@
               parts.push(`${minutes}M`);
               return parts.join(' ');
           }
-
-        function updateFeatureStream(features) {
-            const container = document.getElementById('featureStream');
-            if (!container || !Array.isArray(features)) return;
-            container.innerHTML = '';
-            features.slice(0, 16).forEach((val, idx) => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between';
-                div.innerHTML = `<span>${idx}</span><span>${Number(val).toFixed(4)}</span>`;
-                container.appendChild(div);
-            });
-        }
 
         async function loadAnalytics() {
             if (document.hidden) return;
@@ -3551,9 +3307,11 @@
                       `<div class="hologram-text text-white font-bold">${s.name}</div>` +
                       `<div class="hologram-text text-cyan-glow text-sm font-bold">${s.status}</div>` +
                       `</div>` +
-                      `<div class="grid grid-cols-2 gap-3 text-xs">` +
+                      `<div class="grid grid-cols-4 gap-3 text-xs">` +
                       `<div><div class="hologram-text text-blade-amber/80">LAST UPDATE</div><div class="hologram-text text-white font-bold">${ts}</div></div>` +
+                      `<div><div class="hologram-text text-blade-amber/80">TRADES</div><div class="hologram-text text-white font-bold">${s.trades ?? 0}</div></div>` +
                       `<div><div class="hologram-text text-blade-amber/80">LATENCY</div><div class="hologram-text text-cyan-glow font-bold">${s.latency_ms}ms</div></div>` +
+                      `<div><div class="hologram-text text-blade-amber/80">PNL</div><div class="hologram-text text-cyan-glow font-bold">${typeof s.pnl === 'number' ? formatSol(s.pnl, solPrice) : '--'}</div></div>` +
                       `</div>`;
                   container.appendChild(div);
               });
@@ -4137,6 +3895,15 @@
                     dashboardState.dashboard.risk = data.risk;
                     updatePortfolioMetrics();
                     updateRiskMetrics();
+                    if (typeof loadMiniEquity === 'function') {
+                        loadMiniEquity();
+                    }
+                    if (typeof loadPositions === 'function') {
+                        loadPositions();
+                    }
+                    if (typeof loadHistory === 'function') {
+                        loadHistory();
+                    }
                 }
                 if (data.security) {
                     dashboardState.security = data.security;
@@ -4154,9 +3921,7 @@
             wsClient.connect('/features/ws', (data) => {
                 if (Array.isArray(data.features)) {
                     dashboardState.features = data.features;
-                    updateFeatureStream(data.features);
-                    const ts = data.event?.timestamp;
-                    renderFeatureSnapshot(data.features, ts);
+                    updateFeatureDiagnostics(data.features);
                 }
             });
             

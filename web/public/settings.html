@@ -12,13 +12,13 @@
     <section class="p-6" id="timeSection">
         <h2 class="text-xl mb-4">Time & Time Zone</h2>
         <label class="block mb-2">Time Zone:
-            <input id="timeZone" class="text-black" type="text">
+            <select id="timeZone" class="text-black"></select>
         </label>
         <div>Current Time: <span id="currentTime">--:--:--</span></div>
     </section>
 
     <section class="p-6" id="systemHealthSection">
-        <h2 class="text-xl mb-4">System Health</h2>
+        <h2 class="text-xl mb-4">System Status &amp; Resource Usage</h2>
         <div>CPU: <span id="metricCpu">--%</span></div>
         <div>RAM: <span id="metricMem">--%</span></div>
         <div>RPC Latency: <span id="metricRpc">--ms</span></div>
@@ -26,14 +26,45 @@
 
     <section class="p-6" id="configSection">
         <h2 class="text-xl mb-4">Config</h2>
+        <label class="block mb-2">Theme:
+            <select id="theme" class="text-black">
+                <option value="seeker">Seeker</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </label>
         <label class="block mb-2">
             <input type="checkbox" id="advancedToggle"> Advanced Mode
+        </label>
+        <label class="block mb-2">
+            <input type="checkbox" id="disableAnimation"> Disable Background Animation
         </label>
         <label class="block">Trading Mode:
             <select id="tradingMode" class="text-black">
                 <option value="demo">Demo</option>
                 <option value="live">Live</option>
             </select>
+        </label>
+        <label class="block mt-2">Primary Asset:
+            <input id="primaryAsset" list="assetOptions" class="text-black" />
+            <datalist id="assetOptions">
+                <option value="SOL"></option>
+                <option value="BONK"></option>
+                <option value="WIF"></option>
+                <option value="FIDA"></option>
+                <option value="JUP"></option>
+                <option value="RAY"></option>
+                <option value="ORCA"></option>
+                <option value="MNGO"></option>
+                <option value="SAMO"></option>
+                <option value="STEP"></option>
+                <option value="PORT"></option>
+                <option value="SLND"></option>
+                <option value="SBR"></option>
+                <option value="CWAR"></option>
+                <option value="SHDW"></option>
+                <option value="Other"></option>
+            </datalist>
         </label>
     </section>
 
@@ -53,8 +84,9 @@
 
     <section class="p-6 advanced hidden" id="strategyModulesSection">
         <h2 class="text-xl mb-4">Strategy Modules</h2>
-        <label class="block"><input type="checkbox" id="stratMomentum"> Momentum</label>
-        <label class="block"><input type="checkbox" id="stratMean"> Mean Reversion</label>
+        <label class="block"><input type="checkbox" id="enableSniper"> Listing Sniper</label>
+        <label class="block"><input type="checkbox" id="enableArbitrage"> Arbitrage Engine</label>
+        <label class="block"><input type="checkbox" id="enableMarketMaking"> Market Making</label>
     </section>
 
     <section class="p-6 advanced hidden" id="moduleStatusSection">

@@ -359,6 +359,26 @@
         }
       }
     },
+    "/risk/rug": {
+      "get": {
+        "summary": "Risk Rug Endpoint",
+        "description": "Return current rug pull alerts.",
+        "operationId": "risk_rug_endpoint_risk_rug_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Risk Rug Endpoint Risk Rug Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/assets": {
       "get": {
         "summary": "Assets Endpoint",
@@ -465,10 +485,33 @@
         }
       }
     },
+    "/market/active": {
+      "get": {
+        "summary": "Market Active",
+        "description": "Return basic stats for active market pairs.",
+        "operationId": "market_active_market_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarketStat"
+                  },
+                  "type": "array",
+                  "title": "Response Market Active Market Active Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sentiment/trending": {
       "get": {
         "summary": "Sentiment Trending",
-        "description": "Return currently trending tokens with sentiment data.",
+        "description": "Return currently trending tokens with sentiment data.\n\nThis stub pulls from the in-memory collectors fed by\n``solbot.social.twitter`` and ``solbot.social.telegram`` modules.  The\ncollectors are lightweight and primarily used for tests and demo mode\nso we seed a few memecoin examples when no live data is present.",
         "operationId": "sentiment_trending_sentiment_trending_get",
         "responses": {
           "200": {
@@ -755,6 +798,83 @@
                   },
                   "type": "array",
                   "title": "Response Strategy Matrix Strategy Matrix Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/strategy/performance_matrix": {
+      "get": {
+        "summary": "Strategy Performance Matrix",
+        "description": "Return recent strategy performance metrics.",
+        "operationId": "strategy_performance_matrix_strategy_performance_matrix_get",
+        "parameters": [
+          {
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Period",
+              "default": "7d"
+            },
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceMatrix"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mev/status": {
+      "get": {
+        "summary": "Mev Status Endpoint",
+        "operationId": "mev_status_endpoint_mev_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MevStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alpha/signals": {
+      "get": {
+        "summary": "Alpha Signals Endpoint",
+        "operationId": "alpha_signals_endpoint_alpha_signals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlphaSignals"
                 }
               }
             }
@@ -1049,6 +1169,26 @@
         ]
       }
     },
+    "/logs/generate": {
+      "post": {
+        "summary": "Logs Generate",
+        "description": "Generate sample log entries for the debug console.",
+        "operationId": "logs_generate_logs_generate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Logs Generate Logs Generate Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/chart/portfolio": {
       "get": {
         "summary": "Chart Portfolio",
@@ -1223,6 +1363,34 @@
   },
   "components": {
     "schemas": {
+      "AlphaSignals": {
+        "properties": {
+          "strength": {
+            "type": "string",
+            "title": "Strength"
+          },
+          "social_sentiment": {
+            "type": "number",
+            "title": "Social Sentiment"
+          },
+          "onchain_momentum": {
+            "type": "number",
+            "title": "Onchain Momentum"
+          },
+          "whale_activity": {
+            "type": "number",
+            "title": "Whale Activity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strength",
+          "social_sentiment",
+          "onchain_momentum",
+          "whale_activity"
+        ],
+        "title": "AlphaSignals"
+      },
       "ArbitrageStat": {
         "properties": {
           "status": {
@@ -1502,6 +1670,26 @@
           "strategy_risk": {
             "type": "string",
             "title": "Strategy Risk"
+          },
+          "mev_status": {
+            "type": "string",
+            "title": "Mev Status"
+          },
+          "alpha_signals": {
+            "type": "string",
+            "title": "Alpha Signals"
+          },
+          "logs_generate": {
+            "type": "string",
+            "title": "Logs Generate"
+          },
+          "risk_rug": {
+            "type": "string",
+            "title": "Risk Rug"
+          },
+          "market_active": {
+            "type": "string",
+            "title": "Market Active"
           }
         },
         "type": "object",
@@ -1546,7 +1734,12 @@
           "news",
           "strategy_performance",
           "strategy_breakdown",
-          "strategy_risk"
+          "strategy_risk",
+          "mev_status",
+          "alpha_signals",
+          "logs_generate",
+          "risk_rug",
+          "market_active"
         ],
         "title": "EndpointMap"
       },
@@ -1746,6 +1939,39 @@
         ],
         "title": "Manifest"
       },
+      "MarketStat": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "volume": {
+            "type": "number",
+            "title": "Volume"
+          },
+          "volatility": {
+            "type": "number",
+            "title": "Volatility"
+          },
+          "liquidity": {
+            "type": "number",
+            "title": "Liquidity"
+          },
+          "spread": {
+            "type": "number",
+            "title": "Spread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "volume",
+          "volatility",
+          "liquidity",
+          "spread"
+        ],
+        "title": "MarketStat"
+      },
       "Metrics": {
         "properties": {
           "cpu": {
@@ -1762,6 +1988,34 @@
         },
         "type": "object",
         "title": "Metrics"
+      },
+      "MevStatus": {
+        "properties": {
+          "saved_today": {
+            "type": "number",
+            "title": "Saved Today"
+          },
+          "attacks_blocked": {
+            "type": "integer",
+            "title": "Attacks Blocked"
+          },
+          "success_rate": {
+            "type": "number",
+            "title": "Success Rate"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "saved_today",
+          "attacks_blocked",
+          "success_rate",
+          "latency_ms"
+        ],
+        "title": "MevStatus"
       },
       "NetworkStats": {
         "properties": {
@@ -1883,6 +2137,34 @@
         ],
         "title": "OrderResponse"
       },
+      "PerformanceMatrix": {
+        "properties": {
+          "days": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "strategies": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyPerf"
+            },
+            "type": "array",
+            "title": "Strategies"
+          },
+          "risk": {
+            "$ref": "#/components/schemas/StrategyRisk"
+          }
+        },
+        "type": "object",
+        "required": [
+          "days",
+          "strategies",
+          "risk"
+        ],
+        "title": "PerformanceMatrix"
+      },
       "PosteriorSnapshot": {
         "properties": {
           "rug": {
@@ -1941,6 +2223,10 @@
           "fomo_pct": {
             "type": "number",
             "title": "Fomo Pct"
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp"
           }
         },
         "type": "object",
@@ -2152,6 +2438,14 @@
           "latency_ms": {
             "type": "integer",
             "title": "Latency Ms"
+          },
+          "trades": {
+            "type": "integer",
+            "title": "Trades"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
           }
         },
         "type": "object",

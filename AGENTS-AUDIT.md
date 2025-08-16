@@ -30,27 +30,40 @@ This file defines the immediate and near-term directives for the next developmen
 ## Progress 2025-08-19
 - Removed atmospheric background from dashboard to reduce CPU usage and added shared footer/disclaimer includes.
 
+## Progress 2025-08-20
+- Defaulted engine to paused demo mode with 10 SOL paper balance and live USD conversion on load.
+- Replaced static portfolio sparkline with Chart.js fetching `/chart/portfolio` and refreshed on WebSocket updates.
+- Applied SOL/USD formatter across modules and migrated system status metrics to Settings.
+
+## Progress 2025-08-21
+- Persist PyFeatureEngine and PosteriorEngine state under `~/.solbot/models/`, autosaving every 5 minutes and loading on startup.
+- Expanded `/risk/portfolio` to provide equity, PnL change, and position metrics for live dashboard updates.
+
+## Progress 2025-08-22
+- Added `/strategy/performance_matrix` with 7d/30d windows and wired dashboard heatmap, breakdown, and risk metrics.
+- Replaced backtesting sliders with numeric/date inputs and streamed results from `/backtest/ws/{id}`.
+- Consolidated feature panes into a single collapsible **AI Diagnostics** section and added log filter buttons to the debug console.
+- Reordered `settings.html`, introduced primary asset selector, time‑zone dropdown, and persisted form controls to `/state` and `localStorage`.
+
+## Progress 2025-08-23
+- Added basic/advanced dashboard modes with first-use selector and class-based panel hiding.
+- Introduced background animation toggle; setting saves to `/state` and applies `no-anim` class.
+- Rug pull detector now checks liquidity, owner withdrawals, and mint revocations with `/risk/rug` endpoint and tests.
+
+## Progress 2025-08-24
+- Regime analysis panel now retries `/posterior/ws` with exponential backoff and hides after all attempts fail.
+- Basic-mode walkthrough added; selecting Basic mode triggers a one-time guided tour across key dashboard panels.
+
+## Progress 2025-08-25
+- Added theme selector (Seeker, Dark, Light) with static backgrounds for non-Seeker modes and slower glow animation.
+- Engine start/stop endpoints now return HTTP 409 on conflicting requests with dashboard toasts reflecting the state.
+
 ## User Vision & Dashboard Overhaul Backlog (2025-08-09)
 
 The following directives capture a comprehensive UX and functionality review from the project owner. Treat every bullet as a blocking issue. Remove placeholder data and wire all modules to real-time backend or hide them. Default everything to Solana-centric metrics with live SOL→USD conversions.
 
 ### 1. Initial State & Global Layout
-- **Default mode:** Demo with 10 SOL starting balance; show equivalent USD (no `+10 SOL` prefix).
-  - Modify `web/public/dashboard.html` around the settings form to seed `demoCapital` with `10` and immediately render `10 SOL ($<spot USD>)`.
-  - Fetch SOL price from `/market/solusd` on load and cache for conversions.
-- **Engine toggle:** Dashboard loads in `paused` state. User presses `START` to begin. `PAUSE` always stops trading.
-  - In `web/public/dashboard.html` (lines ~100, ~1935), set `running=false` on init and ensure the button text reads `▶ START`.
-  - Backend (`src/server.py`) must not auto-start trading loops when `--wallet` is provided; require explicit `/state` POST.
-- **Top bar:** Only display `LIVE`/`DEMO` mode, RPC latency, and hamburger for side menu. Move clock into settings. Remove “WS DISCONNECTED”.
-  - Delete the `#wsStatus` span in `dashboard.html` and relocate the clock element into the settings panel header.
-  - Add `id="rpcLatency"` span fed by `/health` and `id="modeIndicator"` derived from `/state`.
-- **Responsive design:** Only “Portfolio Value” and “Realized P&L” may sit side‑by‑side on large screens. All other modules stack vertically and scale cleanly across mobile → 4 K. Test both portrait and landscape.
-  - Refactor `dashboard.css` to use a single-column flex layout below 1280 px and explicit `md:grid-cols-2` only for the top metrics.
-  - Verify layout manually in Chrome dev tools for iPhone SE, iPad, and 4 K monitor presets.
-- **Side menu:** Add a left‑side hamburger button revealing navigation links. Sections: Dashboard, Whale Tracker, Strategies (includes AI Backtesting Lab), MEV Shield & Alpha Signals, Social Sentiment Matrix, Settings. Menu must slide in/out smoothly and be obvious on all viewports.
-  - Implement `#sideMenu` off‑canvas panel in `dashboard.html` with Tailwind `translate-x` transitions and overlay.
-  - Each link should route via `window.location` to `dashboard.html`, `whales.html`, `strategies.html`, `mev.html`, `sentiment.html`, and `settings.html` respectively.
-  - Ensure hamburger button (`#menuToggle`) remains accessible at <768 px.
+*(Completed: default demo mode, engine toggle, top bar cleanup, responsive grid, accessible side menu)*
 
 ### 2. Top Metrics Panel
 - **Realized P&L card:** Format `+0.00 SOL ($0.00)` and a second line `+0.00 SOL TODAY ($0.00)`.
@@ -66,16 +79,7 @@ The following directives capture a comprehensive UX and functionality review fro
   <!-- Completed: canvas mini-map subscribes to `/positions/ws` and draws bar per trade -->
 
 ### 3. Module Ordering & Removal
-- Remove **Backtest P&L** and **System Status** from main dashboard. Surface uptime/resource usage within Settings instead.
-  - Delete sections `#backtestPnl` and `#systemStatus` from `dashboard.html` (lines ~700 and ~900).
-  - In `settings.html`, create `#resourceUsage` card showing CPU, RAM, and uptime fetched from `/metrics`.
-- Module order after the top metrics:
-  1. Realized P&L
-  2. Open Positions
-  3. Portfolio Equity Curve / P&L Breakdown / Market Data / Regime Analysis (tabbed)
-  4. Portfolio & Positions
-  5. Portfolio Risk
-  6. (Navigation to other pages: Whale Tracker, Neural Strategy Matrix & other AI integrations, Strategies/Backtesting, MEV Shield & Alpha Signals, Social Sentiment Matrix)
+*(Completed: Backtest P&L and System Status moved to settings; dashboard modules reordered)*
 
 ### 4. Equity Curve / P&L / Market Data / Regime Analysis Tabs
 - **Tab styling:** The active tab text is normal; inactive tabs are highlighted. Clicking a tab loads its content and removes highlight from current tab.
@@ -636,6 +640,19 @@ Completion of these steps establishes the continuous data backbone and decision 
    - Add structured logs with correlation IDs for end-to-end tracing.
 5. Automate CI.
    - Ensure linting, tests, and type checks run on every push; block merges on failure.
+
+## OpenAI Assistant - Persistence & Rug Detector
+
+**Date:** 2025-08-19
+
+### Summary
+- Engine now loads feature and posterior models from `~/.solbot/models/` on startup and saves checkpoints every five minutes.
+- Token launch scanner and feature/posterior streams start immediately, warming state before any trading commands.
+- Added lightweight `RugDetector` with `/risk/rug` endpoint and dashboard polling for real-time alerts.
+
+### Next Steps
+- Tune rug heuristics using live liquidity and ownership data.
+- Expand model serialization with versioning and atomic writes.
 
 ## 12. Long-Term Enhancements
 1. Reinforcement learning policy updates.

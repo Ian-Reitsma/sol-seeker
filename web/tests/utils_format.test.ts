@@ -7,8 +7,8 @@ describe('utils formatters', () => {
   });
 
   test('formatSolChange handles sign', () => {
-    expect(formatSolChange(-1.5, 20)).toBe('-1.50 SOL ($30.00)');
-    expect(formatSolChange(1.5, 20)).toBe('+1.50 SOL ($30.00)');
+    expect(formatSolChange(-1.5, 20)).toBe('-1.50 SOL (-$30.00)');
+    expect(formatSolChange(1.5, 20)).toBe('+1.50 SOL (+$30.00)');
   });
 
   test('formatPercent adds sign', () => {

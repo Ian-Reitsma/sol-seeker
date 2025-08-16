@@ -13,10 +13,51 @@
          - Footer must link to repo and show © IJR Enterprises Inc. disclaimer. -->
         <link rel="stylesheet" href="dashboard.css">
 </head>
-<body class="text-white font-display min-h-screen">
-    <!-- TODO: Shared header/side menu. -->
-    <!-- TODO: Main layout with three columns: Trending, Influencer Alerts, Community Pulse. -->
-    <!-- TODO: Each section updates live and supports clicking tokens to open detailed dashboard. -->
-    <!-- TODO: Include footer once global footer implemented. -->
+<body class="text-white font-display min-h-screen p-6 space-y-6">
+    <section>
+        <h2 class="text-xl mb-2">Trending Now</h2>
+        <ul id="sentTrending" class="space-y-1 text-sm"></ul>
+    </section>
+    <section>
+        <h2 class="text-xl mb-2">Influencer Alerts</h2>
+        <ul id="sentInfluencers" class="space-y-1 text-sm"></ul>
+    </section>
+    <section>
+        <h2 class="text-xl mb-2">Community Pulse</h2>
+        <div id="sentPulse" class="text-sm"></div>
+    </section>
+
+    <script src="js/utils.js"></script>
+    <script>
+        async function loadSentiment() {
+            try {
+                const [trending, influencers, pulse] = await Promise.all([
+                    fetch(`${API_BASE}/sentiment/trending`).then(r => r.json()),
+                    fetch(`${API_BASE}/sentiment/influencers`).then(r => r.json()),
+                    fetch(`${API_BASE}/sentiment/pulse`).then(r => r.json())
+                ]);
+                const tList = document.getElementById('sentTrending');
+                tList.innerHTML = '';
+                trending.forEach(t => {
+                    const li = document.createElement('li');
+                    li.textContent = `${t.symbol} – ${t.mentions} mentions (${t.sentiment})`;
+                    tList.appendChild(li);
+                });
+                const iList = document.getElementById('sentInfluencers');
+                iList.innerHTML = '';
+                influencers.forEach(a => {
+                    const li = document.createElement('li');
+                    li.textContent = `${a.handle}: ${a.message}`;
+                    iList.appendChild(li);
+                });
+                const pulseDiv = document.getElementById('sentPulse');
+                pulseDiv.textContent = `Fear/Greed: ${pulse.fear_greed} • Social Volume: ${pulse.social_volume} • FOMO: ${pulse.fomo}`;
+            } catch (e) {
+                console.warn('sentiment load failed', e);
+            }
+        }
+        loadSentiment();
+    </script>
 </body>
+<script src="js/footer.js"></script>
 </html>

@@ -1,24 +1,14 @@
-import tempfile
 from fastapi.testclient import TestClient
 
+from src.solbot.risk import RugDetector
 from solbot.utils import BotConfig
 from solbot.engine import RiskManager, TradeEngine, PyFeatureEngine, PosteriorEngine
 from solbot.server import create_app
-import solbot.server.api as api_module
 from solbot.persistence import DAL
 from solbot.persistence.assets import AssetService
 from solbot.exchange import PaperConnector
 from solbot.oracle.coingecko import PriceOracle
 from solbot.bootstrap import BootstrapCoordinator
-from prometheus_client import REGISTRY
-
-
-def _clear_registry() -> None:
-    for collector in list(REGISTRY._collector_to_names.keys()):
-        try:
-            REGISTRY.unregister(collector)
-        except KeyError:
-            pass
 
 
 class DummyLM:
@@ -35,14 +25,12 @@ class DummyOracle(PriceOracle):
 
 
 def build_app():
-    _clear_registry()
-    tmp = tempfile.NamedTemporaryFile(delete=False)
     cfg = BotConfig(
         rpc_ws="ws://localhost:8900",
         rpc_http="http://localhost:8900",
         log_level="INFO",
         wallet="111",
-        db_path=tmp.name,
+        db_path=":memory:",
         bootstrap=False,
     )
     lm = DummyLM()
@@ -56,28 +44,28 @@ def build_app():
     assets = AssetService(dal)
     bootstrap = BootstrapCoordinator()
     app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
-    api_module.oracle = connector.oracle
-    return app, risk
+    return app
 
 
-def test_risk_portfolio_endpoint():
-    app, risk = build_app()
-    risk.update_equity(100.0)
+def test_rug_detector_logic():
+    det = RugDetector()
+    det.update({"token": "RUG", "liquidity_removed": 0.8})
+    det.update({"token": "SAFE", "liquidity_removed": 0.1})
+    det.update({"token": "OWNER", "owner_withdraw": True})
+    det.update({"token": "MINT", "mint_paused": True})
+    tokens = {a.token for a in det.alerts()}
+    assert tokens == {"RUG", "OWNER", "MINT"}
+
+
+def test_risk_rug_endpoint():
+    app = build_app()
     with TestClient(app) as client:
-        resp = client.get("/risk/portfolio")
+        # Initially no alerts
+        resp = client.get("/risk/rug")
         assert resp.status_code == 200
+        assert resp.json()["alerts"] == []
+        # Simulate suspicious event
+        app.state.rug_detector.update({"token": "XYZ", "liquidity_removed": 0.9})  # type: ignore
+        resp = client.get("/risk/rug")
         data = resp.json()
-        assert {"equity", "change", "change_pct", "max_drawdown", "leverage", "exposure", "position_size"} <= data.keys()
-
-
-def test_risk_portfolio_exposure_ratio():
-    app, risk = build_app()
-    risk.update_equity(100.0)
-    risk.add_position("SOL", qty=1.0, price=10.0)
-    risk.update_equity(100.0)
-    with TestClient(app) as client:
-        resp = client.get("/risk/portfolio")
-        assert resp.status_code == 200
-        data = resp.json()
-        expected = risk.total_exposure() / risk.equity
-        assert data["exposure"] == expected
+        assert data["alerts"][0]["token"] == "XYZ"

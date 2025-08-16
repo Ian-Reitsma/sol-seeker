@@ -282,6 +282,27 @@ class PyFeatureEngine(FeatureEngine):
         self.last_touched.fill(0)
         self._decay_slot = -1
 
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+    def save(self, path: str | Path) -> None:
+        np.savez(
+            path,
+            curr=self.curr,
+            prev1=self.prev1,
+            prev2=self.prev2,
+            mean=self.mean,
+            var=self.var,
+        )
+
+    def load(self, path: str | Path) -> None:
+        data = np.load(path)
+        self.curr = data["curr"]
+        self.prev1 = data["prev1"]
+        self.prev2 = data["prev2"]
+        self.mean = data["mean"]
+        self.var = data["var"]
+
     def _decay_inactive(self, slot: int) -> None:
         delta = slot - self.last_touched
         mask = delta > 0

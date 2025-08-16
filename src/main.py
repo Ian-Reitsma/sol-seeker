@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent))
 
 import logging
+import time
 
 from solbot.solana import data
 from solbot.engine import (
@@ -27,6 +28,8 @@ from solbot.utils import (
     BotConfig,
     LicenseManager,
 )
+from solbot.scanner.launch import TokenLaunchScanner
+from solbot.risk.rug_detector import RugDetector
 
 
 def main() -> None:
@@ -46,35 +49,63 @@ def main() -> None:
     # starting capital from settings; wire to `/state` endpoint.
 
     streamer = data.EventStream(cfg.rpc_ws)
-    posterior = PosteriorEngine()
+    model_dir = Path.home() / ".solbot" / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    posterior_path = model_dir / "posterior.npz"
+    features_path = model_dir / "features.npz"
+
+    if posterior_path.exists():
+        posterior = PosteriorEngine.load(posterior_path)
+    else:
+        posterior = PosteriorEngine()
+    if features_path.exists():
+        fe = PyFeatureEngine()
+        try:
+            fe.load(features_path)
+        except Exception:
+            pass
+    else:
+        fe = PyFeatureEngine()
+
     risk = RiskManager()
     strategy = Strategy(risk)
-    fe = PyFeatureEngine()
+    scanner = TokenLaunchScanner()
+    rug = RugDetector()
 
-    # Start in a paused state and wait for an explicit user confirmation before
-    # processing any events. This mimics the dashboard's Start button and keeps
-    # the engine idle until requested.
+    if not cfg.auto_start:
+        try:
+            input("Press Enter to start engine...")
+        except EOFError:
+            return
+
+    scanner.start()
+
+    last_save = time.time()
     try:
-        input("Press Enter to start engine...")
-    except EOFError:
-        # When stdin is not available (e.g., automated tests) proceed
-        pass
-    # TODO[AGENTS-AUDIT §8]: persist `fe` and `posterior` state to disk so
-    # learning continues between sessions; reload on startup.
-
-    for event in streamer.stream_events():
-        vec = fe.update(event, slot=int(event.ts))
-        features = vec[: posterior.n_features]
-        post = posterior.predict(features)
-        fee = 0.001  # placeholder fee estimate
-        equity = risk.portfolio_value() or 0.0
-        signal = strategy.evaluate(post, fee, equity)
-        if signal:
-            print(f"event {event.kind.name}: edge={signal.edge:.3f} qty={signal.qty:.3f}")
-            risk.add_position("SOL", signal.qty, 1.0)
-        strategy.check_exit("SOL", 1.0)
-        # TODO[AGENTS-AUDIT §8]: capture outcome of each action for RL reward and
-        # periodically save model checkpoints.
+        for event in streamer.stream_events():
+            vec = fe.update(event, slot=int(event.ts))
+            features = vec[: posterior.n_features]
+            post = posterior.predict(features)
+            fee = 0.001  # placeholder fee estimate
+            equity = risk.portfolio_value() or 0.0
+            signal = strategy.evaluate(post, fee, equity)
+            if signal:
+                print(f"event {event.kind.name}: edge={signal.edge:.3f} qty={signal.qty:.3f}")
+                risk.add_position("SOL", signal.qty, 1.0)
+            strategy.check_exit("SOL", 1.0)
+            rug.update({"token": "SOL", "liquidity_removed": 0.0})
+            if time.time() - last_save > 300:
+                posterior.save(posterior_path)
+                fe.save(features_path)
+                last_save = time.time()
+    finally:
+        import asyncio
+        asyncio.run(scanner.stop())
+        try:
+            posterior.save(posterior_path)
+            fe.save(features_path)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
