@@ -7,7 +7,7 @@ import * as vm from 'vm';
 
 test('backtest cancellation resets UI', async () => {
   const html = readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
-  const match = html.match(/let backtestEndpoint = null;\n\s*async function runBacktest\(\)[\s\S]*?document.getElementById\('runBacktest'\)\.addEventListener\('click', runBacktest\);/);
+  const match = html.match(/async function runBacktest\(\)[\s\S]*?cancelBtn\.onclick = \(\) => ws\.send\(JSON\.stringify\({ action: 'cancel' }\)\);[\s\S]*?document.getElementById\('runBacktest'\)\.addEventListener\('click', runBacktest\);/);
   expect(match).toBeTruthy();
 
   document.body.innerHTML = `
@@ -22,25 +22,25 @@ test('backtest cancellation resets UI', async () => {
   `;
 
   let sent: any = null;
-  let disconnected: string | null = null;
-  const callbacks: Record<string, (msg: any) => void> = {};
+  let wsInstance: any = null;
 
-  const context: any = {
-    document,
-    localStorage: { getItem: () => null, setItem: () => {} },
-    showToast: () => {},
-    apiClient: {
-      runBacktest: () => Promise.resolve({ id: 'job1' })
-    },
-    wsClient: {
-      connect: (endpoint: string, cb: (msg: any) => void) => {
-        callbacks[endpoint] = cb;
+    const context: any = {
+      document,
+      localStorage: { getItem: () => null, setItem: () => {} },
+      showToast: () => {},
+      apiClient: {
+        runBacktest: () => Promise.resolve({ id: 'job1' }),
+        getWebSocketURL: (ep: string) => ep,
       },
-      send: (_endpoint: string, msg: any) => { sent = msg; },
-      disconnect: (endpoint: string) => { disconnected = endpoint; }
-    },
-    backtestEndpoint: null
-  };
+      WebSocket: class {
+        url: string;
+        onmessage: ((ev: any) => void) | null = null;
+        onclose: (() => void) | null = null;
+        constructor(url: string) { this.url = url; wsInstance = this; }
+        send(msg: string) { sent = JSON.parse(msg); }
+        close() { if (this.onclose) this.onclose(); }
+      },
+    };
 
   vm.createContext(context);
   const scriptContent = match![0].replace(/document.getElementById\('runBacktest'\).*$/, '');
@@ -60,9 +60,7 @@ test('backtest cancellation resets UI', async () => {
   cancelBtn.click();
   expect(sent).toEqual({ action: 'cancel' });
 
-  callbacks['/backtest/ws/job1']({ progress: 100, cancelled: true });
-
-  expect(disconnected).toBe('/backtest/ws/job1');
+  wsInstance.onmessage!({ data: JSON.stringify({ progress: 100, cancelled: true }) });
   expect(btn.disabled).toBe(false);
   expect(btn.textContent).toBe('RUN BACKTEST');
   expect(cancelBtn.classList.contains('hidden')).toBe(true);

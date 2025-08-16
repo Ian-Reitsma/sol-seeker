@@ -676,3 +676,41 @@ All files reside at the repository root unless a path is shown.
 
 ### Next Steps
 - Expand settings form controls (drawdown slider, position units, RPC presets) and gate dashboard panels by basic/advanced mode.
+
+## OpenAI Assistant - Strategy Matrix & Backtesting Lab
+
+**Date:** 2025-08-22
+
+### Summary
+- Exposed `/strategy/performance_matrix` and wired the dashboard heatmap, strategy breakdown, and risk metrics with 7D/30D toggles.
+- Overhauled the AI Backtesting Lab with numeric inputs and date pickers, streaming results from `/backtest/ws/{id}` and formatting via shared SOL helpers.
+- Consolidated feature panels into a collapsible "AI Diagnostics" section and added log filters plus a Generate button to the debug console.
+- Reordered `settings.html`, added a primary asset datalist and time-zone selector, and persisted values to `/state` and `localStorage`.
+
+### Next Steps
+- Expand memecoin sentiment collectors and refine strategy modules with live metrics.
+
+## OpenAI Assistant - Strategy Modules & Rug Detection
+
+**Date:** 2025-08-23
+
+### Summary
+- Added lightweight Sniper, Arbitrage, and Market Making strategy stubs under `src/solbot/strategy/` with configuration hooks.
+- Introduced basic vs. advanced dashboard modes with first-use modal and `advanced` class hiding.
+- Enhanced `RugDetector` to flag liquidity pulls, owner withdrawals, and mint revocations; exposed via `/risk/rug` with tests.
+- Footer link updated to new repository and shared across all public pages with disclaimer.
+
+### Next Steps
+- Flesh out strategy algorithms with live market data and connect toggles to runtime enabling/disabling.
+
+## OpenAI Assistant - Theme Selector & Engine Conflicts
+
+**Date:** 2025-08-25
+
+### Summary
+- Added Light/Dark/Seeker theme selector with persistent storage and global application via utility script.
+- Disabled atmospheric glow for non-Seeker themes and slowed animation for reduced CPU load.
+- Enforced engine start/stop state conflicts, returning HTTP 409 with dashboard toasts.
+
+### Next Steps
+- Expand light/dark palettes across panels and monitor animation performance.

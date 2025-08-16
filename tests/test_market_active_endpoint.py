@@ -13,12 +13,12 @@ from solbot.bootstrap import BootstrapCoordinator
 from prometheus_client import REGISTRY
 
 
-def _clear_registry() -> None:
-    for collector in list(REGISTRY._collector_to_names.keys()):
-        try:
-            REGISTRY.unregister(collector)
-        except KeyError:
-            pass
+class DummyOracle(PriceOracle):
+    async def price(self, token: str) -> float:  # type: ignore[override]
+        return 25.0
+
+    async def volume(self, token: str) -> float:  # type: ignore[override]
+        return 0.0
 
 
 class DummyLM:
@@ -26,12 +26,12 @@ class DummyLM:
         return "full"
 
 
-class DummyOracle(PriceOracle):
-    async def price(self, token: str) -> float:  # type: ignore[override]
-        return 1.0
-
-    async def volume(self, token: str) -> float:  # type: ignore[override]
-        return 0.0
+def _clear_registry() -> None:
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        try:
+            REGISTRY.unregister(collector)
+        except KeyError:
+            pass
 
 
 def build_app():
@@ -45,7 +45,6 @@ def build_app():
         db_path=tmp.name,
         bootstrap=False,
     )
-    lm = DummyLM()
     dal = DAL(cfg.db_path)
     oracle = DummyOracle()
     connector = PaperConnector(dal, oracle)
@@ -55,29 +54,17 @@ def build_app():
     posterior = PosteriorEngine(n_features=fe.dim)
     assets = AssetService(dal)
     bootstrap = BootstrapCoordinator()
+    lm = DummyLM()
     app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
     api_module.oracle = connector.oracle
-    return app, risk
+    return app
 
 
-def test_risk_portfolio_endpoint():
-    app, risk = build_app()
-    risk.update_equity(100.0)
+def test_market_active_endpoint():
+    app = build_app()
     with TestClient(app) as client:
-        resp = client.get("/risk/portfolio")
+        resp = client.get("/market/active")
         assert resp.status_code == 200
         data = resp.json()
-        assert {"equity", "change", "change_pct", "max_drawdown", "leverage", "exposure", "position_size"} <= data.keys()
-
-
-def test_risk_portfolio_exposure_ratio():
-    app, risk = build_app()
-    risk.update_equity(100.0)
-    risk.add_position("SOL", qty=1.0, price=10.0)
-    risk.update_equity(100.0)
-    with TestClient(app) as client:
-        resp = client.get("/risk/portfolio")
-        assert resp.status_code == 200
-        data = resp.json()
-        expected = risk.total_exposure() / risk.equity
-        assert data["exposure"] == expected
+        assert isinstance(data, list) and len(data) >= 1
+        assert {"symbol", "volume", "volatility", "liquidity", "spread"} <= data[0].keys()

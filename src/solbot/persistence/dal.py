@@ -51,7 +51,9 @@ class DAL:
     """Handle SQLite persistence."""
 
     def __init__(self, path: str) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dir_path = os.path.dirname(path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
         self.engine = create_engine(
             f"sqlite:///{path}", connect_args={"check_same_thread": False}
         )

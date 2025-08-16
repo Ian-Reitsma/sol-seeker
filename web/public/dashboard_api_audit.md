@@ -34,7 +34,7 @@ Only after this setup should the following gap analysis be executed.
 
 ## Formatting
 
-`web/public/js/utils.js` exports helpers `formatSol(amount, price)`, `formatSolChange(amount, price)`, and `formatPercent(value)` to render SOL amounts alongside their USD equivalents. Use them as:
+`web/public/js/utils.js` exports helpers `formatSol(amount, price)`, `formatSolChange(amount, price)`, and `formatPercent(value)` to render SOL amounts alongside their USD equivalents and percentage deltas. All helpers gracefully handle negative values. Use them as:
 
 ```js
 import { formatSol, formatSolChange } from './js/utils.js';
@@ -52,7 +52,7 @@ included only to demonstrate that the entire codebase was surveyed.
 
 | Endpoint | Purpose | UI Integration |
 |---------|---------|----------------|
-| `GET /health`, `GET /status` | Node liveness & RPC latency | `updateSystemHealth()` polls via `apiClient.getHealth()` and `apiClient.getStatus()`【F:web/public/dashboard.html†L1728-L1810】 |
+| `GET /health`, `GET /status`, `GET /metrics` | Node liveness & RPC latency | Settings page `loadMetrics()` polls these endpoints and updates resource gauges【F:web/public/js/settings.js†L74-L87】 |
 | `GET /state` / `POST /state` | Trading state & settings | `updateDashboardData()` fetches state and settings panel posts updates【F:web/public/dashboard.html†L2658-L2267】 |
 | `GET /dashboard` | Core risk/market snapshot | Fetched on load to populate portfolio metrics【F:web/public/dashboard.html†L2666-L2674】 |
 | `GET /posterior` | Regime probabilities | `updateDashboardData()` pulls `apiClient.getPosterior()` and `updateRegimeAnalysis()` renders the odds【F:web/public/dashboard.html†L2666-L2673】【F:web/public/dashboard.html†L2888-L2897】 |
@@ -60,6 +60,8 @@ included only to demonstrate that the entire codebase was surveyed.
 | `POST /backtest` | Historical simulation results | `runBacktest()` posts form params and updates the metrics card【F:web/public/dashboard.html†L2283-L2316】 |
 | `GET /positions`, `GET /orders`, `POST /orders` | Position list, order history and placement | Called in initialization and trade modal【F:web/public/dashboard.html†L2666-L2670】【F:web/public/dashboard.html†L2390-L2390】 |
 | WebSockets `/dashboard/ws`, `/positions/ws`, `/posterior/ws`, `/logs/ws` | Real‑time risk, positions, regime probabilities and debug logs | `initializeWebSockets()` connects and updates UI【F:web/public/dashboard.html†L3334-L3378】 |
+| `GET /mev/status`, `GET /alpha/signals` | MEV defense metrics & alpha feed | `pollMevAlpha()` refreshes MEV Shield panel【F:web/public/js/analytics.js†L196-L239】 |
+| `GET /market/active` | Trending pair stats (volume, volatility, liquidity, spread) | `loadMarketData()` populates `#marketDataTable`【F:web/public/js/analytics.js†L177-L191】 |
 
 `/status` supports optional `start`/`end`/`limit` parameters validated via the shared query schemas; malformed values yield HTTP 400.
 All other modules fall into one of the three gap categories below.
@@ -251,12 +253,12 @@ In these cases both sides ship partial implementations, but mismatched expectati
 ### 3.1 Metrics Polling Without Endpoint
 * **Management Summary**: Resource meters always show stale defaults, giving a false impression of system health.
 * **Developer Notes**:
-  - `updateSystemHealth()` calls `apiClient.get('/metrics')` at lines 1799‑1810 and again via `dashboardState` at 2558‑2559【F:web/public/dashboard.html†L1799-L1810】【F:web/public/dashboard.html†L2558-L2559】.
+  - `loadMetrics()` in settings page fetches `/metrics` and `/health` to populate CPU, memory and RPC latency indicators【F:web/public/js/settings.js†L74-L87】.
   - `ServiceMap` advertises a metrics route (line 316) but `api.py` defines no `@app.get('/metrics')` handler【F:src/solbot/server/api.py†L316-L316】.
   - Implement a FastAPI route returning `{cpu, memory, network}` or remove polling.
 * **Agent Notes (2025-08-07)**:
   - Added a typed `/metrics` endpoint that reports CPU load, memory utilization, and network throughput, importing `psutil` once and falling back to load averages when unavailable.
-  - Dashboard `updateSystemHealth()` now parses these fields to refresh resource meters in real time.
+  - Settings page `loadMetrics()` now parses these fields to refresh resource meters in real time.
   - Moved Prometheus statistics to `/metrics/prometheus` to avoid path conflicts.
   - **Status**: Completed. Possible future work includes per‑process metrics for finer granularity.
 

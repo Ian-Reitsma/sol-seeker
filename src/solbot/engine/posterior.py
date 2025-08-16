@@ -3,6 +3,7 @@
 """Lightweight online posterior models for rug and regime probabilities."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
 
 import numpy as np
@@ -28,6 +29,21 @@ class PosteriorEngine:
         self.n_features = n_features
         self.w_rug = np.zeros(n_features, dtype=np.float64)
         self.W_regime = np.zeros((3, n_features), dtype=np.float64)
+
+    # ------------------------------------------------------------------
+    # Persistence helpers
+    # ------------------------------------------------------------------
+    def save(self, path: str | Path) -> None:
+        np.savez(path, w_rug=self.w_rug, W_regime=self.W_regime)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "PosteriorEngine":
+        data = np.load(path)
+        n_features = len(data["w_rug"])
+        inst = cls(n_features)
+        inst.w_rug = data["w_rug"]
+        inst.W_regime = data["W_regime"]
+        return inst
 
     # ------------------------------------------------------------------
     # Prediction

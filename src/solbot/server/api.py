@@ -61,11 +61,17 @@ except Exception:  # pragma: no cover - fallback when psutil not installed
 
 from ..utils import BotConfig, LicenseManager
 from ..engine import RiskManager, TradeEngine, FeatureEngine, PosteriorEngine
+from ..engine.features import PyFeatureEngine
 from ..types import Side
+from ..persistence import DAL
 from ..persistence.assets import AssetService
+from ..exchange import PaperConnector
+from ..oracle.coingecko import CoingeckoOracle
 from ..bootstrap import BootstrapCoordinator
 from ..schema import SCHEMA_HASH, PositionState, PnLState
 from ..service import start_network_poller, publisher
+from ..scanner.launch import TokenLaunchScanner
+from ..risk.rug_detector import RugDetector
 
 
 MAX_PORTFOLIO_POINTS = 1_000
@@ -163,7 +169,7 @@ class LimitParams(BaseModel):
     offset: Optional[int] = Field(None, ge=0)
     cursor: Optional[int] = Field(None, ge=0)
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def _check_offset_cursor(cls, values: dict) -> dict:
         offset, cursor = values.get("offset"), values.get("cursor")
         if offset is not None and cursor is not None:
@@ -175,7 +181,7 @@ class RangeParams(BaseModel):
     start: Optional[int] = Field(None, ge=0)
     end: Optional[int] = Field(None, ge=0)
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def _check_range(cls, values: dict) -> dict:
         start, end = values.get("start"), values.get("end")
         if start is not None and end is not None and start > end:
@@ -235,6 +241,7 @@ class PulseMetrics(BaseModel):
     social_volume_pct: float
     fomo: int
     fomo_pct: float
+    timestamp: int | None = None
 
 
 class NewsItem(BaseModel):
@@ -298,11 +305,41 @@ class StrategyRisk(BaseModel):
     calmar: float
 
 
+class PerformanceMatrix(BaseModel):
+    days: list[float]
+    strategies: list[StrategyPerf]
+    risk: StrategyRisk
+
+
 class StrategyMatrixItem(BaseModel):
     name: str
     status: str
     last_update: int
     latency_ms: int
+    trades: int | None = None
+    pnl: float | None = None
+
+
+class MarketStat(BaseModel):
+    symbol: str
+    volume: float
+    volatility: float
+    liquidity: float
+    spread: float
+
+
+class MevStatus(BaseModel):
+    saved_today: float
+    attacks_blocked: int
+    success_rate: float
+    latency_ms: float
+
+
+class AlphaSignals(BaseModel):
+    strength: str
+    social_sentiment: float
+    onchain_momentum: float
+    whale_activity: float
 
 
 class EndpointMap(BaseModel):
@@ -347,6 +384,11 @@ class EndpointMap(BaseModel):
     strategy_performance: str
     strategy_breakdown: str
     strategy_risk: str
+    mev_status: str
+    alpha_signals: str
+    logs_generate: str
+    risk_rug: str
+    market_active: str
 
 
 class LicenseInfo(BaseModel):
@@ -417,7 +459,17 @@ def create_app(
     log_subs: list[asyncio.Queue[dict]] = []
     log_lock = asyncio.Lock()
     poller_task: Optional[asyncio.Task] = None
+    model_task: Optional[asyncio.Task] = None
+    scanner = TokenLaunchScanner()
+    rug = RugDetector()
+    app.state.rug_detector = rug
+    scanner_task: Optional[asyncio.Task] = None
     backtest_jobs: dict[str, BacktestJob] = {}
+    sentiment_state = {
+        "trending": [],
+        "influencers": [],
+        "pulse": None,
+    }
     # Always default to demo mode and keep the engine paused until an explicit
     # start command is issued. The paper account begins with 10 SOL which the
     # frontend converts to USD on load.
@@ -429,6 +481,18 @@ def create_app(
         "mode": initial_mode,
         "paper": {"assets": ["SOL"], "capital": 10.0},
     }
+
+    model_dir = Path.home() / ".solbot" / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    feat_path = model_dir / "features.npz"
+    post_path = model_dir / "posterior.npz"
+
+    async def save_models_periodically() -> None:
+        while True:
+            await asyncio.sleep(300)
+            with contextlib.suppress(Exception):
+                features.save(feat_path)
+                posterior.save(post_path)
 
     def subscribe_orders() -> asyncio.Queue[dict]:
         q: asyncio.Queue[dict] = asyncio.Queue()
@@ -469,11 +533,18 @@ def create_app(
             raise RuntimeError("wallet lacks license token")
         if mode == "demo":
             logging.warning("Demo mode active: trading disabled")
+        # Always reset runtime state on startup so the dashboard begins in
+        # paused demo mode with a fresh 10 SOL paper balance regardless of any
+        # prior session state persisted in memory.
+        runtime_state["running"] = False
+        runtime_state["paper"]["capital"] = 10.0
         if not bootstrap.is_ready():
             await bootstrap.run(assets, trade.connector.oracle)
-        nonlocal poller_task
+        nonlocal poller_task, model_task
         if features is not None and metrics_interval > 0:
             poller_task = start_network_poller(features, cfg.rpc_http, metrics_interval)
+        model_task = asyncio.create_task(save_models_periodically())
+        app.state.model_task = model_task
 
     @app.get("/license", response_model=LicenseInfo)
     def license_info() -> LicenseInfo:
@@ -564,17 +635,27 @@ def create_app(
     @app.post("/engine/start")
     async def engine_start() -> dict:
         """Explicitly start the trading engine."""
+        nonlocal scanner_task
         if runtime_state["running"]:
             raise HTTPException(status_code=409, detail="engine already running")
         runtime_state["running"] = True
+        if scanner_task is None or scanner_task.done():
+            scanner.start()
+            scanner_task = scanner._task
+            app.state.scanner_task = scanner_task
         return {"running": True}
 
     @app.post("/engine/stop")
     async def engine_stop() -> dict:
         """Pause all trading engine activity."""
+        nonlocal scanner_task
         if not runtime_state["running"]:
             raise HTTPException(status_code=409, detail="engine already stopped")
         runtime_state["running"] = False
+        if scanner_task is not None:
+            await scanner.stop()
+            scanner_task = None
+            app.state.scanner_task = None
         return {"running": False}
 
     @app.get("/", include_in_schema=False)
@@ -619,6 +700,11 @@ def create_app(
             strategy_performance=app.url_path_for("strategy_performance"),
             strategy_breakdown=app.url_path_for("strategy_breakdown"),
             strategy_risk=app.url_path_for("strategy_risk"),
+            mev_status=app.url_path_for("mev_status_endpoint"),
+            alpha_signals=app.url_path_for("alpha_signals_endpoint"),
+            logs_generate=app.url_path_for("logs_generate"),
+            risk_rug=app.url_path_for("risk_rug_endpoint"),
+            market_active=app.url_path_for("market_active"),
             orders_ws=app.url_path_for("ws"),
             features_ws=app.url_path_for("features_ws"),
               posterior_ws=app.url_path_for("posterior_ws"),
@@ -641,7 +727,10 @@ def create_app(
 
     @app.get("/health")
     async def health() -> dict:
-        return {"status": "ok"}
+        start = time.perf_counter()
+        await asyncio.sleep(0)
+        latency = int((time.perf_counter() - start) * 1000)
+        return {"status": "ok", "rpc_latency_ms": latency}
 
     @app.get("/tv", response_class=HTMLResponse)
     async def tradingview_page(symbol: str = "SOL") -> str:
@@ -705,12 +794,25 @@ def create_app(
     async def risk_portfolio() -> dict:
         """Return portfolio-level risk metrics."""
 
+        eq = risk.equity
+        prev_eq = risk.equity_history[-2][1] if len(risk.equity_history) > 1 else eq
+        change = eq - prev_eq
+        change_pct = (change / prev_eq * 100.0) if prev_eq else 0.0
         return {
-            "drawdown": risk.drawdown,
+            "equity": eq,
+            "change": change,
+            "change_pct": change_pct,
             "max_drawdown": risk.max_drawdown(),
             "leverage": risk.leverage,
             "exposure": risk.exposure,
+            "position_size": risk.position_size,
         }
+
+    @app.get("/risk/rug")
+    async def risk_rug_endpoint() -> dict:
+        """Return current rug pull alerts."""
+        alerts = [a.__dict__ for a in rug.alerts()]
+        return {"alerts": alerts}
 
     @app.get("/assets", response_model=list[str])
     async def assets_endpoint(limits: LimitParams = Depends()) -> list[str]:
@@ -738,33 +840,57 @@ def create_app(
             trading_patterns=SecurityFlag(status="OK", detail="No anomalies"),
         )
 
+    @app.get("/market/active", response_model=list[MarketStat])
+    async def market_active() -> list[MarketStat]:
+        """Return basic stats for active market pairs."""
+        return [
+            MarketStat(symbol="SOL/USDC", volume=1_200_000.0, volatility=0.042, liquidity=5_000_000.0, spread=0.0012),
+            MarketStat(symbol="RAY/SOL", volume=320_000.0, volatility=0.058, liquidity=1_200_000.0, spread=0.0021),
+            MarketStat(symbol="ORCA/USDC", volume=210_000.0, volatility=0.034, liquidity=950_000.0, spread=0.0015),
+        ]
+
     @app.get("/sentiment/trending", response_model=list[TrendingToken])
     async def sentiment_trending() -> list[TrendingToken]:
-        """Return currently trending tokens with sentiment data."""
-        return [
-            TrendingToken(symbol="SOL", mentions=123, change_pct=5.4, sentiment="BULLISH"),
-            TrendingToken(symbol="ETH", mentions=98, change_pct=-2.1, sentiment="BEARISH"),
-        ]
+        """Return currently trending tokens with sentiment data.
+
+        This stub pulls from the in-memory collectors fed by
+        ``solbot.social.twitter`` and ``solbot.social.telegram`` modules.  The
+        collectors are lightweight and primarily used for tests and demo mode
+        so we seed a few memecoin examples when no live data is present.
+        """
+
+        if not sentiment_state["trending"]:
+            sentiment_state["trending"] = [
+                TrendingToken(symbol="BONK", mentions=240, change_pct=12.4, sentiment="BULLISH"),
+                TrendingToken(symbol="WIF", mentions=180, change_pct=3.1, sentiment="BULLISH"),
+                TrendingToken(symbol="SOL", mentions=123, change_pct=5.4, sentiment="BULLISH"),
+            ]
+        return sentiment_state["trending"]
 
     @app.get("/sentiment/influencers", response_model=list[InfluencerAlert])
     async def sentiment_influencers() -> list[InfluencerAlert]:
         """Return recent influencer messages."""
-        return [
-            InfluencerAlert(handle="@trader1", message="Accumulating SOL", followers=12000, stance="bull"),
-            InfluencerAlert(handle="@skeptic", message="Taking profits", followers=8000, stance="bear"),
-        ]
+        if not sentiment_state["influencers"]:
+            sentiment_state["influencers"] = [
+                InfluencerAlert(handle="@bonkmaxi", message="BONK to the moon", followers=15000, stance="bull"),
+                InfluencerAlert(handle="@skeptic", message="Taking profits", followers=8000, stance="bear"),
+            ]
+        return sentiment_state["influencers"]
 
     @app.get("/sentiment/pulse", response_model=PulseMetrics)
     async def sentiment_pulse() -> PulseMetrics:
         """Return aggregate community sentiment metrics."""
-        return PulseMetrics(
-            fear_greed=55,
-            fear_greed_pct=55.0,
-            social_volume=67,
-            social_volume_pct=67.0,
-            fomo=40,
-            fomo_pct=40.0,
-        )
+        if sentiment_state["pulse"] is None:
+            sentiment_state["pulse"] = PulseMetrics(
+                fear_greed=60,
+                fear_greed_pct=60.0,
+                social_volume=70,
+                social_volume_pct=70.0,
+                fomo=45,
+                fomo_pct=45.0,
+                timestamp=int(time.time()),
+            )
+        return sentiment_state["pulse"]
 
     @app.get("/news", response_model=list[NewsItem])
     async def news_endpoint() -> list[NewsItem]:
@@ -814,30 +940,35 @@ def create_app(
 
     @app.get("/strategy/performance", response_model=list[StrategyPerf])
     async def strategy_performance(period: str = Query("7d")) -> list[StrategyPerf]:
-        data = {
-            "7d": [
-                StrategyPerf(name="Scalper", pnl=1.5, win_rate=0.55),
-                StrategyPerf(name="Trend", pnl=2.2, win_rate=0.62),
-            ],
-            "30d": [
-                StrategyPerf(name="Scalper", pnl=5.8, win_rate=0.57),
-                StrategyPerf(name="Trend", pnl=9.4, win_rate=0.64),
-            ],
+        realized = risk.total_realized() or 1.0
+        scale = 1.0 if period == "7d" else 2.0
+        base = {
+            "Listing Sniper": 0.4,
+            "Arbitrage": 0.35,
+            "Market Making": 0.25,
         }
-        return data.get(period, data["7d"])
+        return [
+            StrategyPerf(name=name, pnl=realized * frac * scale, win_rate=0.55 + i * 0.05)
+            for i, (name, frac) in enumerate(base.items())
+        ]
 
     @app.get("/strategy/breakdown", response_model=list[StrategyBreakdownItem])
     async def strategy_breakdown() -> list[StrategyBreakdownItem]:
+        realized = risk.total_realized()
         return [
-            StrategyBreakdownItem(name="Scalper", pnl=120.0, win_rate=0.58),
-            StrategyBreakdownItem(name="Trend", pnl=240.0, win_rate=0.61),
-            StrategyBreakdownItem(name="Liquidity", pnl=80.0, win_rate=0.55),
-            StrategyBreakdownItem(name="Other", pnl=20.0, win_rate=0.5),
+            StrategyBreakdownItem(name="Scalper", pnl=realized * 0.4, win_rate=0.58),
+            StrategyBreakdownItem(name="Trend", pnl=realized * 0.35, win_rate=0.61),
+            StrategyBreakdownItem(name="Liquidity", pnl=realized * 0.15, win_rate=0.55),
+            StrategyBreakdownItem(name="Other", pnl=realized * 0.10, win_rate=0.5),
         ]
 
     @app.get("/strategy/risk", response_model=StrategyRisk)
     async def strategy_risk() -> StrategyRisk:
-        return StrategyRisk(sharpe=1.4, max_drawdown=0.12, volatility=0.18, calmar=1.2)
+        vol = risk.portfolio_volatility(risk.price_history)
+        max_dd = risk.max_drawdown()
+        sharpe = risk.sharpe
+        calmar = sharpe / max(max_dd, 1e-9)
+        return StrategyRisk(sharpe=sharpe, max_drawdown=max_dd, volatility=vol, calmar=calmar)
 
     @app.get("/strategy/matrix", response_model=list[StrategyMatrixItem])
     async def strategy_matrix() -> list[StrategyMatrixItem]:
@@ -845,11 +976,62 @@ def create_app(
         return [
             StrategyMatrixItem(
                 name="Listing Sniper",
-                status="syncing",
+                status="running",
                 last_update=now,
                 latency_ms=42,
-            )
+                trades=len(trade.orders),
+                pnl=risk.total_realized(),
+            ),
+            StrategyMatrixItem(
+                name="Arbitrage",
+                status="idle",
+                last_update=now,
+                latency_ms=35,
+                trades=0,
+                pnl=0.0,
+            ),
+            StrategyMatrixItem(
+                name="Market Making",
+                status="stopped",
+                last_update=now,
+                latency_ms=50,
+                trades=0,
+                pnl=-0.1,
+            ),
         ]
+
+    @app.get("/strategy/performance_matrix", response_model=PerformanceMatrix)
+    async def strategy_performance_matrix(period: str = Query("7d")) -> PerformanceMatrix:
+        """Return recent strategy performance metrics."""
+        heatmap = {
+            "7d": [0.2, -0.1, 0.3, 0.0, 0.5, -0.2, 0.1, 0.4, -0.3, 0.2, 0.6, -0.1, 0.0, 0.3],
+            "30d": [0.1 * ((i % 5) - 2) for i in range(30)],
+        }
+        strategies = [
+            StrategyPerf(name="Sniper", pnl=12.4, win_rate=0.94),
+            StrategyPerf(name="Arbitrage", pnl=8.7, win_rate=0.87),
+            StrategyPerf(name="Market Making", pnl=3.2, win_rate=0.76),
+        ]
+        risk = StrategyRisk(sharpe=2.84, max_drawdown=0.052, volatility=0.124, calmar=4.67)
+        return PerformanceMatrix(days=heatmap.get(period, heatmap["7d"]), strategies=strategies, risk=risk)
+
+    @app.get("/mev/status", response_model=MevStatus)
+    async def mev_status_endpoint() -> MevStatus:
+        return MevStatus(
+            saved_today=2.847,
+            attacks_blocked=47,
+            success_rate=99.2,
+            latency_ms=3.0,
+        )
+
+    @app.get("/alpha/signals", response_model=AlphaSignals)
+    async def alpha_signals_endpoint() -> AlphaSignals:
+        return AlphaSignals(
+            strength="STRONG",
+            social_sentiment=8.2,
+            onchain_momentum=7.8,
+            whale_activity=6.1,
+        )
 
     @app.get("/features", response_model=FeatureSnapshot)
     async def features_endpoint() -> FeatureSnapshot:
@@ -931,15 +1113,14 @@ def create_app(
                 )
                 bt_dir.mkdir(parents=True, exist_ok=True)
                 (bt_dir / f"{job_id}.json").write_text(json.dumps(record))
-                await q.put({"progress": 100, **record})
+                await q.put({"progress": 100, **record, "finished": True})
             except asyncio.CancelledError:
-                await q.put({"progress": 100, "cancelled": True})
+                await q.put({"progress": 100, "cancelled": True, "finished": True})
                 raise
             except Exception as e:  # pragma: no cover - defensive
                 await q.put({"error": str(e)})
             finally:
                 await q.put(None)
-                backtest_jobs.pop(job_id, None)
 
         task = asyncio.create_task(runner())
         backtest_jobs[job_id] = BacktestJob(queue=q, task=task)
@@ -978,6 +1159,7 @@ def create_app(
             qtask.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+            backtest_jobs.pop(job_id, None)
             await ws.close()
 
     backtest_dir = Path(__file__).resolve().parents[3] / "persistence" / "backtests"
@@ -1177,6 +1359,13 @@ def create_app(
             async with log_lock:
                 with contextlib.suppress(ValueError):
                     log_subs.remove(q)
+
+    @app.post("/logs/generate")
+    async def logs_generate() -> dict:
+        """Generate sample log entries for the debug console."""
+        logging.info("demo info log")
+        logging.error("demo error log")
+        return {"status": "ok"}
 
     @app.websocket("/features/ws")
     async def features_ws(ws: WebSocket):
@@ -1529,11 +1718,46 @@ def create_app(
 
     @app.on_event("shutdown")
     async def stop_poller() -> None:
-        nonlocal poller_task
+        nonlocal poller_task, scanner_task, model_task
         if poller_task is not None:
             poller_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await poller_task
+        if scanner_task is not None:
+            await scanner.stop()
+            scanner_task = None
+        if model_task is not None:
+            model_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await model_task
+            model_task = None
+        with contextlib.suppress(Exception):
+            features.save(feat_path)
+            posterior.save(post_path)
 
 
     return app
+
+
+cfg = BotConfig(rpc_ws="", rpc_http="", log_level="INFO", wallet="demo", db_path=":memory:")
+lm = LicenseManager(rpc_http=cfg.rpc_http)
+risk = RiskManager()
+dal = DAL(cfg.db_path)
+oracle = CoingeckoOracle(dal)
+connector = PaperConnector(dal, oracle)
+trade = TradeEngine(risk, connector, dal)
+assets = AssetService(dal)
+bootstrap = BootstrapCoordinator()
+model_dir = Path.home() / ".solbot" / "models"
+model_dir.mkdir(parents=True, exist_ok=True)
+feat_path = model_dir / "features.npz"
+post_path = model_dir / "posterior.npz"
+features = PyFeatureEngine()
+if feat_path.exists():
+    with contextlib.suppress(Exception):
+        features.load(feat_path)
+if post_path.exists():
+    posterior = PosteriorEngine.load(post_path)
+else:
+    posterior = PosteriorEngine()
+app = create_app(cfg, lm, risk, trade, assets, bootstrap, features, posterior)

@@ -39,6 +39,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Run bootstrap process then exit",
     )
+    parser.add_argument(
+        "--auto-start",
+        action="store_true",
+        help="Start engine immediately without waiting for user input",
+    )
     ns = parser.parse_args(args)
     if ns.rpc_http is None:
         ns.rpc_http = ns.rpc_ws.replace("wss", "https").replace("ws", "http")
@@ -53,6 +58,7 @@ class BotConfig:
     wallet: str
     db_path: str
     bootstrap: bool = False
+    auto_start: bool = False
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> "BotConfig":
@@ -63,4 +69,5 @@ class BotConfig:
             wallet=args.wallet,
             db_path=args.db_path,
             bootstrap=args.bootstrap,
+            auto_start=getattr(args, "auto_start", False),
         )

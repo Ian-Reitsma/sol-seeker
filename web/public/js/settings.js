@@ -10,15 +10,30 @@ const API_BASE = apiBase;
 let apiKey = localStorage.getItem('sol_seeker_api_key') || '';
 
 const fields = {
+    theme: document.getElementById('theme'),
     timeZone: document.getElementById('timeZone'),
     tradingMode: document.getElementById('tradingMode'),
     startingCapital: document.getElementById('startingCapital'),
     rpcEndpoint: document.getElementById('rpcEndpoint'),
     apiKey: document.getElementById('apiKey'),
     advancedToggle: document.getElementById('advancedToggle'),
-    stratMomentum: document.getElementById('stratMomentum'),
-    stratMean: document.getElementById('stratMean')
+    enableSniper: document.getElementById('enableSniper'),
+    enableArbitrage: document.getElementById('enableArbitrage'),
+    enableMarketMaking: document.getElementById('enableMarketMaking'),
+    disableAnimation: document.getElementById('disableAnimation'),
+    primaryAsset: document.getElementById('primaryAsset'),
 };
+
+if (fields.timeZone) {
+    try {
+        Intl.supportedValuesOf('timeZone').forEach(tz => {
+            const opt = document.createElement('option');
+            opt.value = tz;
+            opt.textContent = tz;
+            fields.timeZone.appendChild(opt);
+        });
+    } catch {}
+}
 
 function updateAdvancedVisibility() {
     const show = fields.advancedToggle.checked;
@@ -49,10 +64,21 @@ function loadSettings() {
             }
         } else if (key === 'timeZone') {
             el.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } else if (key === 'primaryAsset') {
+            el.value = 'SOL';
+        } else if (key === 'theme') {
+            el.value = 'seeker';
         }
     }
     updateAdvancedVisibility();
     updateCurrentTime();
+    if (fields.disableAnimation && fields.disableAnimation.checked) {
+        document.documentElement.classList.add('no-anim');
+    }
+    if (fields.theme) setTheme(fields.theme.value);
+    if (fields.advancedToggle && !fields.advancedToggle.checked && localStorage.getItem('basic_walkthrough_done') !== 'true') {
+        localStorage.setItem('basic_walkthrough_pending', 'true');
+    }
 }
 
 function updateCurrentTime() {
@@ -73,7 +99,15 @@ for (const [key, el] of Object.entries(fields)) {
             localStorage.setItem('sol_seeker_api_base', value);
         }
         persist(key, value);
-        if (key === 'advancedToggle') updateAdvancedVisibility();
+        if (key === 'advancedToggle') {
+            updateAdvancedVisibility();
+            if (!el.checked && localStorage.getItem('basic_walkthrough_done') !== 'true') {
+                localStorage.setItem('basic_walkthrough_pending', 'true');
+                alert('Basic mode enabled. A quick walkthrough will start on the dashboard.');
+            }
+        }
+        if (key === 'theme') setTheme(value);
+        if (key === 'disableAnimation') document.documentElement.classList.toggle('no-anim', el.checked || fields.theme.value !== 'seeker');
         if (key === 'timeZone') updateCurrentTime();
     });
 }
@@ -95,3 +129,4 @@ async function loadMetrics() {
 loadSettings();
 loadMetrics();
 setInterval(updateCurrentTime, 1000);
+setInterval(loadMetrics, 5000);
