@@ -1,0 +1,75 @@
+import tempfile
+from fastapi.testclient import TestClient
+from solbot.utils import BotConfig
+from solbot.engine import RiskManager, TradeEngine, PyFeatureEngine, PosteriorEngine
+from solbot.server import create_app
+import solbot.server.api as api_module
+from solbot.persistence import DAL
+from solbot.persistence.assets import AssetService
+from solbot.exchange import PaperConnector
+from solbot.oracle.coingecko import PriceOracle
+from solbot.bootstrap import BootstrapCoordinator
+from prometheus_client import REGISTRY
+
+
+class DummyOracle(PriceOracle):
+    async def price(self, token: str) -> float:  # type: ignore[override]
+        return 25.0
+
+    async def volume(self, token: str) -> float:  # type: ignore[override]
+        return 0.0
+
+
+class DummyLM:
+    def license_mode(self, wallet: str) -> str:
+        return "full"
+
+
+def _clear_registry() -> None:
+    for collector in list(REGISTRY._collector_to_names.keys()):
+        try:
+            REGISTRY.unregister(collector)
+        except KeyError:
+            pass
+
+
+def build_app():
+    _clear_registry()
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    cfg = BotConfig(
+        rpc_ws="ws://localhost:8900",
+        rpc_http="http://localhost:8900",
+        log_level="INFO",
+        wallet="111",
+        db_path=tmp.name,
+        bootstrap=False,
+    )
+    lm = DummyLM()
+    dal = DAL(cfg.db_path)
+    connector = PaperConnector(dal, DummyOracle())
+    risk = RiskManager()
+    trade = TradeEngine(risk, connector, dal)
+    fe = PyFeatureEngine()
+    posterior = PosteriorEngine(n_features=fe.dim)
+    assets = AssetService(dal)
+    bootstrap = BootstrapCoordinator()
+    app = create_app(cfg, lm, risk, trade, assets, bootstrap, fe, posterior)
+    api_module.oracle = connector.oracle
+    return app
+
+
+def test_state_persists_settings():
+    app = build_app()
+    with TestClient(app) as client:
+        payload = {"settings": {"max_drawdown": 15, "position_unit": "SOL"}}
+        resp = client.post("/state", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["settings"]["max_drawdown"] == 15
+        assert data["settings"]["position_unit"] == "SOL"
+        # fetch again to confirm persistence
+        get_resp = client.get("/state")
+        assert get_resp.status_code == 200
+        state = get_resp.json()
+        assert state["settings"]["max_drawdown"] == 15
+        assert state["settings"]["position_unit"] == "SOL"

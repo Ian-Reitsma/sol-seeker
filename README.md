@@ -18,6 +18,14 @@ sol-bot/
 └── .github/workflows/   # CI configuration
 ```
 
+## Agent & Audit Docs
+- `AGENTS.md` – project log and design history
+- `AGENTS-AUDIT.md` – prioritized backlog and dashboard wiring checklist
+- `OPERATIONS.md` – ops runbook
+- `web/public/dashboard_api_audit.md` – frontend ↔ API mapping
+
+All paths are relative to the repository root.
+
 ### Components
 * **Engine** – orchestrates trading logic, risk management, and posterior inference. Includes a `PosteriorEngine` stub and a `RiskManager` that tracks drawdown.
 * **Solana** – manages RPC and WebSocket connections. `EventStream` subscribes to program logs and yields parsed events.

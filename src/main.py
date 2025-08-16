@@ -50,6 +50,15 @@ def main() -> None:
     risk = RiskManager()
     strategy = Strategy(risk)
     fe = PyFeatureEngine()
+
+    # Start in a paused state and wait for an explicit user confirmation before
+    # processing any events. This mimics the dashboard's Start button and keeps
+    # the engine idle until requested.
+    try:
+        input("Press Enter to start engine...")
+    except EOFError:
+        # When stdin is not available (e.g., automated tests) proceed
+        pass
     # TODO[AGENTS-AUDIT §8]: persist `fe` and `posterior` state to disk so
     # learning continues between sessions; reload on startup.
 

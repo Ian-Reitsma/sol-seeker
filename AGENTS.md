@@ -1,5 +1,13 @@
 # Agent Log
 
+## Quick Reference
+- `AGENTS.md` – project log and major decisions (this file)
+- `AGENTS-AUDIT.md` – prioritized backlog and dashboard wiring checklist
+- `OPERATIONS.md` – operational runbook for deployments
+- `web/public/dashboard_api_audit.md` – frontend ↔ API mapping
+
+All files reside at the repository root unless a path is shown.
+
 ## Codex Agent - Initial Setup
 
 **Date:** 2025-07-29
@@ -596,3 +604,75 @@
 
 ### Next Steps
 - Follow the updated audit and in-file TODOs rigorously, removing placeholders and validating live data, performance, and UX flows.
+
+## OpenAI Assistant - Risk Metrics & Branding Refresh
+
+**Date:** 2025-08-10
+
+### Summary
+- Added portfolio risk calculations and `/risk/portfolio` endpoint with dashboard polling.
+- Fixed analytics tab switching and seeded Chart.js loaders for equity, P&L, market data, and regime views.
+- Introduced `/strategy/matrix` endpoint backing the Neural Strategy Matrix panel.
+- Updated branding to "SOL SEEKER", switched to Inter font, and added a footer with repository link and disclaimer.
+
+### Next Steps
+- Replace placeholder analytics loaders with full charts and live market data.
+
+## OpenAI Assistant - SOL/USD Formatter Fix
+
+**Date:** 2025-08-16
+
+### Summary
+- Hardened SOL/USD helpers in `web/public/js/utils.js` to compute USD values numerically and expose the functions for browser and Node contexts.
+
+### Next Steps
+- Apply the shared formatter across remaining dashboard modules and add unit coverage.
+
+## OpenAI Assistant - Exposure Ratio & Dashboard Wiring
+
+**Date:** 2025-08-17
+
+### Summary
+- Normalized `/risk/portfolio` exposure to report an equity fraction with regression tests.
+- Start/stop controls now poll `/state`, updating the toggle label and syncing with `/engine/start` and `/engine/stop`.
+- Replaced open position counters with a websocket-driven canvas map and upgraded analytics loaders to render P&L bars, strategy donuts, market tables, and regime probabilities via Chart.js.
+
+### Next Steps
+- Extend SOL/USD formatting to remaining modules and flesh out position cards beyond the mini-map.
+
+## OpenAI Assistant - Settings Panel & Formatter Sweep
+
+**Date:** 2025-08-18
+
+### Summary
+- Expanded settings page with ordered sections (Time/Zone, System Health, Config, Trading Parameters, Backtest, Strategy Modules, Module Status, Network Config, API Connection) and persisted inputs via `/state` and `localStorage`.
+- Removed WebSocket status indicator from dashboard header and enhanced side menu with overlay, ARIA attributes, and keyboard controls.
+- Added `formatPercent` helper and applied shared SOL/USD formatting across dashboard modules.
+
+### Next Steps
+- Finish wiring advanced settings to backend endpoints and broaden SOL formatter coverage to remaining legacy panels.
+
+## OpenAI Assistant - Equity Sparkline & Portfolio Loaders
+
+**Date:** 2025-08-19
+
+### Summary
+- Wired portfolio sparkline to `/chart/portfolio` with periodic refreshes.
+- Populated positions and history tabs via `/positions` and `/orders?limit=50`, formatting risk metrics with shared helpers.
+- Extended `/strategy/breakdown` with Liquidity and Other segments and added WS retry logic for regime analysis.
+- Introduced `.dashboard-grid` for responsive single-column layout and updated audit notes.
+
+### Next Steps
+- Expand market data feed and persist ML model checkpoints.
+
+## OpenAI Assistant - Engine Conflicts & Footer
+
+**Date:** 2025-08-19
+
+### Summary
+- Added conflict handling for `/engine/start` and `/engine/stop` returning HTTP 409 when already in the requested state and updated dashboard toggle messaging.
+- Persisted arbitrary keys via `/state` with regression tests and introduced formatter unit tests for `formatSol`, `formatSolChange`, and `formatPercent`.
+- Removed the atmospheric background and injected a shared footer with a dedicated `disclaimer.html` page.
+
+### Next Steps
+- Expand settings form controls (drawdown slider, position units, RPC presets) and gate dashboard panels by basic/advanced mode.

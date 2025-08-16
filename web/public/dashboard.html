@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- TODO[AGENTS-AUDIT §10]: Update branding to "SOL SEEKER" with space and modern font -->
-    <title>Sol Seeker Dashboard</title>
+    <title>SOL SEEKER Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,7 +24,7 @@
                     },
                     fontFamily: {
                         'mono': ['Share Tech Mono', 'Courier New', 'monospace'],
-                        'display': ['Rajdhani', 'system-ui', 'sans-serif']
+                        'display': ['Inter', 'system-ui', 'sans-serif']
                     }
                 }
             }
@@ -60,12 +61,15 @@
             });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <script src="js/utils.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/portfolio.js"></script>
+    <script src="js/analytics.js"></script>
+
         <link rel="stylesheet" href="dashboard.css">
 </head>
 <body class="text-white font-display min-h-screen relative">
     <!-- Atmospheric Background -->
-    <div class="atmospheric-glow"></div>
     <div id="toastContainer" class="fixed top-4 right-4 space-y-2 z-50"></div>
     <div id="wsReconnectBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-blade-orange/80 text-white px-4 py-1 rounded text-xs z-50">Reconnecting…</div>
     <div id="licenseExpiryBanner" class="hidden fixed top-24 left-1/2 -translate-x-1/2 bg-blade-amber/80 text-black px-4 py-1 rounded text-xs z-50">LICENSE EXPIRES SOON</div>
@@ -75,10 +79,11 @@
         <div class="max-w-full px-8 py-4 flex items-center justify-between">
             <!-- Left: Title and License -->
             <div class="flex items-center space-x-8">
+                <button id="nav-toggle" class="text-2xl mr-4" aria-expanded="false" aria-controls="side-menu" aria-label="Open menu">☰</button>
                 <div class="flex items-center space-x-4">
                     <!-- TODO[AGENTS-AUDIT §10]: Rename heading to "SOL SEEKER DASHBOARD" -->
                     <h1 class="text-3xl font-bold text-white hologram-text tracking-wider">
-                        SOLSEEKER DASHBOARD
+                        SOL SEEKER DASHBOARD
                     </h1>
                     <div class="px-3 py-1 bg-blade-yellow/20 border border-blade-yellow/50 rounded text-xs hologram-text status-demo">
                         DEMO MODE
@@ -98,30 +103,19 @@
                         Last Update: --
                     </div>
                 </div>
-                <!-- TODO[AGENTS-AUDIT §1]: Remove WebSocket status block; only RPC latency should remain -->
-                <div class="flex items-center space-x-2 tooltip-trigger relative">
-                    <span class="text-xs hologram-text cyan-glow">WS</span>
-                    <span id="wsStatus" class="flex items-center space-x-1">
-                        <span class="w-2 h-2 bg-cyan-glow rounded-full"></span>
-                        <span class="text-xs hologram-text cyan-glow">LIVE</span>
-                    </span>
-                    <div class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded">
-                        WebSocket Connection: Streaming<br/>
-                        Slot Updates: Live
-                    </div>
-                </div>
+                <!-- Removed WebSocket status per audit -->
             </div>
-            
+
             <!-- Right: Global Controls -->
             <div class="flex items-center space-x-4">
-                <!-- TODO[AGENTS-AUDIT §1]: Engine loads paused; button labeled ▶ START until user activates -->
+                <!-- Engine starts paused -->
                 <button class="control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative" id="tradingToggle">
                     ▶ START
                     <div id="tradingTooltip" class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
                         Start/Pause Trading Engine
                     </div>
                 </button>
-                <button class="emergency-stop px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative">
+                <button class="emergency-stop px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative" id="tradingStop">
                     ⏹ STOP
                     <div class="tooltip absolute top-full mt-2 px-3 py-2 text-xs rounded right-0">
                         Emergency Stop - Close All Positions
@@ -133,11 +127,18 @@
                         System Health & Settings
                     </div>
                 </button>
-                <!-- TODO[AGENTS-AUDIT §1]: Move system clock into settings panel -->
-                <div class="text-xs hologram-text text-blade-amber/60" id="systemTime">00:00:00 UTC</div>
             </div>
         </div>
     </header>
+
+    <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-30"></div>
+    <nav id="side-menu" role="navigation" aria-label="main" class="hidden fixed top-0 left-0 h-full w-48 bg-panel-black p-4 space-y-4 z-40">
+        <a href="whales.html" class="block">Whale Tracker</a>
+        <a href="strategies.html" class="block">Strategies</a>
+        <a href="mev.html" class="block">MEV Shield</a>
+        <a href="sentiment.html" class="block">Sentiment</a>
+        <a href="settings.html" class="block">Settings</a>
+    </nav>
 
     <!-- Main Dashboard Content -->
     <div class="pt-20 px-8 pb-8">
@@ -146,7 +147,7 @@
             <h2 class="text-xl font-semibold text-white hologram-text mb-6 tracking-wider">
                 SYSTEM METRICS
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Total Portfolio Value -->
                 <!-- TODO[AGENTS-AUDIT §2]: Wire to /chart/portfolio and show 10 SOL demo start with USD conversion -->
                 <div class="metric-card p-6 rounded scan-lines">
@@ -154,15 +155,13 @@
                         <span class="text-sm hologram-text text-blade-amber/80">PORTFOLIO VALUE</span>
                           <!-- TODO[AGENTS-AUDIT §2]: Align sparkline left →
                                right and overlay % change line with legend. -->
-                          <svg class="w-12 h-6" viewBox="0 0 48 24">
-                              <path class="sparkline stroke-blade-amber" d="M2 20 Q12 16 24 12 T46 8"/>
-                          </svg>
+                          <canvas id="portfolioSpark" class="w-12 h-6"></canvas>
                     </div>
                     <div class="text-3xl font-bold amber-glow data-flicker" id="portfolioValue">
-                        $0.00
+                        10 SOL ($0.00)
                     </div>
                     <div class="text-sm hologram-text text-cyan-glow mt-1" id="portfolioChange">
-                        +$0.00 (+0.00%)
+                        +0.00 SOL ($0.00) (+0.00%)
                     </div>
                 </div>
 
@@ -176,59 +175,27 @@
                         </svg>
                     </div>
                     <div class="text-3xl font-bold cyan-glow data-flicker" id="realizedPnL">
-                        $0.00
+                        0 SOL ($0.00)
                     </div>
                     <div class="text-sm hologram-text text-blade-amber/80 mt-1" id="realizedPnLChange">
-                        ↗ +0.0% TODAY
+                        ↗ +0.00 SOL ($0.00) TODAY
                     </div>
                 </div>
 
                 <!-- Open Positions -->
                 <!-- TODO[AGENTS-AUDIT §2]: Replace counts with horizontal mini-card map sourced from /positions/ws -->
-                <div class="metric-card p-6 rounded scan-lines">
+                <div class="metric-card p-6 rounded scan-lines overflow-x-auto">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm hologram-text text-blade-amber/80">OPEN POSITIONS</span>
-                        <div class="w-8 h-8 rounded-full bg-blade-amber/20 flex items-center justify-center">
-                            <span id="openPositionsTotal" class="text-xs hologram-text amber-glow">0</span>
-                        </div>
                     </div>
-                    <div id="openPositionsActive" class="text-3xl font-bold amber-glow data-flicker">0 ACTIVE</div>
-                    <div id="openPositionsBreakdown" class="text-sm hologram-text text-cyan-glow/80 mt-1">0 LONG • 0 SHORT</div>
+                    <canvas id="positionsMap" class="w-full h-12"></canvas>
                 </div>
 
-                <!-- System Status -->
-                <!-- TODO[AGENTS-AUDIT §3]: Remove this card; uptime/resource usage live in settings -->
-                <div class="metric-card p-6 rounded scan-lines">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm hologram-text text-blade-amber/80">SYSTEM STATUS</span>
-                        <div class="w-3 h-3 bg-cyan-glow rounded-full status-online"></div>
-                    </div>
-                    <div class="text-2xl font-bold cyan-glow data-flicker" id="systemStatus">
-                        OPERATIONAL
-                    </div>
-                    <div class="text-sm hologram-text text-blade-amber/80 mt-1">
-                        UPTIME: <span id="systemUptime">99.97%</span>
-                    </div>
-                </div>
-
-                <!-- Backtest Results -->
-                <!-- TODO[AGENTS-AUDIT §3 & §6]: Delete from dashboard; integrate into settings backtest panel -->
-                <div class="metric-card p-6 rounded scan-lines">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm hologram-text text-blade-amber/80">BACKTEST P&L</span>
-                    </div>
-                    <div class="text-3xl font-bold amber-glow data-flicker" id="backtestPnL">
-                        --
-                    </div>
-                    <div class="text-sm hologram-text text-blade-amber/80 mt-1" id="backtestStats">
-                        DD -- • SHARPE --
-                    </div>
-                </div>
             </div>
         </div>
 
         <!-- Main Dashboard Grid -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-2 gap-8">
+        <div class="dashboard-grid gap-8">
             <!-- Left Column: Portfolio & Positions -->
             <div class="xl:col-span-1 lg:col-span-1 space-y-8">
                 <!-- Portfolio & Positions Panel -->
@@ -382,16 +349,16 @@
                   <!-- TODO[AGENTS-AUDIT §4]: Active tab is unhighlighted; use
                        `aria-selected` and Tailwind classes to toggle. -->
                   <div class="flex space-x-4 mb-6">
-                      <button class="chart-tab active px-4 py-2 bg-blade-amber/20 text-blade-amber rounded text-sm hologram-text border border-blade-amber/50" data-chart="equity">
+                      <button id="equityTab" aria-selected="true" class="chart-tab px-4 py-2 bg-blade-amber/20 text-blade-amber rounded text-sm hologram-text border border-blade-amber/50" data-chart="equity">
                           EQUITY CURVE
                       </button>
-                    <button class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="pnl">
+                    <button id="pnlTab" aria-selected="false" class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="pnl">
                         P&L BREAKDOWN
                     </button>
-                    <button class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="market">
+                    <button id="marketTab" aria-selected="false" class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="market">
                         MARKET DATA
                     </button>
-                    <button class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="regime">
+                    <button id="regimeTab" aria-selected="false" class="chart-tab px-4 py-2 bg-void-black/50 text-blade-amber/60 rounded text-sm hologram-text border border-blade-amber/20" data-chart="regime">
                         REGIME ANALYSIS
                     </button>
                 </div>
@@ -411,7 +378,7 @@
                     <div class="chart-container h-96 rounded relative overflow-hidden" id="equityContainer">
                         <canvas id="equityCanvas" class="w-full h-full"></canvas>
                         <div class="absolute top-4 left-4">
-                            <div class="hologram-text text-3xl cyan-glow data-flicker" id="equityCurrent">$0.00</div>
+                            <div class="hologram-text text-3xl cyan-glow data-flicker" id="equityCurrent">0 SOL ($0.00)</div>
                             <div class="hologram-text text-sm text-blade-amber/80">CURRENT EQUITY</div>
                         </div>
                         <div class="absolute top-4 right-4 text-right">
@@ -425,7 +392,7 @@
                   <!-- TODO[AGENTS-AUDIT §4]: Replace static SVG with Chart.js
                        bar chart from `/pnl/daily?days=14` and donut from
                        `/strategy/breakdown` including Liquidity & Other segments. -->
-                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="pnlChart">
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="pnlChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             PROFIT & LOSS ANALYSIS
@@ -438,78 +405,15 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Daily P&L Bars -->
                         <div class="chart-container h-80 rounded relative overflow-hidden">
-                            <svg class="w-full h-full" viewBox="0 0 500 300">
-                                <defs>
-                                    <linearGradient id="profitGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.8" />
-                                        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.4" />
-                                    </linearGradient>
-                                    <linearGradient id="lossGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.8" />
-                                        <stop offset="100%" stop-color="#ff6b35" stop-opacity="0.4" />
-                                    </linearGradient>
-                                </defs>
-                                <!-- Grid -->
-                                <g stroke="rgba(255, 140, 0, 0.1)" stroke-width="0.5">
-                                    <line x1="0" y1="150" x2="500" y2="150"/>
-                                    <line x1="0" y1="75" x2="500" y2="75"/>
-                                    <line x1="0" y1="225" x2="500" y2="225"/>
-                                </g>
-                                <!-- P&L Bars -->
-                                <rect x="30" y="120" width="25" height="30" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="70" y="100" width="25" height="50" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="110" y="150" width="25" height="40" fill="url(#lossGradient)" rx="2"/>
-                                <rect x="150" y="80" width="25" height="70" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="190" y="110" width="25" height="40" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="230" y="150" width="25" height="25" fill="url(#lossGradient)" rx="2"/>
-                                <rect x="270" y="90" width="25" height="60" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="310" y="70" width="25" height="80" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="350" y="130" width="25" height="20" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="390" y="100" width="25" height="50" fill="url(#profitGradient)" rx="2"/>
-                                <rect x="430" y="85" width="25" height="65" fill="url(#profitGradient)" rx="2"/>
-                            </svg>
+                            <canvas id="pnlBarChart" class="w-full h-full"></canvas>
                             <div class="absolute bottom-4 left-4">
                                 <div class="hologram-text text-sm text-blade-amber/80">DAILY P&L (14 DAYS)</div>
                             </div>
                         </div>
-                        
+
                         <!-- Strategy Breakdown -->
                         <div class="chart-container h-80 rounded relative overflow-hidden flex items-center justify-center">
-                            <svg class="w-64 h-64" viewBox="0 0 200 200">
-                                <defs>
-                                    <filter id="pieGlow">
-                                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                                        <feMerge> 
-                                            <feMergeNode in="coloredBlur"/>
-                                            <feMergeNode in="SourceGraphic"/>
-                                        </feMerge>
-                                    </filter>
-                                </defs>
-                                <!-- Donut chart segments -->
-                                <circle cx="100" cy="100" r="70" fill="none" stroke="#00e5ff" stroke-width="20" 
-                                        stroke-dasharray="220 440" stroke-dashoffset="0" filter="url(#pieGlow)" opacity="0.8"/>
-                                <circle cx="100" cy="100" r="70" fill="none" stroke="#ff8c00" stroke-width="20" 
-                                        stroke-dasharray="132 440" stroke-dashoffset="-220" filter="url(#pieGlow)" opacity="0.8"/>
-                                <circle cx="100" cy="100" r="70" fill="none" stroke="#ffab00" stroke-width="20" 
-                                        stroke-dasharray="88 440" stroke-dashoffset="-352" filter="url(#pieGlow)" opacity="0.8"/>
-                                <!-- Center text -->
-                                <text x="100" y="95" text-anchor="middle" class="hologram-text text-xs" fill="#ff8c00">STRATEGY</text>
-                                <text x="100" y="110" text-anchor="middle" class="hologram-text text-xs" fill="#00e5ff">BREAKDOWN</text>
-                            </svg>
-                            <div class="absolute bottom-4 left-4 space-y-2">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-cyan-glow rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">SNIPING 50%</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-blade-amber rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">ARBITRAGE 30%</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-blade-yellow rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">MARKET MAKING 20%</span>
-                                </div>
-                            </div>
+                            <canvas id="strategyDonutChart" class="w-64 h-64"></canvas>
                         </div>
                     </div>
                 </div>
@@ -518,7 +422,7 @@
                   <!-- TODO[AGENTS-AUDIT §4]: Poll `/market/active` every 10 s for
                        new/trending tokens; populate table with volume,
                        volatility, liquidity, spread and link to TradingView. -->
-                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="marketChart">
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="marketChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             ACTIVE MARKET DATA
@@ -530,63 +434,19 @@
                             <button class="px-3 py-1 bg-void-black/50 text-blade-amber/60 rounded text-xs hologram-text border border-blade-amber/20" id="openTradingView">TRADINGVIEW</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Main Price Chart -->
-                        <div class="lg:col-span-2 chart-container h-80 rounded relative overflow-hidden">
-                            <svg class="w-full h-full" viewBox="0 0 800 300">
-                                <defs>
-                                    <linearGradient id="marketGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.4" />
-                                        <stop offset="50%" stop-color="#00e5ff" stop-opacity="0.2" />
-                                        <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.1" />
-                                    </linearGradient>
-                                </defs>
-                                <!-- Candlesticks -->
-                                <g id="candlesticks">
-                                    <!-- Green candles -->
-                                    <rect x="50" y="180" width="8" height="40" fill="#00e5ff" opacity="0.8"/>
-                                    <line x1="54" y1="160" x2="54" y2="230" stroke="#00e5ff" stroke-width="1"/>
-                                    <rect x="100" y="160" width="8" height="50" fill="#00e5ff" opacity="0.8"/>
-                                    <line x1="104" y1="140" x2="104" y2="220" stroke="#00e5ff" stroke-width="1"/>
-                                    <!-- Red candles -->
-                                    <rect x="150" y="170" width="8" height="30" fill="#ff6b35" opacity="0.8"/>
-                                    <line x1="154" y1="150" x2="154" y2="210" stroke="#ff6b35" stroke-width="1"/>
-                                    <rect x="200" y="190" width="8" height="35" fill="#ff6b35" opacity="0.8"/>
-                                    <line x1="204" y1="175" x2="204" y2="235" stroke="#ff6b35" stroke-width="1"/>
-                                </g>
-                                <!-- Volume bars -->
-                                <g id="volumeBars" transform="translate(0, 250)">
-                                    <rect x="50" y="0" width="8" height="20" fill="#ff8c00" opacity="0.4"/>
-                                    <rect x="100" y="0" width="8" height="35" fill="#ff8c00" opacity="0.4"/>
-                                    <rect x="150" y="0" width="8" height="15" fill="#ff8c00" opacity="0.4"/>
-                                    <rect x="200" y="0" width="8" height="25" fill="#ff8c00" opacity="0.4"/>
-                                </g>
-                            </svg>
-                            <div class="absolute top-4 left-4">
-                                <div class="hologram-text text-2xl amber-glow data-flicker" id="assetPrice">$0.00</div>
-                                <div class="hologram-text text-sm cyan-glow" id="assetChange">+0.00 (+0.00%)</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Market Stats -->
-                        <div class="space-y-4">
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-amber/20">
-                                <div class="hologram-text text-xs text-blade-amber/80 mb-1">24H VOLUME</div>
-                                <div class="hologram-text text-lg amber-glow" id="volume24h">N/A</div>
-                            </div>
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-cyan/20">
-                                <div class="hologram-text text-xs text-blade-amber/80 mb-1">VOLATILITY</div>
-                                <div class="hologram-text text-lg cyan-glow" id="volatility">N/A</div>
-                            </div>
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-yellow/20">
-                                <div class="hologram-text text-xs text-blade-amber/80 mb-1">LIQUIDITY</div>
-                                <div class="hologram-text text-lg text-blade-yellow" id="marketLiquidity">N/A</div>
-                            </div>
-                            <div class="bg-void-black/50 p-4 rounded border border-blade-orange/20">
-                                <div class="hologram-text text-xs text-blade-amber/80 mb-1">SPREAD</div>
-                                <div class="hologram-text text-lg text-blade-orange" id="spread">N/A</div>
-                            </div>
-                        </div>
+                    <div class="overflow-x-auto">
+                        <table id="marketDataTable" class="min-w-full text-xs hologram-text">
+                            <thead class="text-blade-amber/80">
+                                <tr>
+                                    <th class="px-2 py-1 text-left">SYMBOL</th>
+                                    <th class="px-2 py-1 text-left">24H VOLUME</th>
+                                    <th class="px-2 py-1 text-left">VOLATILITY</th>
+                                    <th class="px-2 py-1 text-left">LIQUIDITY</th>
+                                    <th class="px-2 py-1 text-left">SPREAD</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -594,7 +454,7 @@
                   <!-- TODO[AGENTS-AUDIT §4]: Consume `/posterior` websocket to
                        render regime probabilities and rug risk; hide if
                        endpoint unavailable. -->
-                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="regimeChart">
+                  <div class="chart-panel hologram-panel p-6 rounded scan-lines hidden" id="regimeChart" hidden>
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-white hologram-text tracking-wider">
                             MARKET REGIME ANALYSIS
@@ -607,50 +467,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Regime Probability Chart -->
                         <div class="chart-container h-80 rounded relative overflow-hidden">
-                            <svg class="w-full h-full" viewBox="0 0 500 300">
-                                <defs>
-                                    <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.6" />
-                                        <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.1" />
-                                    </linearGradient>
-                                    <linearGradient id="meanRevertGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.6" />
-                                        <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.1" />
-                                    </linearGradient>
-                                    <linearGradient id="chopGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#ffab00" stop-opacity="0.6" />
-                                        <stop offset="100%" stop-color="#ffab00" stop-opacity="0.1" />
-                                    </linearGradient>
-                                </defs>
-                                <!-- Grid -->
-                                <g stroke="rgba(255, 140, 0, 0.1)" stroke-width="0.5">
-                                    <line x1="0" y1="75" x2="500" y2="75"/>
-                                    <line x1="0" y1="150" x2="500" y2="150"/>
-                                    <line x1="0" y1="225" x2="500" y2="225"/>
-                                </g>
-                                <!-- Regime areas -->
-                                <path d="M 0 300 Q 100 250 200 200 T 400 150 T 500 120 L 500 300 Z" fill="url(#trendGradient)"/>
-                                <path d="M 0 300 Q 100 280 200 260 T 400 240 T 500 220 L 500 300 Z" fill="url(#meanRevertGradient)"/>
-                                <path d="M 0 300 Q 100 290 200 285 T 400 280 T 500 275 L 500 300 Z" fill="url(#chopGradient)"/>
-                                <!-- Regime lines -->
-                                <path d="M 0 200 Q 100 180 200 150 T 400 120 T 500 100" stroke="#00e5ff" stroke-width="3" fill="none" filter="url(#equityGlow)"/>
-                                <path d="M 0 250 Q 100 240 200 220 T 400 200 T 500 180" stroke="#ff8c00" stroke-width="3" fill="none" filter="url(#equityGlow)"/>
-                                <path d="M 0 280 Q 100 275 200 270 T 400 265 T 500 260" stroke="#ffab00" stroke-width="3" fill="none" filter="url(#equityGlow)"/>
-                            </svg>
-                            <div class="absolute bottom-4 left-4 space-y-1">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-1 bg-cyan-glow rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">TREND 68%</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-1 bg-blade-amber rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">MEAN-REVERT 22%</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-1 bg-blade-yellow rounded"></div>
-                                    <span class="hologram-text text-xs text-blade-amber/80">CHOP 10%</span>
-                                </div>
-                            </div>
+                            <canvas id="regimeCanvas" class="w-full h-full"></canvas>
                         </div>
                         
                         <!-- Triangular Regime Meter -->
@@ -1844,7 +1661,6 @@
         const pollingIntervals = [];
         let lastRpcSample = 0;
         let lastRpcStatus = 'Unknown';
-        let wsHeartbeatTs = Date.now();
         let initialEquity = null;
         let lastRealizedPnL = 0;
         const influencerState = new Map();
@@ -1852,10 +1668,40 @@
         function updateTime() {
             const now = new Date();
             const timeString = now.toUTCString().split(' ')[4];
-            document.getElementById('systemTime').textContent = timeString + ' UTC';
         }
         pollingIntervals.push(setInterval(updateTime, 1000));
         updateTime();
+
+        let solPrice = 0;
+
+        async function fetchSolPrice() {
+            try {
+                const resp = await fetch(`${API_BASE}/price/sol`);
+                const data = await resp.json();
+                solPrice = data.price || 0;
+            } catch (e) {
+                console.error('Failed to fetch SOL price', e);
+            }
+        }
+
+        async function updateTopMetrics() {
+            await fetchSolPrice();
+            document.getElementById('portfolioValue').textContent = formatSol(10, solPrice);
+            document.getElementById('portfolioChange').textContent = `${formatSolChange(0, solPrice)} (${formatPercent(0)})`;
+            try {
+                const resp = await fetch(`${API_BASE}/pnl/realized`);
+                const data = await resp.json();
+                const total = data.total || 0;
+                const today = data.today || 0;
+                document.getElementById('realizedPnL').textContent = formatSolChange(total, solPrice);
+                document.getElementById('realizedPnLChange').textContent = `${today >= 0 ? '↗' : '↘'} ${formatSolChange(today, solPrice)} TODAY`;
+            } catch (e) {
+                console.error('Failed to update realized PnL', e);
+            }
+        }
+
+        updateTopMetrics();
+        pollingIntervals.push(setInterval(updateTopMetrics, 5000));
 
         async function pollRpcLatency() {
             if (document.hidden) return;
@@ -1885,15 +1731,11 @@
         }
 
         function checkWsHeartbeat() {
-            const el = document.getElementById('wsStatus');
-            if (!el) return;
-            const isLive = Date.now() - wsHeartbeatTs <= 10000;
-            el.innerHTML = isLive
-                ? `<span class="w-2 h-2 bg-cyan-glow rounded-full"></span><span class="text-xs hologram-text cyan-glow">LIVE</span>`
-                : `<span class="w-2 h-2 bg-blade-orange rounded-full"></span><span class="text-xs hologram-text text-blade-orange">DISCONNECTED</span>`;
-            if (typeof wsClient !== 'undefined') wsClient.connections.forEach((_, ep) => wsClient.flush(ep));
-            const banner = typeof wsClient !== 'undefined' ? document.getElementById('wsReconnectBanner') : null;
-            if (banner) banner.classList.toggle('hidden', !wsClient.hasPending());
+            if (typeof wsClient !== 'undefined') {
+                wsClient.connections.forEach((_, ep) => wsClient.flush(ep));
+                const banner = document.getElementById('wsReconnectBanner');
+                if (banner) banner.classList.toggle('hidden', !wsClient.hasPending());
+            }
         }
 
         async function pollSystemStatus() {
@@ -1958,7 +1800,14 @@
         const tradingToggle = document.getElementById('tradingToggle');
         const tradingTooltip = document.getElementById('tradingTooltip');
 
-        function updateTradingButton() {
+        async function updateTradingButton() {
+            try {
+                const resp = await fetch(`${API_BASE}/state`);
+                const state = await resp.json();
+                tradingActive = !!state.running;
+            } catch (e) {
+                console.error('state poll failed', e);
+            }
             tradingToggle.textContent = tradingActive ? '⏸ PAUSE' : '▶ START';
             tradingToggle.className = tradingActive ?
                 'control-button px-4 py-2 rounded text-xs hologram-text tooltip-trigger relative bg-cyan-glow/20 border-cyan-glow/50 text-cyan-glow' :
@@ -1973,28 +1822,41 @@
             }
         }
         updateTradingButton();
+        pollingIntervals.push(setInterval(updateTradingButton, 5000));
 
         tradingToggle.addEventListener('click', async function() {
-            const next = !tradingActive;
             try {
-                const res = await apiClient.setState({ running: next });
-                if (!res) {
-                    showToast('Failed to update trading state');
-                    return;
+                const endpoint = tradingActive ? '/engine/stop' : '/engine/start';
+                const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' });
+                if (res.ok) {
+                    lastTradingChange = Date.now();
+                    await updateTradingButton();
+                } else if (res.status === 409) {
+                    const msg = tradingActive ? 'Engine already stopped' : 'Engine already running';
+                    showToast(msg);
+                    await updateTradingButton();
+                } else {
+                    showToast('Trading toggle failed');
                 }
-                const verify = await apiClient.getState();
-                if (!verify || verify.running !== next) {
-                    showToast('Trading state verification failed');
-                    return;
-                }
-                tradingActive = next;
-                lastTradingChange = Date.now();
-                updateTradingButton();
             } catch (err) {
                 console.error('trading toggle failed', err);
                 showToast('Trading toggle failed');
             }
         });
+
+        const tradingStopBtn = document.getElementById('tradingStop');
+        if (tradingStopBtn) {
+            tradingStopBtn.addEventListener('click', async () => {
+                try {
+                    await fetch(`${API_BASE}/engine/stop`, { method: 'POST' });
+                    lastTradingChange = Date.now();
+                    await updateTradingButton();
+                } catch (err) {
+                    console.error('stop failed', err);
+                    showToast('Trading toggle failed');
+                }
+            });
+        }
 
         // Tab functionality for positions/history
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -2017,6 +1879,8 @@
                 document.getElementById(targetTab + 'Tab').classList.remove('hidden');
                 if (targetTab === 'history') {
                     loadHistory();
+                } else {
+                    loadPositions();
                 }
             });
         });
@@ -2388,46 +2252,6 @@
                 feedContainer.removeChild(feedContainer.lastChild);
             }
         }
-        // Render a single closed trade entry
-        function renderHistoryEntry(order) {
-            const pnl = order.pnl ?? 0;
-            const entry = document.createElement('div');
-            entry.className = 'bg-void-black/50 p-4 rounded border';
-            entry.classList.add(pnl >= 0 ? 'border-blade-cyan/30' : 'border-blade-orange/30');
-            const color = pnl >= 0 ? 'text-cyan-glow' : 'text-blade-orange';
-            const time = order.timestamp ? new Date(order.timestamp * 1000).toLocaleTimeString() : '';
-            entry.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <div>
-                        <div class="hologram-text text-white font-bold">${order.symbol || order.token || ''} CLOSED</div>
-                        <div class="hologram-text text-xs text-blade-amber/60">${time} • ${order.strategy || ''}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="hologram-text ${color} font-bold">${pnl >= 0 ? '+' : ''}${pnl} SOL</div>
-                    </div>
-                </div>`;
-            return entry;
-        }
-
-        function appendHistoryEntry(order) {
-            const list = document.getElementById('historyList');
-            if (!list) return;
-            const entry = renderHistoryEntry(order);
-            list.insertBefore(entry, list.firstChild);
-        }
-
-        async function loadHistory() {
-            try {
-                const orders = await apiClient.get('/orders?status=closed');
-                const list = document.getElementById('historyList');
-                if (!orders || !Array.isArray(orders) || !list) return;
-                list.innerHTML = '';
-                orders.filter(o => !o.status || o.status === 'closed').forEach(o => appendHistoryEntry(o));
-            } catch (err) {
-                console.error('Error loading history:', err);
-            }
-        }
-        
         // Feed pause/resume functionality
         document.getElementById('pauseFeed').addEventListener('click', function() {
             feedPaused = !feedPaused;
@@ -2575,7 +2399,7 @@
                         return;
                     }
                     if (msg.pnl !== undefined) {
-                        document.getElementById('backtestPnL').textContent = `$${msg.pnl.toFixed(2)}`;
+                        document.getElementById('backtestPnL').textContent = formatSol(msg.pnl, solPrice);
                         document.getElementById('backtestStats').textContent = `DD ${(msg.drawdown * 100).toFixed(2)}% • SHARPE ${msg.sharpe.toFixed(2)}`;
                         wsClient.disconnect(backtestEndpoint);
                         backtestEndpoint = null;
@@ -2614,7 +2438,7 @@
                 const hist = await apiClient.getBacktestHistory();
                 hist.forEach(h => {
                     const div = document.createElement('div');
-                    div.textContent = `${h.id} • PnL $${h.pnl.toFixed(2)}`;
+                    div.textContent = `${h.id} • PnL ${formatSol(h.pnl, solPrice)}`;
                     list.appendChild(div);
                 });
             } catch {
@@ -3089,26 +2913,24 @@
             const risk = dashboardState.dashboard.risk;
             const equity = risk.equity || 0;
             if (initialEquity === null) initialEquity = equity;
-            document.getElementById('portfolioValue').textContent =
-                `$${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('portfolioValue').textContent = formatSol(equity, solPrice);
 
             const change = equity - initialEquity;
             const changePercent = initialEquity ? (change / initialEquity) * 100 : 0;
             const changeElement = document.getElementById('portfolioChange');
-            changeElement.textContent =
-                `${change >= 0 ? '+' : '-'}$${Math.abs(change).toFixed(2)} (${change >= 0 ? '+' : '-'}${Math.abs(changePercent).toFixed(2)}%)`;
+            changeElement.textContent = `${formatSolChange(change, solPrice)} (${formatPercent(changePercent)})`;
             changeElement.className = `text-sm hologram-text ${change >= 0 ? 'text-cyan-glow' : 'text-blade-orange'} mt-1`;
 
             const realized = risk.realized || 0;
             const pnlElement = document.getElementById('realizedPnL');
-            pnlElement.textContent = `${realized >= 0 ? '+' : '-'}$${Math.abs(realized).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            pnlElement.textContent = formatSolChange(realized, solPrice);
             pnlElement.className = `text-3xl font-bold ${realized >= 0 ? 'cyan-glow' : 'text-blade-orange'} data-flicker`;
 
             const delta = realized - lastRealizedPnL;
             lastRealizedPnL = realized;
             const pnlChangeEl = document.getElementById('realizedPnLChange');
             if (pnlChangeEl) {
-                pnlChangeEl.textContent = `${delta >= 0 ? '↗ +' : '↘ -'}$${Math.abs(delta).toFixed(2)} TODAY`;
+                pnlChangeEl.textContent = `${delta >= 0 ? '↗' : '↘'} ${formatSolChange(delta, solPrice)} TODAY`;
             }
 
             updateEquityLabels();
@@ -3333,7 +3155,7 @@
 
             const equityEl = document.getElementById('equityCurrent');
             if (equityEl) {
-                equityEl.textContent = `$${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                equityEl.textContent = formatSol(equity, solPrice);
             }
 
             const drawdownEl = document.getElementById('maxDrawdown');
@@ -3350,33 +3172,32 @@
 
             const priceEl = document.getElementById('assetPrice');
             if (priceEl && market.price !== undefined) {
-                priceEl.textContent = `$${market.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                priceEl.textContent = formatSol(market.price / solPrice, solPrice);
             }
 
             const changeEl = document.getElementById('assetChange');
             if (changeEl && market.change !== undefined) {
-                const pct = market.change;
-                changeEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+                changeEl.textContent = formatPercent(market.change);
             }
 
             const volumeEl = document.getElementById('volume24h');
             if (volumeEl && market.volume24h !== undefined) {
-                volumeEl.textContent = `$${market.volume24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                volumeEl.textContent = formatSol(market.volume24h / solPrice, solPrice);
             }
 
             const volatilityEl = document.getElementById('volatility');
             if (volatilityEl && market.volatility !== undefined) {
-                volatilityEl.textContent = market.volatility;
+                volatilityEl.textContent = formatPercent(market.volatility);
             }
 
             const liquidityEl = document.getElementById('marketLiquidity');
             if (liquidityEl && market.liquidity !== undefined) {
-                liquidityEl.textContent = `$${market.liquidity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                liquidityEl.textContent = formatSol(market.liquidity / solPrice, solPrice);
             }
 
             const spreadEl = document.getElementById('spread');
             if (spreadEl && market.spread !== undefined) {
-                spreadEl.textContent = `${market.spread}%`;
+                spreadEl.textContent = formatPercent(market.spread);
             }
         }
 
@@ -3725,14 +3546,14 @@
               strategies.forEach(s => {
                   const div = document.createElement('div');
                   div.className = 'bg-void-black/50 p-4 rounded border border-blade-cyan/30';
+                  const ts = new Date(s.last_update).toLocaleTimeString();
                   div.innerHTML = `<div class="flex justify-between items-center mb-3">` +
                       `<div class="hologram-text text-white font-bold">${s.name}</div>` +
-                      `<div class="hologram-text text-cyan-glow text-sm font-bold">${s.trades} trades • ${s.pnl} SOL</div>` +
+                      `<div class="hologram-text text-cyan-glow text-sm font-bold">${s.status}</div>` +
                       `</div>` +
-                      `<div class="grid grid-cols-3 gap-3 text-xs">` +
-                      `<div><div class="hologram-text text-blade-amber/80">CONFIDENCE</div><div class="hologram-text text-cyan-glow font-bold">${s.confidence}%</div></div>` +
-                      `<div><div class="hologram-text text-blade-amber/80">TARGETS</div><div class="hologram-text text-white font-bold">${s.targets}</div></div>` +
-                      `<div><div class="hologram-text text-blade-amber/80">SUCCESS</div><div class="hologram-text text-cyan-glow font-bold">${s.success}%</div></div>` +
+                      `<div class="grid grid-cols-2 gap-3 text-xs">` +
+                      `<div><div class="hologram-text text-blade-amber/80">LAST UPDATE</div><div class="hologram-text text-white font-bold">${ts}</div></div>` +
+                      `<div><div class="hologram-text text-blade-amber/80">LATENCY</div><div class="hologram-text text-cyan-glow font-bold">${s.latency_ms}ms</div></div>` +
                       `</div>`;
                   container.appendChild(div);
               });
@@ -4310,9 +4131,7 @@
         // Connect to real-time feeds
         function initializeWebSockets() {
             // Dashboard updates
-            wsHeartbeatTs = Date.now();
             wsClient.connect('/dashboard/ws', (data) => {
-                wsHeartbeatTs = Date.now();
                 if (data.risk) {
                     dashboardState.dashboard = dashboardState.dashboard || {};
                     dashboardState.dashboard.risk = data.risk;
@@ -4406,8 +4225,6 @@
                     pollingIntervals.push(setInterval(loadLicense, 300000));
                 pollRpcLatency();
                 pollingIntervals.push(setInterval(pollRpcLatency, 5000));
-                pollSystemStatus();
-                pollingIntervals.push(setInterval(pollSystemStatus, 30000));
                 pollMetrics();
                 pollingIntervals.push(setInterval(pollMetrics, 5000));
                 updateRpcTooltip();
@@ -4546,7 +4363,6 @@
         }
 
     </script>
-    <!-- TODO[AGENTS-AUDIT §9]: Add footer with repo link and IJR Enterprises
-         disclaimer; consider separate disclaimer page for legal text. -->
+    <script src="js/footer.js"></script>
 </body>
 </html>

@@ -310,3 +310,17 @@ class RiskManager:
             for tok, pos in self.positions.items()
         )
 
+    def max_drawdown(self) -> float:
+        """Historical peak-to-trough drawdown across equity history."""
+
+        peak = 0.0
+        max_dd = 0.0
+        for _, eq in self.equity_history:
+            if eq > peak:
+                peak = eq
+            if peak > 0:
+                dd = (peak - eq) / peak
+                if dd > max_dd:
+                    max_dd = dd
+        return max_dd
+
